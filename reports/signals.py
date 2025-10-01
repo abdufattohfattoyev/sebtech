@@ -4,6 +4,7 @@ from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 from decimal import Decimal
 from .models import CashFlowTransaction
+from datetime import date
 
 
 # ==================== TELEFON SOTISH ====================
@@ -307,18 +308,29 @@ def delete_phone_return_cashflow(sender, instance, **kwargs):
 # ==================== KUNLIK SOTUVCHI ====================
 
 @receiver(post_save, sender='inventory.Phone')
-def create_daily_seller_cashflow(sender, instance, created, **kwargs):
-    """Kunlik sotuvchi - faqat CREATE (UPDATE kerak emas)"""
-    if not created:
+def handle_daily_seller_cashflow(sender, instance, created, **kwargs):
+    """Kunlik sotuvchi - CREATE va UPDATE"""
+
+    # Agar daily_seller bo'lmasa, chiqib ketamiz
+    if instance.source_type != 'daily_seller':
         return
 
-    if (instance.source_type == 'daily_seller' and
-            instance.daily_payment_amount and
-            instance.daily_payment_amount > 0):
-        try:
-            from django.utils import timezone
-            trans_date = instance.created_at.date() if hasattr(instance.created_at, 'date') else timezone.now().date()
+    # Agar to'lov summasi yo'q bo'lsa, mavjud cashflow ni o'chirish
+    if not instance.daily_payment_amount or instance.daily_payment_amount <= 0:
+        CashFlowTransaction.objects.filter(
+            related_phone=instance,
+            transaction_type='daily_seller_payment'
+        ).delete()
+        return
 
+    try:
+        from django.utils import timezone
+        trans_date = instance.created_at if isinstance(instance.created_at, date) else (
+            instance.created_at.date() if hasattr(instance.created_at, 'date') else timezone.now().date()
+        )
+
+        if created:
+            # Yangi telefon - yangi cashflow yaratish
             CashFlowTransaction.objects.create(
                 shop=instance.shop,
                 transaction_date=trans_date,
@@ -330,13 +342,44 @@ def create_daily_seller_cashflow(sender, instance, created, **kwargs):
                 notes=f"{instance.phone_model} {instance.memory_size}",
                 created_by=instance.created_by
             )
-            print(f"✅ Daily seller payment: -${instance.daily_payment_amount}")
-        except Exception as e:
-            print(f"❌ DailySeller cashflow error: {e}")
+            print(f"✅ Daily seller payment created: -${instance.daily_payment_amount}")
+        else:
+            # Yangilanish - mavjud cashflow ni topish yoki yangi yaratish
+            cashflow = CashFlowTransaction.objects.filter(
+                related_phone=instance,
+                transaction_type='daily_seller_payment'
+            ).first()
+
+            if cashflow:
+                # Mavjud cashflow ni yangilash
+                cashflow.transaction_date = trans_date
+                cashflow.amount_usd = -instance.daily_payment_amount
+                cashflow.description = f"Kunlik: {instance.daily_seller.name if instance.daily_seller else 'N/A'}"
+                cashflow.notes = f"{instance.phone_model} {instance.memory_size}"
+                cashflow.save()
+                print(f"✅ Daily seller payment updated: -${instance.daily_payment_amount}")
+            else:
+                # Agar cashflow topilmasa, yangi yaratish
+                CashFlowTransaction.objects.create(
+                    shop=instance.shop,
+                    transaction_date=trans_date,
+                    transaction_type='daily_seller_payment',
+                    amount_usd=-instance.daily_payment_amount,
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance,
+                    description=f"Kunlik: {instance.daily_seller.name if instance.daily_seller else 'N/A'}",
+                    notes=f"{instance.phone_model} {instance.memory_size}",
+                    created_by=instance.created_by
+                )
+                print(f"✅ Daily seller payment recreated: -${instance.daily_payment_amount}")
+
+    except Exception as e:
+        print(f"❌ DailySeller cashflow error: {e}")
 
 
 @receiver(pre_delete, sender='inventory.Phone')
 def delete_daily_seller_cashflow(sender, instance, **kwargs):
+    """Telefon o'chirilganda Daily Seller cashflow ni o'chirish"""
     if instance.source_type == 'daily_seller':
         try:
             count = CashFlowTransaction.objects.filter(
