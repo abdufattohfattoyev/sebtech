@@ -286,12 +286,11 @@ class PhoneForm(forms.ModelForm):
 
             phone.external_seller = external_seller
 
-        # Daily seller yaratish/yangilash - TO'G'IRLANGAN
+        # Daily seller yaratish/yangilash
         if (phone.source_type == 'daily_seller' and
                 self.cleaned_data.get('daily_seller_name') and
                 self.cleaned_data.get('daily_seller_phone')):
 
-            # get_or_create yordamida yaratish yoki mavjud bo'lsa topish
             daily_seller, created = DailySeller.objects.get_or_create(
                 phone_number=self.cleaned_data['daily_seller_phone'],
                 defaults={
@@ -300,42 +299,18 @@ class PhoneForm(forms.ModelForm):
                 }
             )
 
-            # Agar mavjud bo'lsa, ismini yangilash
             if not created:
                 daily_seller.name = self.cleaned_data['daily_seller_name']
                 daily_seller.save(update_fields=['name'])
 
-            # Phone obyektiga bog'lash
             phone.daily_seller = daily_seller
             phone.daily_payment_amount = self.cleaned_data.get('daily_payment_amount') or self.cleaned_data.get(
                 'purchase_price')
 
         if commit:
             phone.save()
-
-            # Daily seller uchun xarajat yaratish
-            if phone.source_type == 'daily_seller' and phone.daily_payment_amount:
-                from sales.models import Expense
-
-                # Eski xarajatni o'chirish (agar update bo'lsa)
-                if phone.daily_payment_expense:
-                    old_expense = phone.daily_payment_expense
-                    phone.daily_payment_expense = None
-                    phone.save(update_fields=['daily_payment_expense'])
-                    old_expense.delete()
-
-                # Yangi xarajat yaratish
-                expense = Expense.objects.create(
-                    shop=phone.shop,
-                    name=f"Kunlik sotuvchi: {phone.daily_seller.name} - {phone.phone_model} {phone.memory_size}",
-                    amount=phone.daily_payment_amount,
-                    expense_date=phone.created_at or timezone.now().date(),
-                    created_by=self.user,
-                    notes=f"Telefon sotib olish: IMEI {phone.imei or 'N/A'}"
-                )
-
-                phone.daily_payment_expense = expense
-                phone.save(update_fields=['daily_payment_expense'])
+            # ❌ XARAJAT YARATISH QISMINI BUTUNLAY O'CHIRISH KERAK!
+            # Signal o'zi hal qiladi
 
         return phone
 

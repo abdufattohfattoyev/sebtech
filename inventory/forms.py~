@@ -175,11 +175,19 @@ class PhoneForm(forms.ModelForm):
             if len(imei) != 15:
                 raise ValidationError("IMEI 15 ta raqamdan iborat bo'lishi kerak")
 
+            # IMEI dublikat tekshiruvi
             existing_phone = Phone.objects.filter(imei=imei)
             if self.instance.pk:
                 existing_phone = existing_phone.exclude(pk=self.instance.pk)
+
             if existing_phone.exists():
-                raise ValidationError("Bu IMEI allaqachon mavjud")
+                phone = existing_phone.first()
+                raise ValidationError(
+                    f"⚠️ Bu IMEI allaqachon mavjud!\n"
+                    f"Telefon: {phone.phone_model} {phone.memory_size}\n"
+                    f"Do'kon: {phone.shop.name}\n"
+                    f"Holat: {phone.get_status_display()}"
+                )
         return imei
 
     def clean_purchase_price(self):
