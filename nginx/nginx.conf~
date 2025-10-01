@@ -5,6 +5,11 @@ server {
     # Fayl yuklash hajmi (50 MB)
     client_max_body_size 50M;
 
+    # Certbot uchun (keyinchalik SSL olishda kerak bo'ladi)
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
     # Statik fayllar
     location /static/ {
         alias /app/staticfiles/;

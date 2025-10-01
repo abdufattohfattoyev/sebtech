@@ -1,338 +1,404 @@
-<!-- sales/templates/sales/accessory_sale_list.html -->
 {% extends "base.html" %}
-
 {% block page_title %}Aksessuar sotuvlari{% endblock %}
 
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Aksessuar sotuvlari</h2>
-    <a href="{% url 'sales:accessory_sale_create' %}" class="btn btn-primary">
-        <i class="fas fa-plus me-1"></i>Yangi sotish
-    </a>
-</div>
+{% block extra_css %}
+<style>
+.fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
 
-<div class="card">
-    <div class="card-body">
-        {% if accessory_sales %}
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Aksessuar</th>
-                            <th>Mijoz</th>
-                            <th>Soni</th>
-                            <th>Birlik narxi</th>
-                            <th>Jami</th>
-                            <th>Naqd</th>
-                            <th>Karta</th>
-                            <th>Nasiya</th>
-                            <th>Qarz</th>
-                            <th>Sana</th>
-                            <th>Amallar</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for sale in accessory_sales %}
-                        <tr>
-                            <td>
-                                <div class="fw-bold">{{ sale.accessory.name }}</div>
-                                <small class="text-muted">{{ sale.accessory.brand.name }}</small>
-                            </td>
-                            <td>{{ sale.customer.name }}</td>
-                            <td>{{ sale.quantity }}</td>
-                            <td>${{ sale.unit_price }}</td>
-                            <td class="fw-bold text-primary">${{ sale.total_price }}</td>
-                            <td class="text-success">${{ sale.cash_amount }}</td>
-                            <td class="text-info">${{ sale.card_amount }}</td>
-                            <td class="text-warning">${{ sale.credit_amount }}</td>
-                            <td class="text-danger">${{ sale.debt_amount }}</td>
-                            <td>{{ sale.sale_date|date:"d.m.Y" }}</td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'sales:accessory_sale_detail' sale.pk %}" class="btn btn-outline-primary" title="Ko'rish">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{% url 'sales:accessory_sale_edit' sale.pk %}" class="btn btn-outline-secondary" title="Tahrirlash">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'sales:accessory_sale_delete' sale.pk %}" class="btn btn-outline-danger" title="O'chirish">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="text-center py-5">
-                <i class="fas fa-headphones text-muted" style="font-size: 3rem;"></i>
-                <h4 class="text-muted mt-3">Hali aksessuar sotuvlari yo'q</h4>
-                <p class="text-muted">Birinchi aksessuar sotishini qo'shing!</p>
-                <a href="{% url 'sales:accessory_sale_create' %}" class="btn btn-primary">
-                    <i class="fas fa-plus me-1"></i>Aksessuar sotish
-                </a>
-            </div>
-        {% endif %}
-    </div>
-</div>
-{% endblock %}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
 
-<!-- sales/templates/sales/accessory_sale_form.html -->
-{% extends "base.html" %}
+/* Header */
+.page-header {
+    margin-bottom: 1rem;
+}
 
-{% block page_title %}{{ title }}{% endblock %}
+.page-header h5 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 0.25rem 0;
+}
 
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>{{ title }}</h2>
-    <a href="{% url 'sales:accessory_sale_list' %}" class="btn btn-secondary">
-        <i class="fas fa-arrow-left me-1"></i>Orqaga
-    </a>
-</div>
+.page-header small {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
 
-<div class="card">
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
+.btn-add {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 0.625rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="{{ form.accessory.id_for_label }}" class="form-label">{{ form.accessory.label }}</label>
-                    {{ form.accessory }}
-                    {% if form.accessory.errors %}
-                        <div class="text-danger mt-1">{{ form.accessory.errors.0 }}</div>
-                    {% endif %}
-                </div>
+/* Sale Cards */
+.sales-grid {
+    display: grid;
+    gap: 0.75rem;
+}
 
-                <div class="col-md-6 mb-3">
-                    <label for="{{ form.customer.id_for_label }}" class="form-label">{{ form.customer.label }}</label>
-                    {{ form.customer }}
-                    {% if form.customer.errors %}
-                        <div class="text-danger mt-1">{{ form.customer.errors.0 }}</div>
-                    {% endif %}
-                </div>
-            </div>
+.sale-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
 
-            <div class="row">
-                <div class="col-md-3 mb-3">
-                    <label for="{{ form.quantity.id_for_label }}" class="form-label">{{ form.quantity.label }}</label>
-                    {{ form.quantity }}
-                    {% if form.quantity.errors %}
-                        <div class="text-danger mt-1">{{ form.quantity.errors.0 }}</div>
-                    {% endif %}
-                </div>
+.sale-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
 
-                <div class="col-md-3 mb-3">
-                    <label for="{{ form.unit_price.id_for_label }}" class="form-label">{{ form.unit_price.label }}</label>
-                    {{ form.unit_price }}
-                    {% if form.unit_price.errors %}
-                        <div class="text-danger mt-1">{{ form.unit_price.errors.0 }}</div>
-                    {% endif %}
-                </div>
+.sale-main {
+    flex: 1;
+}
 
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Jami narx</label>
-                    <input type="text" id="totalPrice" class="form-control" readonly>
-                </div>
+.sale-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
 
-                <div class="col-md-3 mb-3">
-                    <label for="{{ form.sale_date.id_for_label }}" class="form-label">{{ form.sale_date.label }}</label>
-                    {{ form.sale_date }}
-                    {% if form.sale_date.errors %}
-                        <div class="text-danger mt-1">{{ form.sale_date.errors.0 }}</div>
-                    {% endif %}
-                </div>
-            </div>
+.sale-brand {
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
 
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h6 class="mb-0">To'lov turlari</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <label for="{{ form.cash_amount.id_for_label }}" class="form-label">{{ form.cash_amount.label }}</label>
-                            {{ form.cash_amount }}
-                            {% if form.cash_amount.errors %}
-                                <div class="text-danger mt-1">{{ form.cash_amount.errors.0 }}</div>
-                            {% endif %}
-                        </div>
+.sale-qty {
+    background: #f3f4f6;
+    color: #1f2937;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
 
-                        <div class="col-md-3 mb-3">
-                            <label for="{{ form.card_amount.id_for_label }}" class="form-label">{{ form.card_amount.label }}</label>
-                            {{ form.card_amount }}
-                            {% if form.card_amount.errors %}
-                                <div class="text-danger mt-1">{{ form.card_amount.errors.0 }}</div>
-                            {% endif %}
-                        </div>
+.sale-info {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
 
-                        <div class="col-md-3 mb-3">
-                            <label for="{{ form.credit_amount.id_for_label }}" class="form-label">{{ form.credit_amount.label }}</label>
-                            {{ form.credit_amount }}
-                            {% if form.credit_amount.errors %}
-                                <div class="text-danger mt-1">{{ form.credit_amount.errors.0 }}</div>
-                            {% endif %}
-                        </div>
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+}
 
-                        <div class="col-md-3 mb-3">
-                            <label for="{{ form.debt_amount.id_for_label }}" class="form-label">{{ form.debt_amount.label }}</label>
-                            {{ form.debt_amount }}
-                            {% if form.debt_amount.errors %}
-                                <div class="text-danger mt-1">{{ form.debt_amount.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
+.info-label {
+    color: #6b7280;
+}
 
-            <div class="mb-3">
-                <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
-                {{ form.notes }}
-                {% if form.notes.errors %}
-                    <div class="text-danger mt-1">{{ form.notes.errors.0 }}</div>
-                {% endif %}
-            </div>
+.info-value {
+    color: #1f2937;
+    font-weight: 500;
+}
 
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save me-1"></i>Saqlash
-                </button>
-                <a href="{% url 'sales:accessory_sale_list' %}" class="btn btn-outline-secondary">
-                    Bekor qilish
-                </a>
-            </div>
-        </form>
-    </div>
-</div>
+.info-value.highlight {
+    color: #2563eb;
+    font-weight: 600;
+}
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const quantity = document.getElementById('{{ form.quantity.id_for_label }}');
-    const unitPrice = document.getElementById('{{ form.unit_price.id_for_label }}');
-    const totalPrice = document.getElementById('totalPrice');
+/* Payment badges */
+.payment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
 
-    function calculateTotalPrice() {
-        const qty = parseFloat(quantity.value) || 0;
-        const price = parseFloat(unitPrice.value) || 0;
-        const total = qty * price;
-        totalPrice.value = '$' + total.toFixed(2);
+.payment-badge {
+    background: #f9fafb;
+    padding: 0.5rem;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.payment-label {
+    font-size: 0.6875rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 0.25rem;
+}
+
+.payment-amount {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.payment-badge.cash .payment-amount { color: #10b981; }
+.payment-badge.card .payment-amount { color: #3b82f6; }
+.payment-badge.credit .payment-amount { color: #f59e0b; }
+.payment-badge.debt .payment-amount { color: #ef4444; }
+
+/* Actions */
+.sale-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.action-btn.view {
+    background: white;
+    border-color: #2563eb;
+    color: #2563eb;
+}
+
+.action-btn.view:hover {
+    background: #2563eb;
+    color: white;
+}
+
+.action-btn.edit {
+    background: white;
+    border-color: #6b7280;
+    color: #6b7280;
+}
+
+.action-btn.edit:hover {
+    background: #6b7280;
+    color: white;
+}
+
+.action-btn.delete {
+    background: white;
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.action-btn.delete:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* Empty state */
+.empty-state {
+    background: white;
+    border-radius: 8px;
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: #d1d5db;
+    margin-bottom: 1rem;
+}
+
+.empty-state h6 {
+    color: #6b7280;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    color: #9ca3af;
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
     }
 
-    quantity.addEventListener('input', calculateTotalPrice);
-    unitPrice.addEventListener('input', calculateTotalPrice);
-    calculateTotalPrice();
-});
-</script>
+    .btn-add {
+        width: auto;
+        margin-bottom: 0;
+    }
+
+    .sales-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .sale-card {
+        padding: 1.25rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .sales-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+</style>
 {% endblock %}
 
-<!-- sales/templates/sales/accessory_sale_detail.html -->
-{% extends "base.html" %}
-
-{% block page_title %}Aksessuar sotish tafsilotlari{% endblock %}
-
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Aksessuar sotish tafsilotlari</h2>
-    <div class="btn-group">
-        <a href="{% url 'sales:accessory_sale_edit' accessory_sale.pk %}" class="btn btn-outline-primary">
-            <i class="fas fa-edit me-1"></i>Tahrirlash
-        </a>
-        <a href="{% url 'sales:accessory_sale_delete' accessory_sale.pk %}" class="btn btn-outline-danger">
-            <i class="fas fa-trash me-1"></i>O'chirish
-        </a>
-        <a href="{% url 'sales:accessory_sale_list' %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-1"></i>Orqaga
+<div class="fade-in">
+    <div class="page-header">
+        <div>
+            <h5>Aksessuar sotuvlari</h5>
+            <small>Aksessuarlar sotuv ma'lumotlari</small>
+        </div>
+        <a href="{% url 'sales:accessory_sale_create' %}" class="btn-add d-none d-md-flex">
+            <i class="fas fa-plus"></i>
+            Yangi sotish
         </a>
     </div>
-</div>
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Sotish ma'lumotlari</h5>
+    <a href="{% url 'sales:accessory_sale_create' %}" class="btn-add d-md-none">
+        <i class="fas fa-plus"></i>
+        Yangi sotish
+    </a>
+
+    {% if accessory_sales %}
+    <div class="sales-grid">
+        {% for sale in accessory_sales %}
+        <div class="sale-card">
+            <!-- Header -->
+            <div class="sale-header">
+                <div class="sale-main">
+                    <div class="sale-name">{{ sale.accessory.name }}</div>
+                    <div class="sale-brand">{{ sale.accessory.brand.name }}</div>
+                </div>
+                <div class="sale-qty">{{ sale.quantity }} ta</div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <table class="table table-borderless">
-                            <tr>
-                                <td class="fw-bold">Aksessuar:</td>
-                                <td>{{ accessory_sale.accessory.name }}</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Brand:</td>
-                                <td>{{ accessory_sale.accessory.brand.name }}</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Soni:</td>
-                                <td>{{ accessory_sale.quantity }}</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Birlik narxi:</td>
-                                <td>${{ accessory_sale.unit_price }}</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Mijoz:</td>
-                                <td>{{ accessory_sale.customer.name }}</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Sotuvchi:</td>
-                                <td>{{ accessory_sale.salesman.get_full_name|default:accessory_sale.salesman.username }}</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Sana:</td>
-                                <td>{{ accessory_sale.sale_date|date:"d.m.Y" }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
 
-                {% if accessory_sale.notes %}
-                <div class="mt-3">
-                    <strong>Izohlar:</strong>
-                    <p class="mt-2">{{ accessory_sale.notes|linebreaksbr }}</p>
+            <!-- Info -->
+            <div class="sale-info">
+                <div class="info-row">
+                    <span class="info-label">Mijoz:</span>
+                    <span class="info-value">{{ sale.customer.name }}</span>
                 </div>
-                {% endif %}
+                <div class="info-row">
+                    <span class="info-label">Birlik narxi:</span>
+                    <span class="info-value">{{ sale.unit_price|floatformat:0 }} so'm</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Jami:</span>
+                    <span class="info-value highlight">{{ sale.total_price|floatformat:0 }} so'm</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Sana:</span>
+                    <span class="info-value">{{ sale.sale_date|date:"d.m.Y" }}</span>
+                </div>
+            </div>
+
+            <!-- Payments -->
+            <div class="payment-grid">
+                <div class="payment-badge cash">
+                    <div class="payment-label">Naqd</div>
+                    <div class="payment-amount">{{ sale.cash_amount|floatformat:0 }}</div>
+                </div>
+                <div class="payment-badge card">
+                    <div class="payment-label">Karta</div>
+                    <div class="payment-amount">{{ sale.card_amount|floatformat:0 }}</div>
+                </div>
+                <div class="payment-badge credit">
+                    <div class="payment-label">Nasiya</div>
+                    <div class="payment-amount">{{ sale.credit_amount|floatformat:0 }}</div>
+                </div>
+                <div class="payment-badge debt">
+                    <div class="payment-label">Qarz</div>
+                    <div class="payment-amount">{{ sale.debt_amount|floatformat:0 }}</div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="sale-actions">
+                <a href="{% url 'sales:accessory_sale_detail' sale.pk %}" class="action-btn view">
+                    <i class="fas fa-eye"></i>
+                    <span class="d-none d-sm-inline">Ko'rish</span>
+                </a>
+                <a href="{% url 'sales:accessory_sale_edit' sale.pk %}" class="action-btn edit">
+                    <i class="fas fa-edit"></i>
+                    <span class="d-none d-sm-inline">Tahrirlash</span>
+                </a>
+                <a href="{% url 'sales:accessory_sale_delete' sale.pk %}"
+                   class="action-btn delete"
+                   onclick="return confirm('Bu sotuvni o\'chirmoqchimisiz?')">
+                    <i class="fas fa-trash"></i>
+                    <span class="d-none d-sm-inline">O'chirish</span>
+                </a>
             </div>
         </div>
+        {% endfor %}
     </div>
-
-    <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">
-                <h6 class="mb-0">Narx ma'lumotlari</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between mb-2">
-                    <span>Jami narx:</span>
-                    <span class="fw-bold text-primary">${{ accessory_sale.total_price }}</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span>Foyda:</span>
-                    <span class="fw-bold text-success">${{ accessory_sale.profit }}</span>
-                </div>
-                <hr>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-success">Naqd:</span>
-                    <span>${{ accessory_sale.cash_amount }}</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-info">Karta:</span>
-                    <span>${{ accessory_sale.card_amount }}</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-warning">Nasiya:</span>
-                    <span>${{ accessory_sale.credit_amount }}</span>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span class="text-danger">Qarz:</span>
-                    <span>${{ accessory_sale.debt_amount }}</span>
-                </div>
-            </div>
-        </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-headphones"></i>
+        <h6>Aksessuar sotuvlari yo'q</h6>
+        <p>Birinchi aksessuar sotishini qo'shing</p>
+        <a href="{% url 'sales:accessory_sale_create' %}" class="btn-add" style="margin: 0; max-width: 200px; margin: 0 auto;">
+            <i class="fas fa-plus"></i>
+            Aksessuar sotish
+        </a>
     </div>
+    {% endif %}
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Format numbers with spaces
+document.addEventListener('DOMContentLoaded', function() {
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    }
+
+    // Format all payment amounts
+    document.querySelectorAll('.payment-amount, .info-value.highlight').forEach(el => {
+        const text = el.textContent.trim();
+        const number = text.replace(/[^\d]/g, '');
+        if (number) {
+            const formatted = formatNumber(number);
+            el.textContent = text.includes('so\'m') ? formatted + ' so\'m' : formatted;
+        }
+    });
+
+    // Format regular amounts
+    document.querySelectorAll('.info-value').forEach(el => {
+        const text = el.textContent.trim();
+        if (text.includes('so\'m') && !el.classList.contains('highlight')) {
+            const number = text.replace(/[^\d]/g, '');
+            if (number) {
+                el.textContent = formatNumber(number) + ' so\'m';
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

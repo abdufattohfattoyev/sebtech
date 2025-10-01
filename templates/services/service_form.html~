@@ -1,424 +1,212 @@
 {% extends 'base.html' %}
 
 {% block title %}{{ title }}{% endblock %}
-{% block page_title %}{{ title }}{% endblock %}
-
-{% block extra_css %}
-<style>
-.phone-search-results {
-    position: absolute;
-    width: 100%;
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 1000;
-    background: white;
-    border: 1px solid #ced4da;
-    border-radius: 0.375rem;
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    top: 100%;
-    left: 0;
-}
-.phone-item {
-    padding: 0.75rem 1rem;
-    cursor: pointer;
-    border-bottom: 1px solid #eee;
-    display: flex;
-    align-items: center;
-    transition: background-color 0.2s ease;
-}
-.phone-item:hover {
-    background-color: #f8f9fa;
-}
-.phone-item:last-child {
-    border-bottom: none;
-}
-.phone-number {
-    background: linear-gradient(135deg, #2563EB, #9333EA);
-    color: white;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-right: 0.75rem;
-    flex-shrink: 0;
-}
-.phone-info {
-    flex: 1;
-}
-.phone-model {
-    font-weight: 600;
-    color: #1e293b;
-    margin-bottom: 0.25rem;
-}
-.phone-details {
-    font-size: 0.85rem;
-    color: #64748b;
-}
-.phone-status {
-    font-size: 0.75rem;
-    padding: 0.125rem 0.5rem;
-    border-radius: 12px;
-    background: rgba(4, 120, 87, 0.1);
-    color: #047857;
-    margin-left: auto;
-}
-.position-relative {
-    position: relative;
-}
-</style>
-{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-lg-8 mx-auto">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-tools me-2"></i>{{ title }}
-                </h5>
-            </div>
-            <div class="card-body">
-                <form method="post" id="serviceForm" novalidate>
-                    {% csrf_token %}
+<div class="container-fluid p-2 p-md-3">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ title }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="serviceForm">
+                        {% csrf_token %}
 
-                    <!-- IMEI qidirish (faqat yangi xizmat uchun) -->
-                    {% if not service %}
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <label class="form-label">Telefon qidirish (IMEI yoki model)</label>
-                            <div class="input-group position-relative">
-                                <span class="input-group-text">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                                <input type="text" class="form-control" id="phoneQuickSearch" placeholder="IMEI raqamini kiriting..." autocomplete="off">
-                                <div id="phoneSearchResults" class="phone-search-results d-none"></div>
+                        <!-- IMEI qidirish (faqat yangi xizmat uchun) -->
+                        {% if not service %}
+                        <div class="mb-4">
+                            <label class="form-label">Telefon qidirish (IMEI)</label>
+                            <div class="position-relative">
+                                <input type="text" class="form-control" id="phoneSearch" placeholder="IMEI kiriting..." autocomplete="off">
+                                <div id="searchResults" class="position-absolute w-100 bg-white border rounded shadow d-none" style="z-index: 1000; top: 100%; max-height: 200px; overflow-y: auto;"></div>
                             </div>
-                            <input type="hidden" id="selectedPhoneId">
-                            <div id="selectedPhoneInfo" class="alert alert-info mt-2 d-none"></div>
-                            <div class="form-text">
-                                Do'kondagi telefonlar orasidan IMEI bo'yicha qidirish
+                            <div id="selectedInfo" class="mt-2 d-none">
+                                <div class="alert alert-info py-2">
+                                    <small id="phoneText"></small>
+                                    <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="clearSelection()">
+                                        Tozalash
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    {% endif %}
+                        {% endif %}
 
-                    <div class="row">
-                        <!-- Telefon tanlash -->
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.phone.id_for_label }}" class="form-label">
-                                {{ form.phone.label }}
-                                <span class="text-danger">*</span>
-                            </label>
-                            {{ form.phone }}
-                            {% if form.phone.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {{ form.phone.errors.0 }}
+                        <div class="row g-3">
+                            <!-- Telefon -->
+                            <div class="col-md-6">
+                                <label class="form-label">Telefon *</label>
+                                {{ form.phone }}
+                                {% if form.phone.errors %}
+                                    <div class="text-danger">{{ form.phone.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Usta -->
+                            <div class="col-md-6">
+                                <label class="form-label">Usta *</label>
+                                {{ form.master }}
+                                {% if form.master.errors %}
+                                    <div class="text-danger">{{ form.master.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Xizmat haqi -->
+                            <div class="col-md-6">
+                                <label class="form-label">Xizmat haqi ($) *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.service_fee }}
                                 </div>
-                            {% endif %}
-                            <div class="form-text">
-                                Faqat do'kondagi telefonlarni tanlash mumkin
+                                {% if form.service_fee.errors %}
+                                    <div class="text-danger">{{ form.service_fee.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Qaytarish sanasi -->
+                            <div class="col-md-6">
+                                <label class="form-label">Qaytarish sanasi</label>
+                                {{ form.expected_return_date }}
+                                {% if form.expected_return_date.errors %}
+                                    <div class="text-danger">{{ form.expected_return_date.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Sabab -->
+                            <div class="col-12">
+                                <label class="form-label">Ta'mirlash sababi *</label>
+                                {{ form.repair_reasons }}
+                                {% if form.repair_reasons.errors %}
+                                    <div class="text-danger">{{ form.repair_reasons.errors.0 }}</div>
+                                {% endif %}
                             </div>
                         </div>
 
-                        <!-- Usta tanlash -->
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.master.id_for_label }}" class="form-label">
-                                {{ form.master.label }}
-                                <span class="text-danger">*</span>
-                            </label>
-                            {{ form.master }}
-                            {% if form.master.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {{ form.master.errors.0 }}
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <!-- Xizmat haqi -->
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.service_fee.id_for_label }}" class="form-label">
-                                {{ form.service_fee.label }}
-                                <span class="text-danger">*</span>
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                {{ form.service_fee }}
+                        <!-- Telefon ma'lumotlari -->
+                        <div id="phoneDetails" class="mt-3 d-none">
+                            <div class="alert alert-info">
+                                <h6>Telefon ma'lumotlari:</h6>
+                                <div id="phoneInfo"></div>
                             </div>
-                            {% if form.service_fee.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {{ form.service_fee.errors.0 }}
-                                </div>
-                            {% endif %}
                         </div>
 
-                        <!-- Qaytarish sanasi -->
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.expected_return_date.id_for_label }}" class="form-label">
-                                {{ form.expected_return_date.label }}
-                            </label>
-                            {{ form.expected_return_date }}
-                            {% if form.expected_return_date.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {{ form.expected_return_date.errors.0 }}
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Ta'mirlash sabablari -->
-                    <div class="mb-3">
-                        <label for="{{ form.repair_reasons.id_for_label }}" class="form-label">
-                            {{ form.repair_reasons.label }}
-                            <span class="text-danger">*</span>
-                        </label>
-                        {{ form.repair_reasons }}
-                        {% if form.repair_reasons.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ form.repair_reasons.errors.0 }}
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger mt-3">
+                                {{ form.non_field_errors }}
                             </div>
                         {% endif %}
-                        <div class="form-text">
-                            Ta'mirlash sabablarini batafsil yozing
-                        </div>
-                    </div>
 
-                    <!-- Telefon ma'lumotlari (tanlangandan keyin ko'rinadi) -->
-                    <div id="phoneDetails" class="d-none mb-3">
-                        <div class="alert alert-info">
-                            <h6><i class="fas fa-mobile-alt me-2"></i>Tanlangan telefon ma'lumotlari:</h6>
-                            <div id="phoneInfo"></div>
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">Saqlash</button>
+                            <a href="{% url 'services:service_list' %}" class="btn btn-secondary">Orqaga</a>
                         </div>
-                    </div>
-
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
-                            {{ form.non_field_errors }}
-                        </div>
-                    {% endif %}
-
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="{% url 'services:service_list' %}" class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left me-2"></i>Orqaga
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>Saqlash
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const phoneSelect = document.getElementById('{{ form.phone.id_for_label }}');
-    const phoneDetails = document.getElementById('phoneDetails');
-    const phoneInfo = document.getElementById('phoneInfo');
-    const phoneQuickSearch = document.getElementById('phoneQuickSearch');
-    const phoneSearchResults = document.getElementById('phoneSearchResults');
-    const selectedPhoneInfo = document.getElementById('selectedPhoneInfo');
+let selectedPhoneId = null;
 
-    // Phone select o'zgarishida ma'lumotlarni ko'rsatish
-    if (phoneSelect) {
-        phoneSelect.addEventListener('change', function() {
-            if (this.value) {
-                fetchPhoneDetails(this.value);
-            } else {
-                phoneDetails.classList.add('d-none');
-                phoneInfo.innerHTML = '';
-            }
-        });
+// Phone select change
+document.getElementById('{{ form.phone.id_for_label }}').addEventListener('change', function() {
+    if (this.value) {
+        fetchPhoneDetails(this.value);
+    } else {
+        document.getElementById('phoneDetails').classList.add('d-none');
+    }
+});
+
+// IMEI search
+{% if not service %}
+document.getElementById('phoneSearch').addEventListener('input', function() {
+    const query = this.value.trim();
+    const results = document.getElementById('searchResults');
+
+    if (query.length < 3) {
+        results.classList.add('d-none');
+        return;
     }
 
-    // IMEI bo'yicha qidirish
-    {% if not service %}
-    let searchTimeout;
-    if (phoneQuickSearch) {
-        phoneQuickSearch.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            const query = this.value.trim();
-
-            if (query.length < 3) {
-                phoneSearchResults.classList.add('d-none');
-                phoneSearchResults.innerHTML = '';
-                selectedPhoneInfo.classList.add('d-none');
-                return;
-            }
-
-            searchTimeout = setTimeout(() => {
-                searchPhoneByIMEI(query);
-            }, 500);
-        });
-    }
-    {% endif %}
-
-    function searchPhoneByIMEI(query) {
-        fetch(`/services/api/search-phone/?imei=${encodeURIComponent(query)}`)
-            .then(response => response.json())
+    setTimeout(() => {
+        fetch(`/services/api/search-phone/?imei=${query}`)
+            .then(r => r.json())
             .then(data => {
-                phoneSearchResults.innerHTML = '';
-                phoneSearchResults.classList.remove('d-none');
+                results.innerHTML = '';
 
-                if (data.results && data.results.length > 0) {
+                if (data.results?.length) {
                     data.results.forEach(phone => {
                         const item = document.createElement('div');
-                        item.className = 'phone-item';
-                        item.innerHTML = `
-                            <div class="phone-number">${phone.text.charAt(0)}</div>
-                            <div class="phone-info">
-                                <div class="phone-model">${phone.text}</div>
-                                <div class="phone-details">ID: ${phone.id}</div>
-                            </div>
-                            <div class="phone-status">Do'konda</div>
-                        `;
-                        item.addEventListener('click', () => selectPhone(phone.id, phone.text));
-                        phoneSearchResults.appendChild(item);
+                        item.className = 'p-2 border-bottom';
+                        item.style.cursor = 'pointer';
+                        item.innerHTML = `<small><strong>${phone.text}</strong></small>`;
+                        item.onclick = () => selectPhone(phone.id, phone.text);
+                        results.appendChild(item);
                     });
                 } else {
-                    phoneSearchResults.innerHTML = `
-                        <div class="phone-item">
-                            <div class="phone-info">
-                                <div class="phone-model text-danger">Telefon topilmadi</div>
-                                <div class="phone-details">Iltimos, IMEI raqamini tekshiring</div>
-                            </div>
-                        </div>
-                    `;
+                    results.innerHTML = '<div class="p-2 text-muted">Topilmadi</div>';
                 }
-            })
-            .catch(error => {
-                console.error('Qidirishda xatolik:', error);
-                phoneSearchResults.innerHTML = `
-                    <div class="phone-item">
-                        <div class="phone-info">
-                            <div class="phone-model text-danger">Xatolik yuz berdi</div>
-                            <div class="phone-details">Iltimos, keyinroq qayta urinib ko'ring</div>
+                results.classList.remove('d-none');
+            });
+    }, 300);
+});
+
+function selectPhone(id, text) {
+    document.getElementById('{{ form.phone.id_for_label }}').value = id;
+    document.getElementById('phoneSearch').value = '';
+    document.getElementById('searchResults').classList.add('d-none');
+    document.getElementById('phoneText').textContent = text;
+    document.getElementById('selectedInfo').classList.remove('d-none');
+    fetchPhoneDetails(id);
+}
+
+function clearSelection() {
+    document.getElementById('{{ form.phone.id_for_label }}').value = '';
+    document.getElementById('selectedInfo').classList.add('d-none');
+    document.getElementById('phoneDetails').classList.add('d-none');
+}
+{% endif %}
+
+function fetchPhoneDetails(phoneId) {
+    fetch(`/inventory/api/phone-details/${phoneId}/`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('phoneInfo').innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Model:</strong> ${data.phone.model} ${data.phone.memory}<br>
+                            <strong>IMEI:</strong> ${data.phone.imei || 'N/A'}<br>
+                            <strong>Holat:</strong> ${data.phone.condition}%
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Tannarx:</strong> $${data.phone.cost_price}<br>
+                            <strong>Ta'mirlash:</strong> $${data.phone.repair_cost}
                         </div>
                     </div>
                 `;
-                phoneSearchResults.classList.remove('d-none');
-            });
-    }
-
-    // Telefon tanlash
-    window.selectPhone = function(phoneId, phoneText) {
-        if (phoneSelect) {
-            phoneSelect.value = phoneId;
-            phoneSelect.dispatchEvent(new Event('change'));
-        }
-        if (phoneQuickSearch) {
-            phoneQuickSearch.value = '';
-        }
-        phoneSearchResults.classList.add('d-none');
-        if (selectedPhoneInfo) {
-            selectedPhoneInfo.innerHTML = `<strong>Tanlandi:</strong> ${phoneText}`;
-            selectedPhoneInfo.classList.remove('d-none');
-        }
-    };
-
-    function fetchPhoneDetails(phoneId) {
-        fetch(`/inventory/api/phone-details/${phoneId}/`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    phoneInfo.innerHTML = `
-                        <div class="row">
-                            <div class="col-md-6">
-                                <strong>Model:</strong> ${data.phone.model} ${data.phone.memory}<br>
-                                <strong>IMEI:</strong> ${data.phone.imei || 'N/A'}<br>
-                                <strong>Holati:</strong> ${data.phone.condition}%
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Tannarx:</strong> ${data.phone.cost_price}<br>
-                                <strong>Ta'mirlash xarajati:</strong> ${data.phone.repair_cost}<br>
-                                <strong>Jami xarajat:</strong> ${(parseFloat(data.phone.cost_price) + parseFloat(data.phone.repair_cost)).toFixed(2)}
-                            </div>
-                        </div>
-                    `;
-                    phoneDetails.classList.remove('d-none');
-                } else {
-                    phoneInfo.innerHTML = '<div class="text-danger">Telefon ma\'lumotlari topilmadi</div>';
-                    phoneDetails.classList.remove('d-none');
-                }
-            })
-            .catch(error => {
-                console.error('Telefon ma\'lumotlarini olishda xatolik:', error);
-                phoneInfo.innerHTML = '<div class="text-danger">Ma\'lumotlarni olishda xatolik yuz berdi</div>';
-                phoneDetails.classList.remove('d-none');
-            });
-    }
-
-    // Form validation
-    const form = document.getElementById('serviceForm');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            let isValid = true;
-
-            // Clear previous errors
-            document.querySelectorAll('.is-invalid').forEach(el => {
-                el.classList.remove('is-invalid');
-            });
-
-            // Validate phone
-            if (!phoneSelect.value) {
-                phoneSelect.classList.add('is-invalid');
-                isValid = false;
-            }
-
-            // Validate master
-            const masterSelect = document.getElementById('{{ form.master.id_for_label }}');
-            if (!masterSelect.value) {
-                masterSelect.classList.add('is-invalid');
-                isValid = false;
-            }
-
-            // Validate service fee
-            const serviceFee = document.getElementById('{{ form.service_fee.id_for_label }}');
-            if (!serviceFee.value || parseFloat(serviceFee.value) <= 0) {
-                serviceFee.classList.add('is-invalid');
-                isValid = false;
-            }
-
-            // Validate repair reasons
-            const repairReasons = document.getElementById('{{ form.repair_reasons.id_for_label }}');
-            if (!repairReasons.value.trim()) {
-                repairReasons.classList.add('is-invalid');
-                isValid = false;
-            }
-
-            if (!isValid) {
-                e.preventDefault();
-                const firstInvalid = document.querySelector('.is-invalid');
-                if (firstInvalid) {
-                    firstInvalid.focus();
-                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
+                document.getElementById('phoneDetails').classList.remove('d-none');
             }
         });
-    }
+}
 
-    // Bugüngi sanadan keyingi kun o'rnatish
-    const expectedReturnDate = document.getElementById('{{ form.expected_return_date.id_for_label }}');
-    if (expectedReturnDate && !expectedReturnDate.value) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        expectedReturnDate.value = tomorrow.toISOString().split('T')[0];
-    }
+// Set tomorrow date
+const dateField = document.getElementById('{{ form.expected_return_date.id_for_label }}');
+if (dateField && !dateField.value) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    dateField.value = tomorrow.toISOString().split('T')[0];
+}
 
-    // Agar tahrirlash rejimida bo'lsa, telefon ma'lumotlarini ko'rsatish
-    {% if service %}
-    if (phoneSelect && phoneSelect.value) {
-        fetchPhoneDetails(phoneSelect.value);
-    }
-    {% endif %}
-});
+// If editing, show phone details
+{% if service %}
+const phoneSelect = document.getElementById('{{ form.phone.id_for_label }}');
+if (phoneSelect.value) {
+    fetchPhoneDetails(phoneSelect.value);
+}
+{% endif %}
 </script>
 {% endblock %}

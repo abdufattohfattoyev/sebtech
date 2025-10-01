@@ -746,6 +746,7 @@ def phone_details_api(request, phone_id):
 
 
 @login_required
+@boss_or_finance_required
 def phone_detail(request, pk):
     """Telefon tafsilotlari"""
     phone = get_object_or_404(Phone, pk=pk)

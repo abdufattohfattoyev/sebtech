@@ -59,15 +59,6 @@ def daily_report(request):
     calculator = ReportCalculator(selected_shop)
     daily_data = calculator.get_daily_report(selected_date)
 
-    # ✅ DEBUG - CASHFLOW
-    print("=" * 80)
-    print(f"📅 SANA: {selected_date}")
-    print(f"💵 UZS KIRIM: {daily_data['cashflow']['uzs']['income']}")
-    print(f"💸 UZS CHIQIM: {daily_data['cashflow']['uzs']['expense']}")
-    print(f"📊 XARAJAT: {daily_data['cashflow']['details']['daily_expenses']}")
-    print(f"💰 NET: {daily_data['cashflow']['uzs']['net']}")
-    print("=" * 80)
-
     # Sotuvchilar statistikasi
     phone_sellers = PhoneSale.objects.filter(
         phone__shop=selected_shop,
@@ -93,11 +84,6 @@ def daily_report(request):
     for seller in sellers:
         seller_data = calculator.get_seller_daily_report(seller, selected_date)
 
-        # ✅ DEBUG - SELLER DATA
-        print(f"\n👤 SELLER: {seller.username}")
-        print(f"   seller_data: {seller_data}")  # Debug full seller_data structure
-
-        # Check if 'sales' key exists, provide default if missing
         if 'sales' not in seller_data:
             seller_data['sales'] = {
                 'phone_total_usd': 0,
@@ -113,22 +99,30 @@ def daily_report(request):
                 'exchanges': []
             }
 
-        print(f"   phone_total_usd: {seller_data['sales'].get('phone_total_usd', 'MAVJUD EMAS!')}")
-        print(f"   accessory_total_uzs: {seller_data['sales'].get('accessory_total_uzs', 'MAVJUD EMAS!')}")
-        print(f"   total: {seller_data['sales'].get('total', 'MAVJUD EMAS!')}")
-
         if seller_data['counts']['total'] > 0:
+            # ✅ Telefon uchun foyda
             for sale in seller_data['sales_data']['phone_sales']:
                 sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
 
+            # ✅ Aksessuar uchun foyda
+            for sale in seller_data['sales_data']['accessory_sales']:
+                sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
+
+            # ✅ Almashtirish uchun foyda
             for exchange in seller_data['sales_data']['exchanges']:
                 exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
 
             seller_stats.append(seller_data)
 
-    # ✅ DEBUG - SELLER STATS COUNT
-    print(f"\n📊 SELLER_STATS COUNT: {len(seller_stats)}")
-    print("=" * 80)
+    # ✅ ASOSIY DAILY DATA uchun ham foyda hisoblash
+    for sale in daily_data['sales_data']['phone_sales']:
+        sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
+
+    for sale in daily_data['sales_data']['accessory_sales']:
+        sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
+
+    for exchange in daily_data['sales_data']['exchanges']:
+        exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
 
     seller_stats.sort(key=lambda x: x['sales']['total'], reverse=True)
 
@@ -484,7 +478,7 @@ def yearly_report(request):
 
 @login_required
 def seller_detail_page(request, seller_id):
-    """Sotuvchi KUNLIK tafsilot"""
+    """Sotuvchi KUNLIK tafsilot - QAYTARILGANLAR bilan"""
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
     seller = get_object_or_404(User, id=seller_id)
@@ -509,12 +503,24 @@ def seller_detail_page(request, seller_id):
     seller_stats = calculator.get_seller_daily_report(seller, selected_date)
 
     profit_calc = ProfitCalculator()
+
+    # Telefon sotuvlari uchun foyda hisoblash
     for sale in seller_stats['sales_data']['phone_sales']:
         sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
 
+    # Almashtirishlar uchun foyda hisoblash
     for exchange in seller_stats['sales_data']['exchanges']:
         exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
 
+    # ✅ QAYTARILGANLAR uchun foyda hisoblash
+    for return_obj in seller_stats['sales_data']['phone_returns']:
+        # Qaytarilgan telefonning yo'qotilgan foydasi
+        return_obj.lost_profit = (
+                return_obj.phone_sale.sale_price -
+                return_obj.phone_sale.phone.cost_price
+        )
+
+    # Pagination
     phone_page = request.GET.get('phone_page', 1)
     phone_paginator = Paginator(seller_stats['sales_data']['phone_sales'], 10)
     try:

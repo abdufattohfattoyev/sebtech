@@ -197,6 +197,7 @@ def phone_list(request):
         phones = phones.filter(status=status_filter)
 
     if imei_query:
+        # IMEI dan faqat raqamlar
         clean_imei = ''.join(filter(str.isdigit, imei_query))
         if clean_imei:
             phones = phones.filter(imei__icontains=clean_imei)
@@ -230,7 +231,6 @@ def phone_list(request):
         'status_choices': Phone.STATUS_CHOICES,
         'phones_in_shop': phones_in_shop,
         'phones_sold': phones_sold,
-        'accessories': [],  # ← BU QATORNI QO'SHING
     }
     return render(request, 'inventory/phone_list.html', context)
 

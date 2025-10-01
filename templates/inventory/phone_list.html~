@@ -280,9 +280,15 @@
             <h1 class="mb-0 h3">Telefonlar</h1>
             <small class="text-muted">Telefon ma'lumotlari</small>
         </div>
-        <a href="{% url 'inventory:phone_create' %}" class="btn-add">
-            <i class="fas fa-plus"></i>Qo'shish
-        </a>
+        {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+            <a href="{% url 'inventory:phone_create' %}" class="btn-add">
+                <i class="fas fa-plus"></i>Qo'shish
+            </a>
+        {% else %}
+            <span class="btn-add disabled" title="Ruxsat yo'q">
+                <i class="fas fa-lock"></i>Qo'shish
+            </span>
+        {% endif %}
     </div>
 
     <!-- Search Form -->
@@ -397,20 +403,25 @@
                             <div class="phone-price">${{ phone.sale_price|floatformat:0|default:"—" }}</div>
                             <span class="phone-status {{ phone.status }}">{{ phone.get_status_display }}</span>
                         </div>
-                        <div class="phone-actions">
-                            <a href="{% url 'inventory:phone_detail' phone.pk %}" class="action-btn primary" title="Ko'rish"><i class="fas fa-eye"></i></a>
-                            {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                        {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                            <div class="phone-actions">
+                                <a href="{% url 'inventory:phone_detail' phone.pk %}" class="action-btn primary" title="Ko'rish"><i class="fas fa-eye"></i></a>
                                 <a href="{% url 'inventory:phone_update' phone.pk %}" class="action-btn warning" title="Tahrirlash"><i class="fas fa-edit"></i></a>
                                 <a href="{% url 'inventory:phone_delete' phone.pk %}" class="action-btn danger" title="O'chirish"><i class="fas fa-trash"></i></a>
-                            {% else %}
+                            </div>
+                        {% else %}
+                            <div class="phone-actions">
+                                <span class="action-btn primary disabled" title="Ruxsat yo'q">
+                                    <i class="fas fa-lock"></i>
+                                </span>
                                 <span class="action-btn warning disabled" title="Ruxsat yo'q">
                                     <i class="fas fa-lock"></i>
                                 </span>
                                 <span class="action-btn danger disabled" title="Ruxsat yo'q">
                                     <i class="fas fa-lock"></i>
                                 </span>
-                            {% endif %}
-                        </div>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             {% empty %}
@@ -418,9 +429,11 @@
                     <i class="fas fa-mobile-alt fa-2x mb-2"></i>
                     <h5 class="text-muted">Telefonlar topilmadi</h5>
                     <p class="mb-2">Qidiruv bo'yicha natija yo'q</p>
-                    <a href="{% url 'inventory:phone_create' %}" class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus me-1"></i>Yangi qo'shish
-                    </a>
+                    {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                        <a href="{% url 'inventory:phone_create' %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i>Yangi qo'shish
+                        </a>
+                    {% endif %}
                 </div>
             {% endfor %}
         </div>
@@ -526,9 +539,9 @@ const updateResults = (phones) => {
                 <i class="fas fa-mobile-alt fa-2x mb-2"></i>
                 <h5 class="text-muted">Telefonlar topilmadi</h5>
                 <p class="mb-2">Qidiruv bo'yicha natija yo'q</p>
-                <a href="{% url 'inventory:phone_create' %}" class="btn btn-primary btn-sm">
+                ${canEdit ? `<a href="{% url 'inventory:phone_create' %}" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus me-1"></i>Yangi qo'shish
-                </a>
+                </a>` : ''}
             </div>`;
         return;
     }
@@ -581,9 +594,9 @@ const updateResults = (phones) => {
                     </div>
                 ` : `
                     <div class="phone-actions">
-                        <a href="/inventory/phones/${phone.id}/" class="action-btn primary" title="Ko'rish">
-                            <i class="fas fa-eye"></i>
-                        </a>
+                        <span class="action-btn primary disabled" title="Ruxsat yo'q">
+                            <i class="fas fa-lock"></i>
+                        </span>
                         <span class="action-btn warning disabled" title="Ruxsat yo'q">
                             <i class="fas fa-lock"></i>
                         </span>

@@ -1,80 +1,409 @@
-<!-- sales/templates/sales/accessory_sale_list.html -->
 {% extends "base.html" %}
-
 {% block page_title %}Aksessuar sotuvlari{% endblock %}
 
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Aksessuar sotuvlari</h2>
-    <a href="{% url 'sales:accessory_sale_create' %}" class="btn btn-primary">
-        <i class="fas fa-plus me-1"></i>Yangi sotish
-    </a>
-</div>
+{% block extra_css %}
+<style>
+.fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
 
-<div class="card">
-    <div class="card-body">
-        {% if accessory_sales %}
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Aksessuar</th>
-                            <th>Mijoz</th>
-                            <th>Soni</th>
-                            <th>Birlik narxi</th>
-                            <th>Jami</th>
-                            <th>Naqd</th>
-                            <th>Karta</th>
-                            <th>Nasiya</th>
-                            <th>Qarz</th>
-                            <th>Sana</th>
-                            <th>Amallar</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for sale in accessory_sales %}
-                        <tr>
-                            <td>
-                                <div class="fw-bold">{{ sale.accessory.name }}</div>
-                                <small class="text-muted">{{ sale.accessory.brand.name }}</small>
-                            </td>
-                            <td>{{ sale.customer.name }}</td>
-                            <td>{{ sale.quantity }}</td>
-                            <td>${{ sale.unit_price }}</td>
-                            <td class="fw-bold text-primary">${{ sale.total_price }}</td>
-                            <td class="text-success">${{ sale.cash_amount }}</td>
-                            <td class="text-info">${{ sale.card_amount }}</td>
-                            <td class="text-warning">${{ sale.credit_amount }}</td>
-                            <td class="text-danger">${{ sale.debt_amount }}</td>
-                            <td>{{ sale.sale_date|date:"d.m.Y" }}</td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'sales:accessory_sale_detail' sale.pk %}" class="btn btn-outline-primary" title="Ko'rish">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{% url 'sales:accessory_sale_edit' sale.pk %}" class="btn btn-outline-secondary" title="Tahrirlash">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'sales:accessory_sale_delete' sale.pk %}" class="btn btn-outline-danger" title="O'chirish">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Header */
+.page-header {
+    margin-bottom: 1rem;
+}
+
+.page-header h5 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 0.25rem 0;
+}
+
+.page-header small {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.btn-add {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 0.625rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+/* Sale Cards */
+.sales-grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.sale-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    transition: box-shadow 0.2s ease;
+}
+
+.sale-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.sale-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.sale-main {
+    flex: 1;
+}
+
+.sale-name {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.sale-brand {
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
+
+.sale-qty {
+    background: #f3f4f6;
+    color: #1f2937;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.sale-info {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+}
+
+.info-label {
+    color: #6b7280;
+}
+
+.info-value {
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.info-value.highlight {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+/* Payment badges */
+.payment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.payment-badge {
+    background: #f9fafb;
+    padding: 0.5rem;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.payment-label {
+    font-size: 0.6875rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 0.25rem;
+}
+
+.payment-amount {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.payment-badge.cash .payment-amount { color: #10b981; }
+.payment-badge.card .payment-amount { color: #3b82f6; }
+.payment-badge.credit .payment-amount { color: #f59e0b; }
+.payment-badge.debt .payment-amount { color: #ef4444; }
+
+/* Actions */
+.sale-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.action-btn.view {
+    background: white;
+    border-color: #2563eb;
+    color: #2563eb;
+}
+
+.action-btn.view:hover {
+    background: #2563eb;
+    color: white;
+}
+
+.action-btn.edit {
+    background: white;
+    border-color: #6b7280;
+    color: #6b7280;
+}
+
+.action-btn.edit:hover {
+    background: #6b7280;
+    color: white;
+}
+
+.action-btn.delete {
+    background: white;
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.action-btn.delete:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* Empty state */
+.empty-state {
+    background: white;
+    border-radius: 8px;
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: #d1d5db;
+    margin-bottom: 1rem;
+}
+
+.empty-state h6 {
+    color: #6b7280;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    color: #9ca3af;
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .btn-add {
+        width: auto;
+        margin-bottom: 0;
+    }
+
+    .sales-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .sale-card {
+        padding: 1.25rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .sales-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="page-header">
+        <div>
+            <h5>Aksessuar sotuvlari</h5>
+            <small>Aksessuarlar sotuv ma'lumotlari</small>
+        </div>
+        <a href="{% url 'sales:accessory_sale_create' %}" class="btn-add d-none d-md-flex">
+            <i class="fas fa-plus"></i>
+            Yangi sotish
+        </a>
+    </div>
+
+    <a href="{% url 'sales:accessory_sale_create' %}" class="btn-add d-md-none">
+        <i class="fas fa-plus"></i>
+        Yangi sotish
+    </a>
+
+    {% if accessory_sales %}
+    <div class="sales-grid">
+        {% for sale in accessory_sales %}
+        <div class="sale-card">
+            <!-- Header -->
+            <div class="sale-header">
+                <div class="sale-main">
+                    <div class="sale-name">{{ sale.accessory.name }}</div>
+                    <div class="sale-brand">{{ sale.accessory.brand.name }}</div>
+                </div>
+                <div class="sale-qty">{{ sale.quantity }} ta</div>
             </div>
-        {% else %}
-            <div class="text-center py-5">
-                <i class="fas fa-headphones text-muted" style="font-size: 3rem;"></i>
-                <h4 class="text-muted mt-3">Hali aksessuar sotuvlari yo'q</h4>
-                <p class="text-muted">Birinchi aksessuar sotishini qo'shing!</p>
-                <a href="{% url 'sales:accessory_sale_create' %}" class="btn btn-primary">
-                    <i class="fas fa-plus me-1"></i>Aksessuar sotish
+
+            <!-- Info -->
+            <div class="sale-info">
+                <div class="info-row">
+                    <span class="info-label">Mijoz:</span>
+                    <span class="info-value">{{ sale.customer.name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Birlik narxi:</span>
+                    <span class="info-value">{{ sale.unit_price|floatformat:0 }} so'm</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Jami:</span>
+                    <span class="info-value highlight">{{ sale.total_price|floatformat:0 }} so'm</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Sana:</span>
+                    <span class="info-value">{{ sale.sale_date|date:"d.m.Y" }}</span>
+                </div>
+            </div>
+
+            <!-- Payments -->
+            <div class="payment-grid">
+                <div class="payment-badge cash">
+                    <div class="payment-label">Naqd</div>
+                    <div class="payment-amount">{{ sale.cash_amount|floatformat:0 }}</div>
+                </div>
+                <div class="payment-badge card">
+                    <div class="payment-label">Karta</div>
+                    <div class="payment-amount">{{ sale.card_amount|floatformat:0 }}</div>
+                </div>
+                <div class="payment-badge credit">
+                    <div class="payment-label">Nasiya</div>
+                    <div class="payment-amount">{{ sale.credit_amount|floatformat:0 }}</div>
+                </div>
+                <div class="payment-badge debt">
+                    <div class="payment-label">Qarz</div>
+                    <div class="payment-amount">{{ sale.debt_amount|floatformat:0 }}</div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="sale-actions">
+                <a href="{% url 'sales:accessory_sale_detail' sale.pk %}" class="action-btn view">
+                    <i class="fas fa-eye"></i>
+                    <span class="d-none d-sm-inline">Ko'rish</span>
+                </a>
+                <a href="{% url 'sales:accessory_sale_edit' sale.pk %}" class="action-btn edit">
+                    <i class="fas fa-edit"></i>
+                    <span class="d-none d-sm-inline">Tahrirlash</span>
+                </a>
+                <a href="{% url 'sales:accessory_sale_delete' sale.pk %}"
+                   class="action-btn delete"
+                   onclick="return confirm('Bu sotuvni o\'chirmoqchimisiz?')">
+                    <i class="fas fa-trash"></i>
+                    <span class="d-none d-sm-inline">O'chirish</span>
                 </a>
             </div>
-        {% endif %}
+        </div>
+        {% endfor %}
     </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-headphones"></i>
+        <h6>Aksessuar sotuvlari yo'q</h6>
+        <p>Birinchi aksessuar sotishini qo'shing</p>
+        <a href="{% url 'sales:accessory_sale_create' %}" class="btn-add" style="margin: 0; max-width: 200px; margin: 0 auto;">
+            <i class="fas fa-plus"></i>
+            Aksessuar sotish
+        </a>
+    </div>
+    {% endif %}
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Format numbers with spaces
+document.addEventListener('DOMContentLoaded', function() {
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    }
+
+    // Format all payment amounts
+    document.querySelectorAll('.payment-amount, .info-value.highlight').forEach(el => {
+        const text = el.textContent.trim();
+        const number = text.replace(/[^\d]/g, '');
+        if (number) {
+            const formatted = formatNumber(number);
+            el.textContent = text.includes('so\'m') ? formatted + ' so\'m' : formatted;
+        }
+    });
+
+    // Format regular amounts
+    document.querySelectorAll('.info-value').forEach(el => {
+        const text = el.textContent.trim();
+        if (text.includes('so\'m') && !el.classList.contains('highlight')) {
+            const number = text.replace(/[^\d]/g, '');
+            if (number) {
+                el.textContent = formatNumber(number) + ' so\'m';
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

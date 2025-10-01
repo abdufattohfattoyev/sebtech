@@ -1,224 +1,485 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Xizmat Tafsilotlari - {{ service.phone }}{% endblock %}
+{% block title %}Xizmat Tafsilotlari{% endblock %}
 {% block page_title %}Xizmat Tafsilotlari{% endblock %}
+
+{% block extra_css %}
+<style>
+.fade-in { animation: fadeIn 0.2s ease-out; }
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.info-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+}
+
+.info-card h6 {
+    font-size: 0.875rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.info-value {
+    color: #1f2937;
+    font-weight: 500;
+    font-size: 0.875rem;
+    text-align: right;
+}
+
+.repair-reasons {
+    background: #f9fafb;
+    padding: 0.75rem;
+    border-radius: 6px;
+    color: #4b5563;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-top: 0.5rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-badge.in_progress {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.completed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.stat-box {
+    text-align: center;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+.progress {
+    height: 8px;
+    border-radius: 4px;
+    background: #f3f4f6;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: #10b981;
+    transition: width 0.3s ease;
+}
+
+.action-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+
+.action-btn.primary {
+    background: #2563eb;
+    color: white;
+}
+
+.action-btn.primary:hover {
+    background: #1d4ed8;
+}
+
+.action-btn.success {
+    background: #10b981;
+    color: white;
+}
+
+.action-btn.success:hover {
+    background: #059669;
+}
+
+.action-btn.warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.action-btn.warning:hover {
+    background: #d97706;
+}
+
+.action-btn.danger {
+    background: #ef4444;
+    color: white;
+}
+
+.action-btn.danger:hover {
+    background: #dc2626;
+}
+
+.payment-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.payment-table th,
+.payment-table td {
+    padding: 0.75rem;
+    text-align: left;
+    font-size: 0.875rem;
+}
+
+.payment-table thead {
+    background: #f9fafb;
+}
+
+.payment-table th {
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.payment-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.payment-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6b7280;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.modal-content {
+    border-radius: 8px;
+    border: none;
+}
+
+.modal-header {
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.modal-footer {
+    border-top: 1px solid #f3f4f6;
+}
+
+@media (max-width: 768px) {
+    .info-card {
+        padding: 1rem;
+    }
+
+    .info-row {
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.75rem 0;
+    }
+
+    .info-value {
+        text-align: left;
+        font-weight: 600;
+    }
+
+    .stat-value {
+        font-size: 1.25rem;
+    }
+
+    .payment-table {
+        font-size: 0.8rem;
+    }
+
+    .payment-table th,
+    .payment-table td {
+        padding: 0.5rem;
+    }
+
+    .action-btn {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+    }
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="fade-in">
-    <!-- Service and Financial Info -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="fas fa-info-circle me-2"></i>Xizmat Ma'lumotlari
-                    </h5>
-                    <div class="d-flex gap-2">
-                        <a href="{% url 'services:service_edit' service.pk %}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-edit me-1"></i>Tahrirlash
-                        </a>
-                        {% if service.status == 'in_progress' %}
-                        <button class="btn btn-success btn-sm" onclick="showStatusUpdateModal({{ service.pk }})">
-                            <i class="fas fa-check me-1"></i>Tugallash
-                        </button>
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h5 class="mb-1">{{ service.phone.phone_model }} {{ service.phone.memory_size }}</h5>
+            <small class="text-muted">{{ service.master.full_name }}</small>
+        </div>
+        <div class="d-flex align-items-center">
+    <a href="{% url 'services:service_list' %}" class="action-btn info">
+        <i class="fas fa-arrow-left"></i>
+        <span class="d-none d-sm-inline">Ortga</span>
+    </a>
+</div>
+
+        <div class="d-flex gap-2">
+            <a href="{% url 'services:service_edit' service.pk %}" class="action-btn primary">
+                <i class="fas fa-edit"></i>
+                <span class="d-none d-sm-inline">Tahrirlash</span>
+            </a>
+            {% if service.status == 'in_progress' %}
+            <button class="action-btn success" onclick="showStatusUpdateModal()">
+                <i class="fas fa-check"></i>
+                <span class="d-none d-sm-inline">Tugallash</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Info -->
+    <div class="row g-3 mb-3">
+        <div class="col-lg-8">
+            <div class="info-card">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <h6>Telefon</h6>
+                        <div class="info-row">
+                            <span class="info-label">Model</span>
+                            <span class="info-value">{{ service.phone.phone_model }} {{ service.phone.memory_size }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">IMEI</span>
+                            <span class="info-value">{{ service.phone.imei|default:"—" }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Holat</span>
+                            <span class="info-value">{{ service.phone.condition_percentage }}%</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Usta</h6>
+                        <div class="info-row">
+                            <span class="info-label">Ism</span>
+                            <span class="info-value">
+                                <a href="{% url 'services:master_detail' service.master.pk %}" style="color: #2563eb; text-decoration: none;">
+                                    {{ service.master.full_name }}
+                                </a>
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Telefon</span>
+                            <span class="info-value">{{ service.master.phone_number|default:"—" }}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Berilgan</span>
+                            <span class="info-value">{{ service.given_date|date:"d.m.Y" }}</span>
+                        </div>
+                        {% if service.expected_return_date %}
+                        <div class="info-row">
+                            <span class="info-label">Qaytarish</span>
+                            <span class="info-value">{{ service.expected_return_date|date:"d.m.Y" }}</span>
+                        </div>
                         {% endif %}
                     </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-muted mb-3">Telefon Ma'lumotlari</h6>
-                            <div class="mb-3">
-                                <label class="form-label">Model</label>
-                                <div class="fw-semibold">{{ service.phone.phone_model }} {{ service.phone.memory_size }}</div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">IMEI</label>
-                                <div class="fw-semibold">{{ service.phone.imei|default:"N/A" }}</div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Holati</label>
-                                <div class="fw-semibold">{{ service.phone.condition_percentage }}%</div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Tannarx</label>
-                                <div class="fw-semibold">{{ service.phone.cost_price|floatformat:2 }} UZS</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-muted mb-3">Usta Ma'lumotlari</h6>
-                            <div class="mb-3">
-                                <label class="form-label">Usta</label>
-                                <div class="fw-semibold">
-                                    <a href="{% url 'services:master_detail' service.master.pk %}" class="text-decoration-none">
-                                        {{ service.master.full_name }}
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Telefon Raqami</label>
-                                <div class="fw-semibold">{{ service.master.phone_number|default:"Ma'lumot yo'q" }}</div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Berilgan Sana</label>
-                                <div class="fw-semibold">{{ service.given_date|date:"d.m.Y" }}</div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Qaytarish Sanasi</label>
-                                <div class="fw-semibold">
-                                    {% if service.expected_return_date %}
-                                        {{ service.expected_return_date|date:"d.m.Y" }}
-                                    {% else %}
-                                        <span class="text-muted">Belgilanmagan</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="mb-3">
-                        <label class="form-label">Ta'mirlash Sabablari</label>
-                        <div class="bg-light p-3 rounded">{{ service.repair_reasons|default:"Ma'lumot yo'q" }}</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Holati</label>
-                        <div>
-                            <span class="badge {% if service.status == 'in_progress' %}bg-warning{% else %}bg-success{% endif %}">
-                                {{ service.get_status_display }}
-                            </span>
-                        </div>
-                    </div>
+
+                <div class="mt-3">
+                    <h6>Ta'mirlash sababi</h6>
+                    <div class="repair-reasons">{{ service.repair_reasons }}</div>
+                </div>
+
+                <div class="mt-3">
+                    <h6>Holat</h6>
+                    <span class="status-badge {{ service.status }}">{{ service.get_status_display }}</span>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-money-bill me-2"></i>Moliyaviy Ma'lumotlar</h5>
+
+        <div class="col-lg-4">
+            <div class="info-card">
+                <h6 class="text-center mb-3">Moliya</h6>
+                <div class="stat-box mb-3">
+                    <div class="stat-value" style="color: #2563eb;">${{ service.service_fee|floatformat:0 }}</div>
+                    <div class="stat-label">Xizmat haqi</div>
                 </div>
-                <div class="card-body">
-                    <div class="row text-center mb-3">
-                        <div class="col-12 mb-3">
-                            <div class="stat-value text-primary">{{ service.service_fee|floatformat:2 }} UZS</div>
-                            <div class="stat-label">Jami Xizmat Haqi</div>
-                        </div>
-                    </div>
-                    <div class="row text-center mb-3">
-                        <div class="col-6">
-                            <div class="stat-value text-success">{{ service.paid_amount|floatformat:2 }} UZS</div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="stat-box">
+                            <div class="stat-value" style="color: #10b981; font-size: 1.25rem;">${{ service.paid_amount|floatformat:0 }}</div>
                             <div class="stat-label">To'langan</div>
                         </div>
-                        <div class="col-6">
-                            <div class="stat-value text-danger">
-                                {% with remaining=service.service_fee|add:service.paid_amount|add:"-service.service_fee" %}
-                                    {{ remaining|floatformat:2 }} UZS
-                                {% endwith %}
-                            </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-box">
+                            <div class="stat-value" style="color: #ef4444; font-size: 1.25rem;">${{ unpaid_amount|floatformat:0 }}</div>
                             <div class="stat-label">Qolgan</div>
                         </div>
                     </div>
-                    {% if service.service_fee > 0 %}
-                        <div class="mb-3">
-                            <small class="text-muted">To'lov Holati</small>
-                            <div class="progress">
-                                <div class="progress-bar bg-success" style="width: {% widthratio service.paid_amount service.service_fee 100 %}%"></div>
-                            </div>
-                            <div class="text-center mt-1">
-                                <small class="text-muted">{% widthratio service.paid_amount service.service_fee 100 %}%</small>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if service.service_fee > service.paid_amount %}
-                        <div class="d-grid">
-                            <a href="{% url 'services:payment_create' service.pk %}" class="btn btn-warning btn-sm">
-                                <i class="fas fa-plus me-1"></i>To'lov Qo'shish
-                            </a>
-                        </div>
-                    {% endif %}
                 </div>
+
+                {% if service.service_fee > 0 %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted">To'lov holati</small>
+                        <small class="text-muted">{% widthratio service.paid_amount service.service_fee 100 %}%</small>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" style="width: {% widthratio service.paid_amount service.service_fee 100 %}%"></div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if unpaid_amount > 0 %}
+                <a href="{% url 'services:payment_create' service.pk %}" class="action-btn warning w-100 justify-content-center">
+                    <i class="fas fa-plus"></i>
+                    To'lov qo'shish
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- Payments History -->
-    {% if payments %}
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-history me-2"></i>To'lovlar Tarixi</h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>To'lov Summasi</th>
-                                <th>To'lov Sanasi</th>
-                                <th>To'lovchi</th>
-                                <th>Izoh</th>
-                                <th>Amallar</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for payment in payments %}
-                                <tr>
-                                    <td>{{ forloop.counter }}</td>
-                                    <td class="fw-semibold text-success">{{ payment.payment_amount|floatformat:2 }} UZS</td>
-                                    <td>{{ payment.payment_date|date:"d.m.Y" }}</td>
-                                    <td>{{ payment.paid_by.get_full_name|default:payment.paid_by.username }}</td>
-                                    <td>{{ payment.notes|default:"Izoh yo'q" }}</td>
-                                    <td>
-                                        <div class="d-flex gap-1">
-                                            <a href="{% url 'services:payment_edit' service.pk payment.pk %}" class="btn btn-primary btn-sm" title="Tahrirlash">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="{% url 'services:payment_delete' service.pk payment.pk %}" class="btn btn-danger btn-sm" title="O'chirish">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+    <!-- Payments -->
+    <div class="info-card">
+        <h6 class="mb-3">To'lovlar tarixi</h6>
+        {% if payments %}
+        <div class="table-responsive">
+            <table class="payment-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Summa</th>
+                        <th>Sana</th>
+                        <th>To'lovchi</th>
+                        <th class="d-none d-md-table-cell">Izoh</th>
+                        <th style="width: 100px;">Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td style="color: #10b981; font-weight: 600;">${{ payment.amount|floatformat:0 }}</td>
+                        <td>{{ payment.payment_date|date:"d.m.Y" }}</td>
+                        <td>{{ payment.paid_by.get_full_name|default:payment.paid_by.username }}</td>
+                        <td class="d-none d-md-table-cell">{{ payment.notes|default:"—" }}</td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="{% url 'services:payment_edit' service.pk payment.pk %}" class="action-btn primary" style="padding: 0.25rem 0.5rem;" title="Tahrirlash">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="post" action="{% url 'services:payment_delete' service.pk payment.pk %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="action-btn danger" style="padding: 0.25rem 0.5rem;" onclick="return confirm('O\'chirish?')" title="O'chirish">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    {% else %}
-        <div class="card">
-            <div class="card-body empty-state">
-                <i class="fas fa-history"></i>
-                <h5>Hech qanday to'lov topilmadi</h5>
-                <p>Bu xizmat uchun hali to'lovlar qo'shilmagan.</p>
-                <a href="{% url 'services:payment_create' service.pk %}" class="btn btn-primary btn-sm">
-                    <i class="fas fa-plus me-1"></i>To'lov Qo'shish
-                </a>
-            </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-history"></i>
+            <h6>To'lovlar yo'q</h6>
+            {% if unpaid_amount > 0 %}
+            <a href="{% url 'services:payment_create' service.pk %}" class="action-btn primary mt-2">
+                <i class="fas fa-plus"></i>
+                To'lov qo'shish
+            </a>
+            {% endif %}
         </div>
-    {% endif %}
+        {% endif %}
+    </div>
+</div>
 
-    <!-- Status Update Modal -->
-    <div class="modal fade" id="statusUpdateModal" tabindex="-1" aria-labelledby="statusUpdateModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="statusUpdateModalLabel">Xizmat Holatini Yangilash</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title mb-0">Xizmatni tugallash</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if unpaid_amount > 0 %}
+                <div class="alert alert-warning mb-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>${{ unpaid_amount|floatformat:0 }}</strong> to'lanmagan qarz mavjud!
                 </div>
-                <div class="modal-body">
-                    <p>Xizmat holatini "Tugallangan"ga o'zgartirishni tasdiqlaysizmi?</p>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Bu telefon avtomatik ravishda do'kon holatiga o'tkaziladi.
-                    </div>
+                <p>Tugallash uchun avval to'liq to'lov qiling.</p>
+                {% else %}
+                <p>Xizmatni tugallangan deb belgilaysizmi?</p>
+                <div class="alert alert-info">
+                    <small>
+                        <i class="fas fa-info-circle me-1"></i>
+                        Telefon avtomatik do'konga qaytariladi
+                    </small>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Bekor Qilish</button>
-                    <button type="button" class="btn btn-success btn-sm" id="confirmStatusUpdate" disabled>
-                        <i class="fas fa-spinner fa-spin me-2 d-none"></i>Tasdiqlash
-                    </button>
-                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="action-btn" style="background: #6b7280; color: white;" data-bs-dismiss="modal">Bekor qilish</button>
+                {% if unpaid_amount == 0 %}
+                <button type="button" class="action-btn success" id="confirmBtn">
+                    <i class="fas fa-check"></i>Tugallash
+                </button>
+                {% else %}
+                <a href="{% url 'services:payment_create' service.pk %}" class="action-btn warning">
+                    <i class="fas fa-money-bill"></i>To'lov qilish
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -227,90 +488,48 @@
 
 {% block extra_js %}
 <script>
+let modal;
+
+function showStatusUpdateModal() {
+    modal = new bootstrap.Modal(document.getElementById('statusModal'));
+    modal.show();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    let currentServiceId = null;
+    const confirmBtn = document.getElementById('confirmBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Yuklanmoqda...';
 
-    window.showStatusUpdateModal = function(serviceId) {
-        currentServiceId = serviceId;
-        const modal = new bootstrap.Modal(document.getElementById('statusUpdateModal'), {
-            backdrop: 'static',
-            keyboard: false
+            const formData = new FormData();
+            formData.append('status', 'completed');
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+            fetch("{% url 'services:service_update_status' service.pk %}", {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    modal.hide();
+                    alert(data.message);
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    alert('Xatolik: ' + data.message);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-check"></i>Tugallash';
+                }
+            })
+            .catch(error => {
+                alert('Server bilan aloqada xatolik!');
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-check"></i>Tugallash';
+            });
         });
-        const confirmBtn = document.getElementById('confirmStatusUpdate');
-        confirmBtn.disabled = false;
-        confirmBtn.querySelector('.fa-spinner').classList.add('d-none');
-        modal.show();
-    };
-
-    document.getElementById('confirmStatusUpdate').addEventListener('click', function() {
-        if (!currentServiceId) return;
-
-        const confirmBtn = this;
-        confirmBtn.disabled = true;
-        confirmBtn.querySelector('.fa-spinner').classList.remove('d-none');
-
-        fetch("{% url 'services:service_update_status' 0 %}".replace('0', currentServiceId), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': '{{ csrf_token }}',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: `status=completed`
-        })
-        .then(response => response.json())
-        .then(data => {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('statusUpdateModal'));
-            modal.hide();
-            confirmBtn.disabled = false;
-            confirmBtn.querySelector('.fa-spinner').classList.add('d-none');
-
-            const toast = document.createElement('div');
-            toast.className = 'toast position-fixed bottom-0 end-0 m-3';
-            toast.innerHTML = `
-                <div class="toast-header ${data.success ? 'bg-success' : 'bg-danger'} text-white">
-                    <i class="fas ${data.success ? 'fa-check-circle' : 'fa-exclamation-triangle'} me-2"></i>
-                    <strong class="me-auto">${data.success ? 'Muvaffaqiyat' : 'Xatolik'}</strong>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-                </div>
-                <div class="toast-body">${data.message}</div>
-            `;
-            document.body.appendChild(toast);
-            const bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
-            setTimeout(() => toast.remove(), 3000);
-
-            if (data.success) {
-                vibrate([10]);
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                vibrate([20, 20, 20]);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            const modal = bootstrap.Modal.getInstance(document.getElementById('statusUpdateModal'));
-            modal.hide();
-            confirmBtn.disabled = false;
-            confirmBtn.querySelector('.fa-spinner').classList.add('d-none');
-
-            const toast = document.createElement('div');
-            toast.className = 'toast position-fixed bottom-0 end-0 m-3';
-            toast.innerHTML = `
-                <div class="toast-header bg-danger text-white">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong class="me-auto">Xatolik</strong>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-                </div>
-                <div class="toast-body">Server bilan aloqada xatolik yuz berdi.</div>
-            `;
-            document.body.appendChild(toast);
-            const bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
-            setTimeout(() => toast.remove(), 3000);
-            vibrate([20, 20, 20]);
-        });
-    });
+    }
 });
 </script>
 {% endblock %}
