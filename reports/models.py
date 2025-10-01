@@ -770,3 +770,4 @@ class QuickReport(models.Model):
 
     def __str__(self):
         return f"{self.shop.name} - {self.get_report_type_display()} - {self.report_date}"
+

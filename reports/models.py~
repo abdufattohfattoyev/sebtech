@@ -613,7 +613,7 @@ class ReportCalculator:
         }
 
     def get_seller_monthly_salary(self, seller, year, month):
-        """Sotuvchi oylik maoshi - FAQAT SOTILGANLARDAN"""
+        """Sotuvchi oylik maoshi - TARIX BILAN"""
         start_date = date(year, month, 1)
         _, last_day = monthrange(year, month)
         end_date = date(year, month, last_day)
@@ -621,13 +621,16 @@ class ReportCalculator:
         daily_data = []
         current_date = start_date
 
+        # Har bir kun uchun
         while current_date <= end_date:
             day_report = self.get_seller_daily_report(seller, current_date)
             if day_report['counts']['total'] > 0 or day_report['counts']['returns'] > 0:
+                # O'sha kun uchun foyda hisoblash
                 for sale in day_report['sales_data']['phone_sales']:
                     sale.calculated_profit = self.profit_calc.calculate_phone_profit(sale)
                 for exchange in day_report['sales_data']['exchanges']:
                     exchange.calculated_profit = self.profit_calc.calculate_exchange_profit(exchange)
+
                 daily_data.append(day_report)
             current_date += timedelta(days=1)
 
@@ -635,7 +638,7 @@ class ReportCalculator:
         accessory_sales = self.query_helper.get_accessory_sales(self.shop, start_date, end_date, seller)
         exchanges = self.query_helper.get_exchanges(self.shop, start_date, end_date, seller)
 
-        # QAYTARILGANLAR
+        # Qaytarilganlar
         from sales.models import PhoneReturn
         phone_returns = PhoneReturn.objects.filter(
             phone_sale__phone__shop=self.shop,
@@ -644,36 +647,72 @@ class ReportCalculator:
         ).select_related('phone_sale__phone', 'phone_sale')
 
         returned_sale_ids = set(phone_returns.values_list('phone_sale_id', flat=True))
-
-        # FAQAT QAYTARILMAGAN SOTUVLARDAN FOYDA
         net_phone_sales = phone_sales.exclude(id__in=returned_sale_ids)
-        net_phone_profit = sum(self.profit_calc.calculate_phone_profit(sale) for sale in net_phone_sales)
 
-        accessory_profit = sum(self.profit_calc.calculate_accessory_profit(sale) for sale in accessory_sales)
-        exchange_profit = sum(self.profit_calc.calculate_exchange_profit(exchange) for exchange in exchanges)
+        # FOYDA - KUNLIK HISOBLASH
+        net_phone_profit = Decimal('0')
+        accessory_profit = Decimal('0')
+        exchange_profit = Decimal('0')
+
+        # Har bir sotuv o'z sanasi uchun hisoblanadi
+        for sale in net_phone_sales:
+            profit = self.profit_calc.calculate_phone_profit(sale)
+            net_phone_profit += profit
+
+        for sale in accessory_sales:
+            profit = self.profit_calc.calculate_accessory_profit(sale)
+            accessory_profit += profit
+
+        for exchange in exchanges:
+            profit = self.profit_calc.calculate_exchange_profit(exchange)
+            exchange_profit += profit
 
         totals = self._calculate_sales_totals(phone_sales, accessory_sales, exchanges)
         returns_count = phone_returns.count()
-        returns_profit = sum(r.phone_sale.sale_price - r.phone_sale.phone.cost_price for r in phone_returns)
 
-        try:
-            profile = seller.userprofile
-            phone_rate = profile.phone_commission_percent
-            accessory_rate = profile.accessory_commission_percent
-            exchange_rate = profile.exchange_commission_percent
-            base_salary = profile.base_salary
-        except:
-            phone_rate = Decimal('5.00')
-            accessory_rate = Decimal('10.00')
-            exchange_rate = Decimal('5.00')
-            base_salary = Decimal('0.00')
+        # KOMISSIYA - KUNLIK FOIZ BILAN
+        phone_commission_usd = Decimal('0')
+        accessory_commission_uzs = Decimal('0')
+        exchange_commission_usd = Decimal('0')
 
-        # KOMISSIYA - FAQAT SOF FOYDADAN
-        phone_commission_usd = (net_phone_profit * phone_rate / 100).quantize(Decimal('0.01'))
-        exchange_commission_usd = (exchange_profit * exchange_rate / 100).quantize(Decimal('0.01'))
-        accessory_commission_uzs = (accessory_profit * accessory_rate / 100).quantize(Decimal('0.01'))
+        # Har bir kun uchun
+        current_date = start_date
+        while current_date <= end_date:
+            # O'sha kun uchun foizlar
+            rates = seller.userprofile.get_commission_rates_for_date(current_date)
+
+            # O'sha kunda sotilgan telefonlar
+            day_phone_sales = net_phone_sales.filter(sale_date=current_date)
+            day_phone_profit = sum(
+                self.profit_calc.calculate_phone_profit(sale)
+                for sale in day_phone_sales
+            )
+            phone_commission_usd += (day_phone_profit * rates['phone_rate'] / 100).quantize(Decimal('0.01'))
+
+            # O'sha kunda sotilgan aksessuarlar
+            day_accessory_sales = accessory_sales.filter(sale_date=current_date)
+            day_accessory_profit = sum(
+                self.profit_calc.calculate_accessory_profit(sale)
+                for sale in day_accessory_sales
+            )
+            accessory_commission_uzs += (day_accessory_profit * rates['accessory_rate'] / 100).quantize(Decimal('0.01'))
+
+            # O'sha kunda bo'lgan almashtirishlar
+            day_exchanges = exchanges.filter(exchange_date=current_date)
+            day_exchange_profit = sum(
+                self.profit_calc.calculate_exchange_profit(exchange)
+                for exchange in day_exchanges
+            )
+            exchange_commission_usd += (day_exchange_profit * rates['exchange_rate'] / 100).quantize(Decimal('0.01'))
+
+            current_date += timedelta(days=1)
+
+        # Oxirgi kunda qanday bo'lsa, shuni ishlatish (maosh uchun)
+        final_rates = seller.userprofile.get_commission_rates_for_date(end_date)
+
         total_commission_usd = phone_commission_usd + exchange_commission_usd
-        total_salary_usd = base_salary + total_commission_usd
+        total_salary_usd = final_rates['base_salary_usd'] + total_commission_usd
+        total_salary_uzs = final_rates['base_salary_uzs'] + accessory_commission_uzs
 
         return {
             'seller': seller,
@@ -694,21 +733,18 @@ class ReportCalculator:
                 'accessory_profit': accessory_profit,
                 'exchange_profit': exchange_profit,
                 'total_profit': net_phone_profit + accessory_profit + exchange_profit,
-                'returns_profit': returns_profit,
             },
             'commission': {
                 'phone_commission': phone_commission_usd,
                 'exchange_commission': exchange_commission_usd,
                 'accessory_commission': accessory_commission_uzs,
                 'total_commission': total_commission_usd,
-                'base_salary': base_salary,
-                'total_salary': total_salary_usd,
+                'base_salary_usd': final_rates['base_salary_usd'],
+                'base_salary_uzs': final_rates['base_salary_uzs'],
+                'total_salary_usd': total_salary_usd,
+                'total_salary_uzs': total_salary_uzs,
             },
-            'commission_rates': {
-                'phone_rate': phone_rate,
-                'accessory_rate': accessory_rate,
-                'exchange_rate': exchange_rate
-            }
+            'commission_rates': final_rates,
         }
 
 
@@ -734,3 +770,5 @@ class QuickReport(models.Model):
 
     def __str__(self):
         return f"{self.shop.name} - {self.get_report_type_display()} - {self.report_date}"
+
+    
