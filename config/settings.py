@@ -1,17 +1,24 @@
 import os
 from pathlib import Path
+from decouple import config  # ⚡ .env fayldan secretlarni olish uchun (pip install python-decouple)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-mj0z8)f^nz%z=nw^m!_myepbe+923*s%aq(#y0!6b@#cpast&5'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-mj0z8)f^nz%z=nw^m!_myepbe+923*s%aq(#y0!6b@#cpast&5')
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# ⚡ Serverda DEBUG = False bo‘lishi kerak
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-# Allow all hosts during development (update in production)
-ALLOWED_HOSTS = []
+# Domenlar va IP
+ALLOWED_HOSTS = [
+    'seb-tech.uz',
+    'www.seb-tech.uz',
+    '173.249.7.36',
+    'localhost',
+    '127.0.0.1'
+]
 
 # Application definition
 INSTALLED_APPS = [
@@ -22,12 +29,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+
+    # Loyihangdagi app'lar
     'users.apps.UsersConfig',
     'shops.apps.ShopsConfig',
     'inventory.apps.InventoryConfig',
     'services.apps.ServicesConfig',
     'sales.apps.SalesConfig',
     'reports.apps.ReportsConfig',
+
     'django_filters',
 ]
 
@@ -61,7 +71,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database
+# Database (hozircha SQLite)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -71,18 +81,10 @@ DATABASES = {
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 # Internationalization
@@ -91,28 +93,34 @@ TIME_ZONE = 'Asia/Tashkent'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
+# Static files
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Server uchun static to‘planadi
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGIN_URL = 'login'  # ✅ TO'G'RILANGAN
-LOGIN_REDIRECT_URL = 'users:dashboard'  # ✅ TO'G'RI
-LOGOUT_REDIRECT_URL = 'login'  # ✅ TO'G'RI
+# Auth redirects
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'users:dashboard'
+LOGOUT_REDIRECT_URL = 'login'
 
-
-# settings.py
+# Cache
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'LOCATION': 'unique-snowflake',
     }
 }
+
+# 🔒 Security (production uchun muhim)
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
+SECURE_HSTS_SECONDS = 31536000  # 1 yil
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
