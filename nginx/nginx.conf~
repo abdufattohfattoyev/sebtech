@@ -1,20 +1,6 @@
 server {
     listen 80;
-    server_name seb-tech.uz www.seb-tech.uz;
-
-    # HTTP so‘rovlarni avtomatik HTTPS ga yo‘naltirish
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name seb-tech.uz www.seb-tech.uz;
-
-    # SSL sertifikatlar
-    ssl_certificate /etc/letsencrypt/live/seb-tech.uz/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/seb-tech.uz/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
+    server_name _;
 
     # Fayl yuklash hajmi (50 MB)
     client_max_body_size 50M;
@@ -31,7 +17,7 @@ server {
         autoindex on;
     }
 
-    # Django (Gunicorn) so‘rovlarini yo‘naltirish
+    # Django (Gunicorn) so'rovlarini yo'naltirish
     location / {
         proxy_pass http://app:8000;
         proxy_set_header Host $host;
