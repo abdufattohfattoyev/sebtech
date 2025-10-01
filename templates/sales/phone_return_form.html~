@@ -1,0 +1,463 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+    {% if form.instance.pk %}
+        Telefon qaytarishni tahrirlash
+    {% else %}
+        Yangi telefon qaytarish
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">
+        {% if form.instance.pk %}
+            Telefon qaytarishni tahrirlash
+        {% else %}
+            Yangi telefon qaytarish
+        {% endif %}
+    </h2>
+
+    <form id="returnForm" method="post" action="{% if form.instance.pk %}{% url 'sales:phone_return_edit' form.instance.pk %}{% else %}{% url 'sales:phone_return_create' %}{% endif %}">
+        {% csrf_token %}
+
+        <!-- IMEI Search -->
+        <div class="mb-3 position-relative">
+            <label for="imeiSearch" class="form-label">Telefon IMEI bo'yicha qidirish</label>
+            <input type="text" id="imeiSearch" class="form-control" placeholder="IMEI kiriting" autocomplete="off">
+            <div id="searchResults" class="search-results"></div>
+        </div>
+
+        <!-- Hidden Phone Sale Input -->
+        {{ form.phone_sale }}
+
+        <!-- Selected Phone Sale -->
+        <div id="selectedPhone" class="card mb-3 {% if form.instance.phone_sale %}show{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 id="phoneTitle" class="card-title">
+                            {% if form.instance.phone_sale %}
+                                {{ form.instance.phone_sale.phone.phone_model.model_name }} {{ form.instance.phone_sale.phone.memory_size.size }}
+                            {% endif %}
+                        </h5>
+                        <p id="phoneDetails" class="card-text">
+                            {% if form.instance.phone_sale %}
+                                IMEI: {{ form.instance.phone_sale.phone.imei }}
+                            {% endif %}
+                        </p>
+                        <p id="phoneSaleInfo" class="card-text">
+                            {% if form.instance.phone_sale %}
+                                Mijoz: {{ form.instance.phone_sale.customer.name }} •
+                                Tel: {{ form.instance.phone_sale.customer.phone_number|default:"Yo'q" }} •
+                                Sana: {{ form.instance.phone_sale.sale_date|date:"d.m.Y" }} •
+                                Sotuvchi: {{ form.instance.phone_sale.salesman.get_full_name|default:form.instance.phone_sale.salesman.username }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <button type="button" id="clearPhone" class="btn btn-outline-danger btn-sm">Tozalash</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Calculation -->
+        <div id="paymentCalc" class="payment-calc mb-3">
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Sotish narxi</label>
+                    <p id="saleAmount">$0.00</p>
+                </div>
+                <div class="col-md-4">
+                    <label>Qaytarish summasi</label>
+                    <p id="returnAmount">$0.00</p>
+                </div>
+                <div class="col-md-4">
+                    <label>Ferq</label>
+                    <p id="difference">$0.00</p>
+                </div>
+            </div>
+            <div class="mt-2">
+                <label>Status</label>
+                <p id="paymentStatus"><span class="badge bg-secondary">Telefon tanlanmadi</span></p>
+            </div>
+        </div>
+
+        <!-- Form Fields -->
+        <div class="mb-3">
+            <label for="{{ form.return_amount.id_for_label }}" class="form-label">Qaytarish summasi</label>
+            {{ form.return_amount }}
+            {% if form.return_amount.errors %}
+                <div class="text-danger">{{ form.return_amount.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.return_date.id_for_label }}" class="form-label">Qaytarish sanasi</label>
+            {{ form.return_date }}
+            {% if form.return_date.errors %}
+                <div class="text-danger">{{ form.return_date.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.reason.id_for_label }}" class="form-label">Qaytarish sababi</label>
+            {{ form.reason }}
+            {% if form.reason.errors %}
+                <div class="text-danger">{{ form.reason.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.notes.id_for_label }}" class="form-label">Qo'shimcha eslatmalar</label>
+            {{ form.notes }}
+            {% if form.notes.errors %}
+                <div class="text-danger">{{ form.notes.errors }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" id="submitBtn" class="btn btn-primary">Saqlash</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/phone_return_form.css' %}">
+<style>
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .search-results.show {
+        display: block;
+    }
+    .result-item {
+        padding: 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+    .result-item:last-child {
+        border-bottom: none;
+    }
+    .result-item:hover, .result-item.selected {
+        background: #f8f9fa;
+    }
+    .result-title {
+        font-weight: bold;
+    }
+    .result-details {
+        font-size: 0.9em;
+        color: #666;
+    }
+    .payment-calc {
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 4px;
+    }
+    .payment-calc.valid {
+        border-color: #28a745;
+        background: #e6f4ea;
+    }
+    .payment-calc.invalid {
+        border-color: #dc3545;
+        background: #f8d7da;
+    }
+    .payment-calc.warning {
+        border-color: #ffc107;
+        background: #fff3cd;
+    }
+    #selectedPhone {
+        display: none;
+    }
+    #selectedPhone.show {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elementlarni to'g'ri ID lar bilan olish
+    const elements = {
+        imeiSearch: document.getElementById('imeiSearch'),
+        searchResults: document.getElementById('searchResults'),
+        selectedPhone: document.getElementById('selectedPhone'),
+        phoneTitle: document.getElementById('phoneTitle'),
+        phoneDetails: document.getElementById('phoneDetails'),
+        phoneSaleInfo: document.getElementById('phoneSaleInfo'),
+        phoneSaleInput: document.querySelector('input[name="phone_sale"]'),
+        returnAmount: document.getElementById('id_return_amount'),
+        returnDate: document.getElementById('id_return_date'),
+        reason: document.getElementById('id_reason'),
+        notes: document.getElementById('id_notes'),
+        paymentCalc: document.getElementById('paymentCalc'),
+        returnAmountDisplay: document.getElementById('returnAmount'),
+        saleAmount: document.getElementById('saleAmount'),
+        difference: document.getElementById('difference'),
+        paymentStatus: document.getElementById('paymentStatus'),
+        clearPhone: document.getElementById('clearPhone'),
+        submitBtn: document.getElementById('submitBtn'),
+        returnForm: document.getElementById('returnForm')
+    };
+
+    let searchTimeout, results = [], selectedIndex = -1;
+    let currentPhoneSaleData = null;
+
+    // Tahrirlash rejimi uchun boshlang'ich yuklash
+    const initialPhoneSaleId = elements.phoneSaleInput.value;
+    if (initialPhoneSaleId) {
+        fetch(`/sales/api/get-phone-sale/${initialPhoneSaleId}/`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    currentPhoneSaleData = data.sale;
+                    displaySelectedPhoneSale(data.sale);
+                    elements.imeiSearch.value = data.sale.imei || '';
+                    calculateReturn();
+                } else {
+                    showAlert('Telefon sotuv ma\'lumotlari yuklanmadi: ' + (data.message || 'Xato'), 'danger');
+                }
+            })
+            .catch(err => {
+                console.error('Initial load error:', err);
+                showAlert('Telefon sotuv ma\'lumotlari yuklanmadi: ' + err.message, 'danger');
+            });
+    }
+
+    // IMEI qidirish
+    elements.imeiSearch.addEventListener('input', function() {
+        const query = this.value.trim();
+        clearTimeout(searchTimeout);
+        if (query.length < 3) {
+            hideResults();
+            return;
+        }
+        searchTimeout = setTimeout(() => searchPhoneSales(query), 300);
+    });
+
+    // Klaviatura navigatsiyasi
+    elements.imeiSearch.addEventListener('keydown', function(e) {
+        const items = elements.searchResults.children;
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                updateSelection();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection();
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (selectedIndex >= 0) selectPhoneSale(results[selectedIndex]);
+                break;
+            case 'Escape':
+                hideResults();
+                break;
+        }
+    });
+
+    async function searchPhoneSales(query) {
+        try {
+            const response = await fetch(`/sales/api/search-phone-sale-by-imei/?q=${encodeURIComponent(query)}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+
+            if (data.status === 'error') {
+                showAlert(data.message || 'Qidirishda xatolik', 'danger');
+                showResults([]);
+                return;
+            }
+
+            results = data.data || [];
+            showResults(results);
+
+        } catch (e) {
+            console.error('Search error:', e);
+            showAlert('Qidirishda xatolik: ' + e.message, 'danger');
+            showResults([]);
+        }
+    }
+
+    function showResults(phoneSales) {
+        selectedIndex = -1;
+        if (phoneSales.length === 0) {
+            elements.searchResults.innerHTML = '<div class="result-item text-muted">Qaytarish uchun telefon sotuvi topilmadi</div>';
+        } else {
+            elements.searchResults.innerHTML = phoneSales.map((sale, i) => `
+                <div class="result-item" data-index="${i}">
+                    <div class="result-title">${sale.display_text || 'Noma\'lum'}</div>
+                    <div class="result-details">
+                        Mijoz: ${sale.customer_name || 'Noma\'lum'} •
+                        Tel: ${sale.customer_phone || 'Yo\'q'} •
+                        Sotuvchi: ${sale.salesman || 'Noma\'lum'}
+                    </div>
+                </div>
+            `).join('');
+
+            elements.searchResults.querySelectorAll('.result-item').forEach((item, i) => {
+                item.addEventListener('click', () => selectPhoneSale(phoneSales[i]));
+            });
+        }
+        elements.searchResults.classList.add('show');
+    }
+
+    function hideResults() {
+        elements.searchResults.classList.remove('show');
+        selectedIndex = -1;
+    }
+
+    function updateSelection() {
+        Array.from(elements.searchResults.children).forEach((item, i) => {
+            item.classList.toggle('selected', i === selectedIndex);
+        });
+    }
+
+    function displaySelectedPhoneSale(sale) {
+        const phoneModel = `${sale.phone_model || ''} ${sale.memory || ''}`.trim();
+        elements.phoneTitle.textContent = phoneModel || 'Model noma\'lum';
+        elements.phoneDetails.textContent = `IMEI: ${sale.imei || 'N/A'}`;
+        elements.phoneSaleInfo.textContent = `Mijoz: ${sale.customer_name || 'Noma\'lum'} • Tel: ${sale.customer_phone || 'Yo\'q'} • Sana: ${sale.sale_date || 'Noma\'lum'} • Sotuvchi: ${sale.salesman || 'Noma\'lum'}`;
+        elements.selectedPhone.classList.add('show');
+
+        if (!elements.returnAmount.value || elements.returnAmount.value == '0') {
+            elements.returnAmount.value = sale.sale_price || '0';
+        }
+
+        calculateReturn();
+    }
+
+    function selectPhoneSale(sale) {
+        elements.phoneSaleInput.value = sale.id;
+        elements.imeiSearch.value = sale.imei || '';
+        currentPhoneSaleData = sale;
+        displaySelectedPhoneSale(sale);
+        hideResults();
+        showAlert(`Telefon sotuvi tanlandi: ${sale.phone_model || 'Noma\'lum'}`, 'success');
+    }
+
+    elements.clearPhone.addEventListener('click', function() {
+        elements.phoneSaleInput.value = '';
+        elements.imeiSearch.value = '';
+        elements.selectedPhone.classList.remove('show');
+        currentPhoneSaleData = null;
+        elements.returnAmount.value = '0';
+        calculateReturn();
+        hideResults();
+    });
+
+    function calculateReturn() {
+        const returnAmount = parseFloat(elements.returnAmount.value) || 0;
+        const salePrice = currentPhoneSaleData ? parseFloat(currentPhoneSaleData.sale_price) || 0 : 0;
+        const difference = salePrice - returnAmount;
+
+        elements.returnAmountDisplay.textContent = '$' + returnAmount.toFixed(2);
+        elements.saleAmount.textContent = '$' + salePrice.toFixed(2);
+        elements.difference.textContent = '$' + difference.toFixed(2);
+
+        if (!currentPhoneSaleData) {
+            elements.paymentStatus.innerHTML = '<span class="badge bg-secondary">Telefon tanlanmadi</span>';
+            elements.paymentCalc.className = 'payment-calc';
+        } else if (returnAmount <= 0) {
+            elements.paymentStatus.innerHTML = '<span class="badge bg-danger">Summa kiritilmadi</span>';
+            elements.paymentCalc.className = 'payment-calc invalid';
+        } else if (returnAmount > salePrice) {
+            elements.paymentStatus.innerHTML = '<span class="badge bg-danger">Haddan tashqari</span>';
+            elements.paymentCalc.className = 'payment-calc invalid';
+        } else if (Math.abs(returnAmount - salePrice) < 0.01) {
+            elements.paymentStatus.innerHTML = '<span class="badge bg-success">To\'liq qaytarish</span>';
+            elements.paymentCalc.className = 'payment-calc valid';
+        } else {
+            elements.paymentStatus.innerHTML = '<span class="badge bg-warning">Qisman qaytarish</span>';
+            elements.paymentCalc.className = 'payment-calc warning';
+        }
+    }
+
+    function showAlert(msg, type) {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `${msg}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    }
+
+    elements.returnAmount.addEventListener('input', calculateReturn);
+    elements.returnAmount.addEventListener('focus', function() {
+        if (this.value === '0' || this.value === '0.00') {
+            this.value = '';
+        }
+    });
+    elements.returnAmount.addEventListener('blur', function() {
+        if (this.value === '' || this.value === '.') {
+            this.value = '0';
+            calculateReturn();
+        }
+    });
+
+    elements.returnForm.addEventListener('submit', function(e) {
+        if (!elements.phoneSaleInput.value) {
+            e.preventDefault();
+            showAlert('IMEI bo\'yicha telefon sotuvini tanlash shart!', 'danger');
+            elements.imeiSearch.focus();
+            return;
+        }
+
+        const returnAmount = parseFloat(elements.returnAmount.value) || 0;
+        const salePrice = currentPhoneSaleData ? parseFloat(currentPhoneSaleData.sale_price) || 0 : 0;
+
+        if (returnAmount <= 0) {
+            e.preventDefault();
+            showAlert('Qaytarish summasi 0 dan katta bo\'lishi kerak!', 'danger');
+            elements.returnAmount.focus();
+            return;
+        }
+
+        if (returnAmount > salePrice) {
+            e.preventDefault();
+            showAlert(`Qaytarish summasi sotish narxidan (${salePrice}$) ko'p bo'lishi mumkin emas!`, 'danger');
+            elements.returnAmount.focus();
+            return;
+        }
+
+        if (!elements.reason.value.trim()) {
+            e.preventDefault();
+            showAlert('Qaytarish sababi kiritilishi shart!', 'danger');
+            elements.reason.focus();
+            return;
+        }
+
+        elements.submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saqlanmoqda...';
+        elements.submitBtn.disabled = true;
+    });
+
+    document.addEventListener('click', e => {
+        if (!elements.imeiSearch.contains(e.target) && !elements.searchResults.contains(e.target)) {
+            hideResults();
+        }
+    });
+
+    calculateReturn();
+});
+</script>
+{% endblock %}

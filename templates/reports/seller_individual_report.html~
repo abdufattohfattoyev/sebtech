@@ -1,0 +1,618 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block page_title %}{{ seller.get_full_name|default:seller.username }} - Oylik Hisobot{% endblock %}
+
+{% block extra_css %}
+<style>
+* {
+    box-sizing: border-box;
+}
+
+.salary-header {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.salary-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.filter-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-card {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.summary-card.highlight {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.summary-label {
+    font-size: 0.813rem;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    word-break: break-word;
+}
+
+.currency-indicator {
+    font-size: 0.625rem;
+    opacity: 0.7;
+    display: block;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+.daily-breakdown {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+}
+
+.breakdown-header {
+    padding: 1rem;
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.938rem;
+}
+
+.day-item {
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.day-header {
+    padding: 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.day-header:hover {
+    background: #f9fafb;
+}
+
+.day-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.day-date {
+    font-weight: 600;
+    color: #111827;
+    min-width: 100px;
+    font-size: 0.938rem;
+}
+
+.badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.badge {
+    padding: 0.25rem 0.625rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.badge-phone { background: #dbeafe; color: #1e40af; }
+.badge-accessory { background: #d1fae5; color: #065f46; }
+.badge-exchange { background: #fef3c7; color: #92400e; }
+
+.day-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.day-stats {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.stat {
+    text-align: right;
+}
+
+.stat-label {
+    font-size: 0.688rem;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+.stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.stat-value.profit {
+    color: #10b981;
+}
+
+.expand-icon {
+    color: #9ca3af;
+    font-size: 0.875rem;
+    transition: transform 0.2s;
+}
+
+.expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.day-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.day-details.expanded {
+    max-height: 3000px;
+}
+
+.details-content {
+    padding: 1rem;
+    background: #fafafa;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.detail-section {
+    background: white;
+    border-radius: 6px;
+    padding: 1rem;
+}
+
+.section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sale-list {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.sale-card {
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    border-left: 3px solid;
+}
+
+.sale-card.phone { border-left-color: #3b82f6; }
+.sale-card.accessory { border-left-color: #10b981; }
+.sale-card.exchange { border-left-color: #f59e0b; }
+
+.sale-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 0.5rem;
+}
+
+.sale-name {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #111827;
+    line-height: 1.3;
+}
+
+.sale-price {
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: #10b981;
+    white-space: nowrap;
+}
+
+.sale-meta {
+    font-size: 0.75rem;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.commission-section {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+}
+
+.commission-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.commission-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.875rem;
+    background: #f9fafb;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.commission-label {
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.commission-calc {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.commission-amount {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #10b981;
+    white-space: nowrap;
+}
+
+.total-salary {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    color: white;
+}
+
+.total-label {
+    font-size: 0.813rem;
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
+}
+
+.total-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.total-breakdown {
+    font-size: 0.813rem;
+    opacity: 0.9;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .day-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .day-left, .day-right {
+        width: 100%;
+    }
+
+    .day-right {
+        justify-content: space-between;
+        margin-top: 0.5rem;
+    }
+
+    .total-value {
+        font-size: 2rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="salary-header">
+        <div class="salary-title">{{ seller.get_full_name|default:seller.username }} - Oylik Hisobot</div>
+        <div style="font-size: 0.875rem;">{{ month_names|get_item:month }} {{ year }} | {{ selected_shop.name }}</div>
+    </div>
+
+    <div class="filter-card">
+        <form method="get">
+            <div class="filter-grid">
+                <select name="shop" class="form-select">
+                    {% for shop in shops %}
+                    <option value="{{ shop.id }}" {% if shop == selected_shop %}selected{% endif %}>
+                        {{ shop.name }}
+                    </option>
+                    {% empty %}
+                    <option value="">Do'konlar mavjud emas</option>
+                    {% endfor %}
+                </select>
+                <select name="year" class="form-select">
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                    {% empty %}
+                    <option value="">Yillar mavjud emas</option>
+                    {% endfor %}
+                </select>
+                <select name="month" class="form-select">
+                    {% for m in months %}
+                    <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}-oy</option>
+                    {% empty %}
+                    <option value="">Oylar mavjud emas</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary">Ko'rsat</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-label">Asosiy Maosh</div>
+            <div class="summary-value">{{ salary_data.commission.base_salary|floatformat:0|intcomma }} so'm</div>
+            <span class="currency-indicator">So'm</span>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Komissiya</div>
+            <div class="summary-value">{{ salary_data.commission.total_commission|floatformat:0|intcomma }} so'm</div>
+            <span class="currency-indicator">So'm</span>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Jami Foyda</div>
+            <div class="summary-value">{{ salary_data.profits.total_profit|floatformat:0|intcomma }} so'm</div>
+            <span class="currency-indicator">So'm</span>
+        </div>
+        <div class="summary-card highlight">
+            <div class="summary-label">Jami Maosh</div>
+            <div class="summary-value">{{ salary_data.commission.total_salary|floatformat:0|intcomma }} so'm</div>
+            <span class="currency-indicator">So'm</span>
+        </div>
+    </div>
+
+    <div class="daily-breakdown">
+        <div class="breakdown-header">
+            <span>Kunlik Savdolar</span>
+            <span>{{ daily_data|length }} kun</span>
+        </div>
+
+        {% for day in daily_data %}
+        <div class="day-item">
+            <div class="day-header" onclick="toggleDay({{ forloop.counter }})">
+                <div class="day-left">
+                    <div class="day-date">{{ day.date|date:"d M, D" }}</div>
+                    <div class="badges">
+                        <span class="badge badge-phone">📱 {{ day.counts.phone|default:0 }}</span>
+                        <span class="badge badge-accessory">🎧 {{ day.counts.accessory|default:0 }}</span>
+                        <span class="badge badge-exchange">🔄 {{ day.counts.exchange|default:0 }}</span>
+                    </div>
+                </div>
+                <div class="day-right">
+                    <div class="day-stats">
+                        <div class="stat">
+                            <div class="stat-label">Tel. Savdo</div>
+                            <div class="stat-value">${{ day.sales.phone_total_usd|floatformat:2|intcomma }}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Aks. Savdo</div>
+                            <div class="stat-value">{{ day.sales.accessory_total_uzs|floatformat:0|intcomma }} so'm</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Foyda</div>
+                            <div class="stat-value profit">{{ day.profits.total_profit|floatformat:0|intcomma }} so'm</div>
+                        </div>
+                    </div>
+                    <span class="expand-icon" id="icon-{{ forloop.counter }}">▼</span>
+                </div>
+            </div>
+
+            <div class="day-details" id="details-{{ forloop.counter }}">
+                <div class="details-content">
+                    <div class="details-grid">
+                        <div class="detail-section">
+                            <div class="section-title">Telefonlar ($)</div>
+                            <div class="sale-list">
+                                {% for sale in day.sales_data.phone_sales %}
+                                <div class="sale-card phone">
+                                    <div class="sale-top">
+                                        <div class="sale-name">{{ sale.phone.phone_model }} {{ sale.phone.memory_size }}</div>
+                                        <div class="sale-price">${{ sale.sale_price|floatformat:2|intcomma }}</div>
+                                    </div>
+                                    <div class="sale-meta">
+                                        {{ sale.customer.name|truncatewords:3 }}<br>
+                                        IMEI: {{ sale.phone.imei|default:"N/A" }}<br>
+                                        {{ sale.created_at|date:"H:i" }} • Foyda: ${{ sale.profit|floatformat:2|intcomma }}
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="empty-state">Mavjud emas</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <div class="section-title">Aksessuarlar (so'm)</div>
+                            <div class="sale-list">
+                                {% for sale in day.sales_data.accessory_sales %}
+                                <div class="sale-card accessory">
+                                    <div class="sale-top">
+                                        <div class="sale-name">{{ sale.accessory.name }} ×{{ sale.quantity }}</div>
+                                        <div class="sale-price">{{ sale.total_price|floatformat:0|intcomma }} so'm</div>
+                                    </div>
+                                    <div class="sale-meta">
+                                        {{ sale.customer.name|truncatewords:3 }}<br>
+                                        {{ sale.created_at|date:"H:i" }} • Foyda: {{ sale.profit|floatformat:0|intcomma }} so'm
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="empty-state">Mavjud emas</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <div class="section-title">Almashtirishlar ($)</div>
+                            <div class="sale-list">
+                                {% for exchange in day.sales_data.exchanges %}
+                                <div class="sale-card exchange">
+                                    <div class="sale-top">
+                                        <div class="sale-name">{{ exchange.old_phone_model }} → {{ exchange.new_phone.phone_model }}</div>
+                                        <div class="sale-price">${{ exchange.price_difference|floatformat:2|intcomma }}</div>
+                                    </div>
+                                    <div class="sale-meta">
+                                        {{ exchange.customer.name|truncatewords:3 }}<br>
+                                        Eski: {{ exchange.old_phone_imei|default:"N/A" }}<br>
+                                        Yangi: {{ exchange.new_phone.imei|default:"N/A" }}<br>
+                                        {{ exchange.created_at|date:"H:i" }} • Foyda: ${{ exchange.profit|floatformat:2|intcomma }}
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="empty-state">Mavjud emas</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">Bu oyda savdo yo'q</div>
+        {% endfor %}
+    </div>
+
+    <div class="commission-section">
+        <div class="commission-title">Komissiya Tafsilotlari</div>
+
+        <div class="commission-item">
+            <div>
+                <div class="commission-label">Telefon ($)</div>
+                <div class="commission-calc">${{ salary_data.profits.phone_profit|floatformat:2|intcomma }} × {{ salary_data.commission_rates.phone_rate }}%</div>
+            </div>
+            <div class="commission-amount">${{ salary_data.commission.phone_commission|floatformat:2|intcomma }}</div>
+        </div>
+
+        <div class="commission-item">
+            <div>
+                <div class="commission-label">Aksessuar (so'm)</div>
+                <div class="commission-calc">{{ salary_data.profits.accessory_profit|floatformat:0|intcomma }} so'm × {{ salary_data.commission_rates.accessory_rate }}%</div>
+            </div>
+            <div class="commission-amount">{{ salary_data.commission.accessory_commission|floatformat:0|intcomma }} so'm</div>
+        </div>
+
+        <div class="commission-item">
+            <div>
+                <div class="commission-label">Almashtirish ($)</div>
+                <div class="commission-calc">${{ salary_data.profits.exchange_profit|floatformat:2|intcomma }} × {{ salary_data.commission_rates.exchange_rate }}%</div>
+            </div>
+            <div class="commission-amount">${{ salary_data.commission.exchange_commission|floatformat:2|intcomma }}</div>
+        </div>
+    </div>
+
+    <div class="total-salary">
+        <div class="total-label">TO'LANISHI KERAK</div>
+        <div class="total-value">{{ salary_data.commission.total_salary|floatformat:0|intcomma }} so'm</div>
+        <div class="total-breakdown">
+            Asosiy: {{ salary_data.commission.base_salary|floatformat:0|intcomma }} so'm + Komissiya: {{ salary_data.commission.total_commission|floatformat:0|intcomma }} so'm
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleDay(dayId) {
+    const details = document.getElementById(`details-${dayId}`);
+    const icon = document.getElementById(`icon-${dayId}`);
+    details.classList.toggle('expanded');
+    icon.classList.toggle('expanded');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const values = document.querySelectorAll('.summary-value, .sale-price, .stat-value, .commission-amount, .total-value');
+    values.forEach(value => {
+        const text = value.textContent.trim();
+        if (text.includes('so\'m')) {
+            const number = parseFloat(text.replace(/[^0-9.]/g, ''));
+            if (!isNaN(number)) {
+                value.textContent = number.toLocaleString('uz-UZ') + ' so\'m';
+            }
+        } else if (text.includes('$')) {
+            const number = parseFloat(text.replace(/[^0-9.]/g, ''));
+            if (!isNaN(number)) {
+                value.textContent = '$' + number.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+            }
+        }
+        if (text.length > 12 || (text.match(/\d/g) || []).length >= 6) {
+            value.style.fontSize = '1.25rem';
+        }
+    });
+});
+</script>
+{% endblock %}

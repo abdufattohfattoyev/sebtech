@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.search-box { position: relative; }
+.search-results {
+    position: absolute; top: 100%; left: 0; right: 0; background: white;
+    border: 1px solid #ddd; border-radius: 8px; max-height: 350px; overflow-y: auto;
+    z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.search-results.show { display: block; }
+.search-item {
+    padding: 12px; cursor: pointer; border-bottom: 1px solid #f5f5f5; transition: 0.2s;
+}
+.search-item:hover { background: #f8f9fa; }
+.price-diff-box {
+    border: 2px solid #0d6efd; border-radius: 8px; padding: 20px;
+    text-align: center; margin: 20px 0; transition: 0.3s;
+}
+.debt-due-field {
+    background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px;
+    padding: 12px; margin-top: 12px; display: none; animation: fadeIn 0.3s;
+}
+.debt-due-field.show { display: block; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ title }}</h2>
+        <a href="{% url 'sales:phone_exchange_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Orqaga
+        </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="exchangeForm">
+        {% csrf_token %}
+
+        <!-- Yangi telefon -->
+        <div class="card mb-3">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0"><i class="fas fa-mobile-alt"></i> Yangi telefon</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3 search-box">
+                    <label class="form-label fw-bold">IMEI qidirish</label>
+                    <input type="text" id="phoneSearch" class="form-control" placeholder="IMEI..." autocomplete="off">
+                    <div id="phoneResults" class="search-results"></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Yangi telefon narxi ($) <span class="text-danger">*</span></label>
+                        {{ form.new_phone_price }}
+                    </div>
+                </div>
+                {{ form.new_phone }}
+            </div>
+        </div>
+
+        <!-- Eski telefon -->
+        <div class="card mb-3">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0"><i class="fas fa-exchange-alt"></i> Eski telefon</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">{{ form.old_phone_model.label }} <span class="text-danger">*</span></label>
+                        {{ form.old_phone_model }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">{{ form.old_phone_memory.label }} <span class="text-danger">*</span></label>
+                        {{ form.old_phone_memory }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.old_phone_imei.label }}</label>
+                        {{ form.old_phone_imei }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.old_phone_condition_percentage.label }}</label>
+                        {{ form.old_phone_condition_percentage }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Qabul narxi ($) <span class="text-danger">*</span></label>
+                        {{ form.old_phone_accepted_price }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Kelajakda sotish narxi ($)</label>
+                        {{ form.old_phone_future_sale_price }}
+                    </div>
+                </div>
+                <details class="mb-3">
+                    <summary class="btn btn-sm btn-outline-secondary">Qo'shimcha xarajatlar</summary>
+                    <div class="row mt-2">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ form.old_phone_repair_cost.label }}</label>
+                            {{ form.old_phone_repair_cost }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">{{ form.old_phone_imei_cost.label }}</label>
+                            {{ form.old_phone_imei_cost }}
+                        </div>
+                    </div>
+                </details>
+                <div class="mb-3">
+                    <label class="form-label">{{ form.old_phone_image.label }}</label>
+                    {{ form.old_phone_image }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Narx farqi -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="fas fa-calculator"></i> Narx farqi</h6>
+            </div>
+            <div class="card-body">
+                <div class="price-diff-box" id="priceDiffBox">
+                    <div class="mb-2"><strong>Narx farqi:</strong></div>
+                    <h3 id="priceDiff">$0.00</h3>
+                    <span id="priceDiffInfo" class="badge bg-secondary">Ma'lumot yo'q</span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ form.exchange_type.label }}</label>
+                    {{ form.exchange_type }}
+                </div>
+
+                <div id="paymentSection" style="display:none;">
+                    <hr>
+                    <h6 class="mb-3">Mijozdan to'lovlar:</h6>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">{{ form.cash_amount.label }}</label>
+                            {{ form.cash_amount }}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">{{ form.card_amount.label }}</label>
+                            {{ form.card_amount }}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">{{ form.credit_amount.label }}</label>
+                            {{ form.credit_amount }}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">{{ form.debt_amount.label }}</label>
+                            {{ form.debt_amount }}
+                        </div>
+                    </div>
+
+                    <!-- Qarz muddati -->
+                    <div class="debt-due-field" id="debtDueField">
+                        <label><i class="fas fa-calendar-alt"></i> Qarz qaytarish muddati <span class="text-danger">*</span></label>
+                        {{ form.debt_due_date }}
+                        <small class="text-muted d-block mt-1">Qarz bo'lganda muddat kiritilishi shart</small>
+                    </div>
+
+                    <div class="alert alert-warning mt-3">
+                        <strong>To'lovlar yig'indisi:</strong> <span id="paymentTotal" class="badge bg-warning">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mijoz -->
+        <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0"><i class="fas fa-user"></i> Mijoz</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Ismi <span class="text-danger">*</span></label>
+                        {{ form.customer_name_input }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Telefoni <span class="text-danger">*</span></label>
+                        {{ form.customer_phone_input }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">{{ form.exchange_date.label }}</label>
+                        {{ form.exchange_date }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Izoh -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <label class="form-label">{{ form.notes.label }}</label>
+                {{ form.notes }}
+            </div>
+        </div>
+
+        <div class="text-end">
+            <a href="{% url 'sales:phone_exchange_list' %}" class="btn btn-secondary me-2">Bekor qilish</a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Saqlash
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const $ = id => document.getElementById(id);
+    const phoneSearch = $('phoneSearch');
+    const phoneResults = $('phoneResults');
+    const newPhoneField = $('id_new_phone');
+    const newPriceField = $('id_new_phone_price');
+    const oldAcceptedPriceField = $('id_old_phone_accepted_price');
+    const exchangeType = $('id_exchange_type');
+    const paymentSection = $('paymentSection');
+    const priceDiff = $('priceDiff');
+    const priceDiffInfo = $('priceDiffInfo');
+    const priceDiffBox = $('priceDiffBox');
+    const debtAmount = $('id_debt_amount');
+    const debtDueDate = $('id_debt_due_date');
+    const debtDueField = $('debtDueField');
+
+    const payments = ['cash_amount', 'card_amount', 'credit_amount', 'debt_amount'].map(id => $('id_' + id));
+    let searchTimeout;
+
+    // Qarz muddati ko'rsatish
+    function checkDebtDueField() {
+        const debt = parseFloat(debtAmount.value) || 0;
+        if (debt > 0 && exchangeType.value === 'customer_pays') {
+            debtDueField.classList.add('show');
+            debtDueDate.required = true;
+        } else {
+            debtDueField.classList.remove('show');
+            debtDueDate.required = false;
+        }
+    }
+
+    debtAmount.addEventListener('input', checkDebtDueField);
+
+    // IMEI qidirish
+    phoneSearch.addEventListener('input', function() {
+        const query = this.value.trim();
+        clearTimeout(searchTimeout);
+        if (query.length < 3) {
+            phoneResults.classList.remove('show');
+            return;
+        }
+        searchTimeout = setTimeout(() => {
+            fetch(`/sales/api/search-phone-by-imei/?q=${encodeURIComponent(query)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        phoneResults.innerHTML = data.map(p =>
+                            `<div class="search-item" onclick="selectPhone(${p.id}, '${p.display_text.replace(/'/g, "\\'")}', '${p.sale_price}')">
+                                <strong>${p.model} ${p.memory}</strong><br>
+                                <small>IMEI: ${p.imei} • $${p.sale_price}</small>
+                            </div>`
+                        ).join('');
+                        phoneResults.classList.add('show');
+                    } else {
+                        phoneResults.innerHTML = '<div class="search-item text-muted">Topilmadi</div>';
+                        phoneResults.classList.add('show');
+                    }
+                });
+        }, 300);
+    });
+
+    window.selectPhone = function(id, text, price) {
+        newPhoneField.value = id;
+        phoneSearch.value = text;
+        if (!newPriceField.value || newPriceField.value == '0') {
+            newPriceField.value = price;
+        }
+        phoneResults.classList.remove('show');
+        calculateDifference();
+    };
+
+    // Narx farqi hisoblash
+    function calculateDifference() {
+        const newPrice = parseFloat(newPriceField.value) || 0;
+        const oldPrice = parseFloat(oldAcceptedPriceField.value) || 0;
+        const diff = newPrice - oldPrice;
+
+        priceDiff.textContent = `$${Math.abs(diff).toFixed(2)}`;
+
+        if (diff > 0.01) {
+            priceDiff.style.color = '#dc3545';
+            priceDiffInfo.textContent = 'Mijoz to\'laydi';
+            priceDiffInfo.className = 'badge bg-danger';
+            priceDiffBox.style.borderColor = '#dc3545';
+            priceDiffBox.style.backgroundColor = '#f8d7da';
+            exchangeType.value = 'customer_pays';
+            paymentSection.style.display = 'block';
+        } else if (diff < -0.01) {
+            priceDiff.style.color = '#28a745';
+            priceDiffInfo.textContent = 'Do\'kon to\'laydi';
+            priceDiffInfo.className = 'badge bg-success';
+            priceDiffBox.style.borderColor = '#28a745';
+            priceDiffBox.style.backgroundColor = '#d4edda';
+            exchangeType.value = 'shop_pays';
+            paymentSection.style.display = 'none';
+            clearPayments();
+        } else {
+            priceDiff.style.color = '#0d6efd';
+            priceDiffInfo.textContent = 'Teng';
+            priceDiffInfo.className = 'badge bg-primary';
+            priceDiffBox.style.borderColor = '#0d6efd';
+            priceDiffBox.style.backgroundColor = '#cfe2ff';
+            exchangeType.value = 'equal';
+            paymentSection.style.display = 'none';
+            clearPayments();
+        }
+        checkDebtDueField();
+        updatePaymentTotal();
+    }
+
+    function updatePaymentTotal() {
+        if (exchangeType.value === 'customer_pays') {
+            const total = payments.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
+            $('paymentTotal').textContent = `$${total.toFixed(2)}`;
+        }
+    }
+
+    function clearPayments() {
+        payments.forEach(el => el.value = '0');
+        updatePaymentTotal();
+    }
+
+    newPriceField.addEventListener('input', calculateDifference);
+    oldAcceptedPriceField.addEventListener('input', calculateDifference);
+    payments.forEach(el => el.addEventListener('input', updatePaymentTotal));
+
+    // Form validatsiya
+    $('exchangeForm').addEventListener('submit', function(e) {
+        if (!newPhoneField.value) {
+            e.preventDefault();
+            alert('Yangi telefon tanlang!');
+            phoneSearch.focus();
+            return;
+        }
+
+        if (!$('id_customer_name_input').value.trim()) {
+            e.preventDefault();
+            alert('Mijoz ismi kiriting!');
+            $('id_customer_name_input').focus();
+            return;
+        }
+
+        if (!$('id_customer_phone_input').value.trim()) {
+            e.preventDefault();
+            alert('Mijoz telefoni kiriting!');
+            $('id_customer_phone_input').focus();
+            return;
+        }
+
+        // Qarz muddati validatsiyasi
+        const debt = parseFloat(debtAmount.value) || 0;
+        if (debt > 0 && exchangeType.value === 'customer_pays' && !debtDueDate.value) {
+            e.preventDefault();
+            alert('Qarz uchun qaytarish muddati kiriting!');
+            debtDueDate.focus();
+            return;
+        }
+
+        if (exchangeType.value === 'customer_pays') {
+            const expectedDiff = (parseFloat(newPriceField.value) || 0) - (parseFloat(oldAcceptedPriceField.value) || 0);
+            const totalPayment = payments.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
+            if (expectedDiff > 0 && Math.abs(totalPayment - expectedDiff) > 0.01) {
+                e.preventDefault();
+                alert(`To'lovlar yig'indisi narx farqiga teng bo'lishi kerak!\nKerak: $${expectedDiff.toFixed(2)}\nKiritilgan: $${totalPayment.toFixed(2)}`);
+                return;
+            }
+        }
+    });
+
+    document.addEventListener('click', e => {
+        if (!phoneSearch.contains(e.target) && !phoneResults.contains(e.target)) {
+            phoneResults.classList.remove('show');
+        }
+    });
+
+    calculateDifference();
+});
+</script>
+{% endblock %}

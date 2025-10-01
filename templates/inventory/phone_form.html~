@@ -1,0 +1,575 @@
+{% extends 'base.html' %}
+
+{% block page_title %}
+    {% if is_edit %}Tahrirlash{% else %}Yangi Telefon{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-3">
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible mb-3" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">{% if is_edit %}Tahrirlash{% else %}Yangi Telefon{% endif %}</h4>
+        <a href="{% url 'inventory:phone_list' %}" class="btn btn-outline-secondary btn-sm">Orqaga</a>
+    </div>
+
+    <!-- Form -->
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        <div class="row g-3">
+            <!-- Left Column -->
+            <div class="col-lg-8">
+                <!-- Basic Info -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">Asosiy Ma'lumotlar</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Do'kon *</label>
+                                {{ form.shop }}
+                                {% if form.shop.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.shop.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Sana</label>
+                                {{ form.created_at }}
+                                {% if form.created_at.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.created_at.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Model *</label>
+                                {{ form.phone_model }}
+                                {% if form.phone_model.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.phone_model.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Xotira *</label>
+                                {{ form.memory_size }}
+                                {% if form.memory_size.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.memory_size.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">IMEI</label>
+                                {{ form.imei }}
+                                {% if form.imei.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.imei.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="text-muted">15 raqamli IMEI (ixtiyoriy)</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Holat % *</label>
+                                {{ form.condition_percentage }}
+                                {% if form.condition_percentage.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.condition_percentage.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Status</label>
+                                {{ form.status }}
+                                {% if form.status.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.status.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Info -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">Narx Ma'lumotlari</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Sotib olingan $ *</label>
+                                {{ form.purchase_price }}
+                                {% if form.purchase_price.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.purchase_price.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">IMEI xarajat $</label>
+                                {{ form.imei_cost }}
+                                {% if form.imei_cost.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.imei_cost.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ta'mirlash $</label>
+                                {{ form.repair_cost }}
+                                {% if form.repair_cost.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.repair_cost.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Sotish narxi $</label>
+                                {{ form.sale_price }}
+                                {% if form.sale_price.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.sale_price.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Source Info -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">Manba Ma'lumotlari</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Manba turi *</label>
+                            {{ form.source_type }}
+                            {% if form.source_type.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.source_type.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Supplier Field -->
+                        <div id="supplier_field" style="display: none;">
+                            <label class="form-label">Taminotchi *</label>
+                            {{ form.supplier }}
+                            {% if form.supplier.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.supplier.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- External Seller Field -->
+                        <div id="external_seller_field" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Mavjud tashqi sotuvchi</label>
+                                {{ form.external_seller }}
+                                {% if form.external_seller.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.external_seller.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="border rounded p-3 bg-light">
+                                <h6 class="mb-3">Yoki yangi tashqi sotuvchi qo'shing</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Ism</label>
+                                        {{ form.external_seller_name }}
+                                        {% if form.external_seller_name.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.external_seller_name.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Telefon</label>
+                                        {{ form.external_seller_phone }}
+                                        <div id="external_phone_check" class="mt-1"></div>
+                                        {% if form.external_seller_phone.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.external_seller_phone.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Daily Seller Field -->
+                        <div id="daily_seller_field" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Mavjud kunlik sotuvchi</label>
+                                {{ form.daily_seller }}
+                                {% if form.daily_seller.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.daily_seller.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="border rounded p-3 bg-light mb-3">
+                                <h6 class="mb-3">Yoki yangi kunlik sotuvchi qo'shing</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Ism</label>
+                                        {{ form.daily_seller_name }}
+                                        {% if form.daily_seller_name.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.daily_seller_name.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Telefon</label>
+                                        {{ form.daily_seller_phone }}
+                                        <div id="daily_phone_check" class="mt-1"></div>
+                                        {% if form.daily_seller_phone.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.daily_seller_phone.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">To'langan summa $ *</label>
+                                {{ form.daily_payment_amount }}
+                                {% if form.daily_payment_amount.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in form.daily_payment_amount.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Exchange Field -->
+                        <div id="exchange_field" style="display: none;">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label">Qiymat $</label>
+                                    {{ form.exchange_value }}
+                                    {% if form.exchange_value.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {% for error in form.exchange_value.errors %}{{ error }}{% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Egasi *</label>
+                                    {{ form.original_owner_name }}
+                                    {% if form.original_owner_name.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {% for error in form.original_owner_name.errors %}{{ error }}{% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Telefon *</label>
+                                    {{ form.original_owner_phone }}
+                                    {% if form.original_owner_phone.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {% for error in form.original_owner_phone.errors %}{{ error }}{% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-lg-4">
+                <!-- Image -->
+                <div class="card mb-3">
+                    <div class="card-body text-center">
+                        <label class="form-label">Rasm</label>
+                        {% if form.instance.image %}
+                            <img src="{{ form.instance.image.url }}" class="img-fluid rounded mb-2" style="max-height: 200px;">
+                        {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center mb-2" style="height: 200px;">
+                                <i class="fas fa-mobile-alt fa-2x text-muted"></i>
+                            </div>
+                        {% endif %}
+                        {{ form.image }}
+                        {% if form.image.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.image.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                {% if is_edit %}Yangilash{% else %}Saqlash{% endif %}
+                            </button>
+                            <a href="{% url 'inventory:phone_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>
+                                Bekor qilish
+                            </a>
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger mt-3">
+                                {% for error in form.non_field_errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sourceType = document.getElementById('id_source_type');
+    const supplierField = document.getElementById('supplier_field');
+    const externalSellerField = document.getElementById('external_seller_field');
+    const dailySellerField = document.getElementById('daily_seller_field');
+    const exchangeField = document.getElementById('exchange_field');
+
+    // External Seller elements
+    const externalSellerSelect = document.getElementById('id_external_seller');
+    const externalSellerName = document.getElementById('id_external_seller_name');
+    const externalSellerPhone = document.getElementById('id_external_seller_phone');
+    const externalPhoneCheck = document.getElementById('external_phone_check');
+
+    // Daily Seller elements
+    const dailySellerSelect = document.getElementById('id_daily_seller');
+    const dailySellerName = document.getElementById('id_daily_seller_name');
+    const dailySellerPhone = document.getElementById('id_daily_seller_phone');
+    const dailyPhoneCheck = document.getElementById('daily_phone_check');
+
+    // Toggle fields based on source type
+    function toggleFields() {
+        const value = sourceType.value;
+
+        // Hide all fields
+        supplierField.style.display = 'none';
+        externalSellerField.style.display = 'none';
+        dailySellerField.style.display = 'none';
+        exchangeField.style.display = 'none';
+
+        // Show relevant field
+        if (value === 'supplier') {
+            supplierField.style.display = 'block';
+        } else if (value === 'external_seller') {
+            externalSellerField.style.display = 'block';
+        } else if (value === 'daily_seller') {
+            dailySellerField.style.display = 'block';
+        } else if (value === 'exchange') {
+            exchangeField.style.display = 'block';
+        }
+    }
+
+    // Phone validation for External Seller
+    let externalPhoneTimeout;
+    function checkExternalPhone() {
+        const phone = externalSellerPhone.value.trim();
+
+        if (phone.length < 7) {
+            externalPhoneCheck.innerHTML = '';
+            return;
+        }
+
+        externalPhoneCheck.innerHTML = '<small class="text-muted">Tekshirilmoqda...</small>';
+
+        fetch(`/inventory/check-seller-phone/?phone=${encodeURIComponent(phone)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.exists) {
+                    externalPhoneCheck.innerHTML = `
+                        <div class="alert alert-warning py-1 px-2 mt-1">
+                            <small><strong>Mavjud:</strong> ${data.seller.name}</small>
+                            <button type="button" class="btn btn-sm btn-primary ms-2"
+                                    onclick="selectExternalSeller(${data.seller.id}, '${data.seller.name}')">
+                                Tanlash
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    externalPhoneCheck.innerHTML = '<small class="text-success">Yangi sotuvchi yaratiladi</small>';
+                }
+            })
+            .catch(() => {
+                externalPhoneCheck.innerHTML = '<small class="text-danger">Tekshirishda xatolik</small>';
+            });
+    }
+
+    // Phone validation for Daily Seller
+    let dailyPhoneTimeout;
+    function checkDailyPhone() {
+        const phone = dailySellerPhone.value.trim();
+
+        if (phone.length < 7) {
+            dailyPhoneCheck.innerHTML = '';
+            return;
+        }
+
+        dailyPhoneCheck.innerHTML = '<small class="text-muted">Tekshirilmoqda...</small>';
+
+        // You'll need to create a similar API endpoint for daily sellers
+        // For now, using the same endpoint
+        fetch(`/inventory/check-seller-phone/?phone=${encodeURIComponent(phone)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.exists) {
+                    dailyPhoneCheck.innerHTML = `
+                        <div class="alert alert-warning py-1 px-2 mt-1">
+                            <small><strong>Mavjud:</strong> ${data.seller.name}</small>
+                            <button type="button" class="btn btn-sm btn-primary ms-2"
+                                    onclick="selectDailySeller(${data.seller.id}, '${data.seller.name}')">
+                                Tanlash
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    dailyPhoneCheck.innerHTML = '<small class="text-success">Yangi sotuvchi yaratiladi</small>';
+                }
+            })
+            .catch(() => {
+                dailyPhoneCheck.innerHTML = '<small class="text-danger">Tekshirishda xatolik</small>';
+            });
+    }
+
+    // Select existing external seller
+    window.selectExternalSeller = function(id, name) {
+        externalSellerSelect.value = id;
+        externalSellerName.value = '';
+        externalSellerPhone.value = '';
+        externalPhoneCheck.innerHTML = `<small class="text-success">Tanlandi: ${name}</small>`;
+    };
+
+    // Select existing daily seller
+    window.selectDailySeller = function(id, name) {
+        dailySellerSelect.value = id;
+        dailySellerName.value = '';
+        dailySellerPhone.value = '';
+        dailyPhoneCheck.innerHTML = `<small class="text-success">Tanlandi: ${name}</small>`;
+    };
+
+    // Clear selection when typing new info
+    function clearExternalSelection() {
+        if (externalSellerName && externalSellerPhone) {
+            if (externalSellerName.value || externalSellerPhone.value) {
+                externalSellerSelect.value = '';
+            }
+        }
+    }
+
+    function clearDailySelection() {
+        if (dailySellerName && dailySellerPhone) {
+            if (dailySellerName.value || dailySellerPhone.value) {
+                dailySellerSelect.value = '';
+            }
+        }
+    }
+
+    // Event listeners
+    if (sourceType) {
+        sourceType.addEventListener('change', toggleFields);
+        toggleFields(); // Initialize on load
+    }
+
+    // External Seller events
+    if (externalSellerPhone) {
+        externalSellerPhone.addEventListener('input', function() {
+            clearExternalSelection();
+            clearTimeout(externalPhoneTimeout);
+            externalPhoneTimeout = setTimeout(checkExternalPhone, 800);
+        });
+    }
+
+    if (externalSellerName) {
+        externalSellerName.addEventListener('input', clearExternalSelection);
+    }
+
+    if (externalSellerSelect) {
+        externalSellerSelect.addEventListener('change', function() {
+            if (externalSellerSelect.value) {
+                if (externalSellerName) externalSellerName.value = '';
+                if (externalSellerPhone) externalSellerPhone.value = '';
+                if (externalPhoneCheck) externalPhoneCheck.innerHTML = '';
+            }
+        });
+    }
+
+    // Daily Seller events
+    if (dailySellerPhone) {
+        dailySellerPhone.addEventListener('input', function() {
+            clearDailySelection();
+            clearTimeout(dailyPhoneTimeout);
+            dailyPhoneTimeout = setTimeout(checkDailyPhone, 800);
+        });
+    }
+
+    if (dailySellerName) {
+        dailySellerName.addEventListener('input', clearDailySelection);
+    }
+
+    if (dailySellerSelect) {
+        dailySellerSelect.addEventListener('change', function() {
+            if (dailySellerSelect.value) {
+                if (dailySellerName) dailySellerName.value = '';
+                if (dailySellerPhone) dailySellerPhone.value = '';
+                if (dailyPhoneCheck) dailyPhoneCheck.innerHTML = '';
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+.alert {
+    font-size: 0.875rem;
+}
+
+.card-header h6 {
+    color: #495057;
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+#external_phone_check .alert,
+#daily_phone_check .alert {
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}

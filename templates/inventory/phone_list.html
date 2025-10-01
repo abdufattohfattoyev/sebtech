@@ -1,0 +1,705 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Telefonlar{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Minimal animations */
+.fade-in { animation: fadeIn 0.2s ease-out; }
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Stats Cards - simplified */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+.stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+/* Search Card - simplified */
+.search-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+}
+
+/* Phone Cards - minimal */
+.phones-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+.phone-card {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+.phone-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.phone-image {
+    height: 120px;
+    background: #f9fafb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.phone-image img {
+    max-width: 80%;
+    max-height: 80%;
+    object-fit: contain;
+}
+.phone-placeholder {
+    color: #9ca3af;
+    font-size: 1.5rem;
+}
+.phone-info {
+    padding: 1rem;
+}
+.phone-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+.phone-specs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+.spec-badge {
+    background: #f3f4f6;
+    color: #4b5563;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+}
+.spec-badge.primary {
+    background: #dbeafe;
+    color: #2563eb;
+}
+.phone-details {
+    background: #f9fafb;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+}
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+.detail-row:last-child { margin-bottom: 0; }
+.detail-label {
+    color: #6b7280;
+}
+.detail-value {
+    color: #1f2937;
+    font-weight: 500;
+}
+.imei-code {
+    font-family: monospace;
+    background: white;
+    padding: 0.1rem 0.2rem;
+    border-radius: 2px;
+    font-size: 0.7rem;
+}
+.phone-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f3f4f6;
+}
+.phone-price {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #2563eb;
+}
+.phone-status {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.phone-status.shop { background: #dbeafe; color: #1e40af; }
+.phone-status.sold { background: #dcfce7; color: #166534; }
+.phone-status.master { background: #fef3c7; color: #92400e; }
+.phone-status.returned { background: #fee2e2; color: #991b1b; }
+.phone-status.exchanged_in { background: #e0e7ff; color: #3730a3; }
+
+.phone-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f3f4f6;
+}
+.action-btn {
+    flex: 1;
+    padding: 0.4rem;
+    border-radius: 4px;
+    border: 1px solid;
+    font-size: 0.75rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.action-btn.primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
+}
+.action-btn.warning {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+.action-btn.danger {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+.action-btn.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Header button styles */
+.btn-add {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.btn-add.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Loading - minimal */
+.loading {
+    text-align: center;
+    padding: 1rem;
+}
+.spinner {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid #f3f4f6;
+    border-top: 2px solid #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Empty state - minimal */
+.empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #6b7280;
+    grid-column: 1 / -1;
+}
+
+/* Responsive - simplified */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+    .phones-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    .search-card, .phone-info {
+        padding: 0.75rem;
+    }
+    .phone-image {
+        height: 100px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Messages -->
+    {% if messages %}
+        <div class="mb-3">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="mb-0 h3">Telefonlar</h1>
+            <small class="text-muted">Telefon ma'lumotlari</small>
+        </div>
+        <a href="{% url 'inventory:phone_create' %}" class="btn-add">
+            <i class="fas fa-plus"></i>Qo'shish
+        </a>
+    </div>
+
+    <!-- Search Form -->
+    <div class="search-card">
+        <form method="GET" id="search-form">
+            <div class="row g-2">
+                <div class="col-6 col-md-3">
+                    <input type="text" name="imei" id="imei" class="form-control form-control-sm"
+                           value="{{ imei_query|default:'' }}" placeholder="IMEI" maxlength="15">
+                </div>
+                <div class="col-6 col-md-3">
+                    <input type="text" name="model" id="model" class="form-control form-control-sm"
+                           value="{{ model_query|default:'' }}" placeholder="Model">
+                </div>
+                <div class="col-6 col-md-3">
+                    <select name="status" id="status" class="form-select form-select-sm">
+                        <option value="">Holat</option>
+                        {% for status, label in status_choices %}
+                            <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-3">
+                    <select name="shop_id" id="shop_id" class="form-select form-select-sm">
+                        <option value="">Do'kon</option>
+                        {% for shop in shops %}
+                            <option value="{{ shop.id }}" {% if selected_shop.id == shop.id %}selected{% endif %}>{{ shop.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-1 mt-2">
+                <div class="col-6">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="fas fa-search me-1"></i>Qidirish
+                    </button>
+                </div>
+                <div class="col-6">
+                    <button type="button" id="clear-filters" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="fas fa-times me-1"></i>Tozalash
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="total-phones">{{ phones.paginator.count }}</div>
+            <div class="stat-label">Jami</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="displayed-phones">{{ phones|length }}</div>
+            <div class="stat-label">Ko'rsatilgan</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="shop-phones">{{ phones_in_shop|default:0 }}</div>
+            <div class="stat-label">Do'konda</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="sold-phones">{{ phones_sold|default:0 }}</div>
+            <div class="stat-label">Sotilgan</div>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading d-none" id="loading">
+        <div class="spinner"></div>
+        <small class="text-muted d-block mt-2">Yuklanmoqda...</small>
+    </div>
+
+    <!-- Phones -->
+    <div id="phones-container">
+        <div class="phones-grid" id="phones-grid">
+            {% for phone in phones %}
+                <div class="phone-card">
+                    <div class="phone-image">
+                        {% if phone.image %}
+                            <img src="{{ phone.image.url }}" alt="{{ phone.phone_model }}">
+                        {% else %}
+                            <div class="phone-placeholder"><i class="fas fa-mobile-alt"></i></div>
+                        {% endif %}
+                    </div>
+                    <div class="phone-info">
+                        <h6 class="phone-title">{{ phone.phone_model }}</h6>
+                        <div class="phone-specs">
+                            <span class="spec-badge primary">{{ phone.memory_size }}</span>
+                            <span class="spec-badge">{{ phone.shop.name }}</span>
+                        </div>
+                        <div class="phone-details">
+                            <div class="detail-row">
+                                <span class="detail-label">IMEI:</span>
+                                <span class="detail-value imei-code">{{ phone.imei|default:"—" }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Holat:</span>
+                                <span class="detail-value">{{ phone.condition_percentage }}%</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Narx:</span>
+                                <span class="detail-value">
+                                    {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                                        ${{ phone.cost_price|floatformat:0 }}
+                                    {% else %}
+                                        <i class="fas fa-lock"></i>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="phone-footer">
+                            <div class="phone-price">${{ phone.sale_price|floatformat:0|default:"—" }}</div>
+                            <span class="phone-status {{ phone.status }}">{{ phone.get_status_display }}</span>
+                        </div>
+                        {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                            <div class="phone-actions">
+                                <a href="{% url 'inventory:phone_detail' phone.pk %}" class="action-btn primary" title="Ko'rish"><i class="fas fa-eye"></i></a>
+                                <a href="{% url 'inventory:phone_update' phone.pk %}" class="action-btn warning" title="Tahrirlash"><i class="fas fa-edit"></i></a>
+                                <a href="{% url 'inventory:phone_delete' phone.pk %}" class="action-btn danger" title="O'chirish"><i class="fas fa-trash"></i></a>
+                            </div>
+                        {% else %}
+                            <div class="phone-actions">
+                                <span class="action-btn primary disabled" title="Ruxsat yo'q">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <span class="action-btn warning disabled" title="Ruxsat yo'q">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <span class="action-btn danger disabled" title="Ruxsat yo'q">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">
+                    <i class="fas fa-mobile-alt fa-2x mb-2"></i>
+                    <h5 class="text-muted">Telefonlar topilmadi</h5>
+                    <p class="mb-2">Qidiruv bo'yicha natija yo'q</p>
+                    <a href="{% url 'inventory:phone_create' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i>Yangi qo'shish
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <nav id="pagination-container" class="mt-3" {% if not phones.has_other_pages %}style="display:none"{% endif %}>
+        <ul class="pagination pagination-sm justify-content-center" id="pagination">
+            {% if phones.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="javascript:void(0)" data-page="{{ phones.previous_page_number }}">&laquo;</a>
+                </li>
+            {% endif %}
+            {% for num in phones.paginator.page_range %}
+                <li class="page-item {% if phones.number == num %}active{% endif %}">
+                    <a class="page-link" href="javascript:void(0)" data-page="{{ num }}">{{ num }}</a>
+                </li>
+            {% endfor %}
+            {% if phones.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="javascript:void(0)" data-page="{{ phones.next_page_number }}">&raquo;</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Foydalanuvchi roli
+const userRole = '{{ request.user.userprofile.role }}';
+const canEdit = userRole === 'boss' || userRole === 'finance';
+
+let searchTimeout = null;
+
+const performSearch = (page = 1) => {
+    clearTimeout(searchTimeout);
+
+    const formData = new FormData(document.getElementById('search-form'));
+    const imei = (formData.get('imei') || '').replace(/\D/g, '');
+
+    const params = new URLSearchParams();
+    if (imei) params.set('imei', imei);
+    if (formData.get('model')) params.set('model', formData.get('model').trim());
+    if (formData.get('status')) params.set('status', formData.get('status'));
+    if (formData.get('shop_id')) params.set('shop_id', formData.get('shop_id'));
+    params.set('page', page);
+
+    // Update URL
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newUrl);
+
+    // Show loading
+    document.getElementById('loading').classList.remove('d-none');
+    document.getElementById('phones-container').style.opacity = '0.5';
+
+    searchTimeout = setTimeout(() => {
+        fetch(`${window.location.pathname}?${params.toString()}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            updateStats(data.stats);
+            updateResults(data.phones);
+            updatePagination(data);
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+        })
+        .finally(() => {
+            document.getElementById('loading').classList.add('d-none');
+            document.getElementById('phones-container').style.opacity = '1';
+        });
+    }, 200);
+};
+
+const updateStats = (stats) => {
+    if (!stats) return;
+    document.getElementById('total-phones').textContent = stats.total_phones || 0;
+    document.getElementById('displayed-phones').textContent = stats.displayed || 0;
+    document.getElementById('shop-phones').textContent = stats.phones_in_shop || 0;
+    document.getElementById('sold-phones').textContent = stats.phones_sold || 0;
+};
+
+const updateResults = (phones) => {
+    const container = document.getElementById('phones-grid');
+
+    if (!phones || phones.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-mobile-alt fa-2x mb-2"></i>
+                <h5 class="text-muted">Telefonlar topilmadi</h5>
+                <p class="mb-2">Qidiruv bo'yicha natija yo'q</p>
+                <a href="{% url 'inventory:phone_create' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i>Yangi qo'shish
+                </a>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = phones.map(phone => `
+        <div class="phone-card">
+            <div class="phone-image">
+                ${phone.image ?
+                    `<img src="${phone.image}" alt="${phone.phone_model}">` :
+                    `<div class="phone-placeholder"><i class="fas fa-mobile-alt"></i></div>`
+                }
+            </div>
+            <div class="phone-info">
+                <h6 class="phone-title">${phone.phone_model}</h6>
+                <div class="phone-specs">
+                    <span class="spec-badge primary">${phone.memory_size}</span>
+                    <span class="spec-badge">${phone.shop_name}</span>
+                </div>
+                <div class="phone-details">
+                    <div class="detail-row">
+                        <span class="detail-label">IMEI:</span>
+                        <span class="detail-value imei-code">${phone.imei || '—'}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Holat:</span>
+                        <span class="detail-value">${phone.condition_percentage}%</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Narx:</span>
+                        <span class="detail-value">
+                            ${canEdit ? '$' + Math.round(phone.cost_price) : '<i class="fas fa-lock"></i>'}
+                        </span>
+                    </div>
+                </div>
+                <div class="phone-footer">
+                    <div class="phone-price">$${phone.sale_price ? Math.round(phone.sale_price) : '—'}</div>
+                    <span class="phone-status ${phone.status}">${phone.status_display}</span>
+                </div>
+                ${canEdit ? `
+                    <div class="phone-actions">
+                        <a href="/inventory/phones/${phone.id}/" class="action-btn primary" title="Ko'rish">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="/inventory/phones/${phone.id}/edit/" class="action-btn warning" title="Tahrirlash">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="/inventory/phones/${phone.id}/delete/" class="action-btn danger" title="O'chirish">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                ` : `
+                    <div class="phone-actions">
+                        <a href="/inventory/phones/${phone.id}/" class="action-btn primary" title="Ko'rish">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <span class="action-btn warning disabled" title="Ruxsat yo'q">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <span class="action-btn danger disabled" title="Ruxsat yo'q">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                    </div>
+                `}
+            </div>
+        </div>
+    `).join('');
+};
+
+const updatePagination = (data) => {
+    const container = document.getElementById('pagination-container');
+    const pagination = document.getElementById('pagination');
+
+    if (!data.total_pages || data.total_pages <= 1) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+
+    let html = '';
+
+    // Previous button
+    if (data.has_previous) {
+        html += `<li class="page-item">
+            <a class="page-link" href="javascript:void(0)" data-page="${data.current_page - 1}">&laquo;</a>
+        </li>`;
+    }
+
+    // Page numbers
+    const startPage = Math.max(1, data.current_page - 2);
+    const endPage = Math.min(data.total_pages, data.current_page + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<li class="page-item ${i === data.current_page ? 'active' : ''}">
+            <a class="page-link" href="javascript:void(0)" data-page="${i}">${i}</a>
+        </li>`;
+    }
+
+    // Next button
+    if (data.has_next) {
+        html += `<li class="page-item">
+            <a class="page-link" href="javascript:void(0)" data-page="${data.current_page + 1}">&raquo;</a>
+        </li>`;
+    }
+
+    pagination.innerHTML = html;
+
+    // Add event listeners to new pagination links
+    pagination.querySelectorAll('[data-page]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = parseInt(this.getAttribute('data-page'));
+            if (page) {
+                performSearch(page);
+            }
+        });
+    });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    // IMEI field - clean and search on input
+    const imeiField = document.getElementById('imei');
+    if (imeiField) {
+        imeiField.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '').substring(0, 15);
+            performSearch(1);
+        });
+    }
+
+    // Other filter fields - search on change
+    ['model', 'status', 'shop_id'].forEach(id => {
+        const field = document.getElementById(id);
+        if (field) {
+            field.addEventListener('change', () => performSearch(1));
+        }
+    });
+
+    // Clear filters button
+    const clearBtn = document.getElementById('clear-filters');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            document.getElementById('search-form').reset();
+            window.history.pushState({}, '', window.location.pathname);
+            performSearch(1);
+        });
+    }
+
+    // Form submit
+    const searchForm = document.getElementById('search-form');
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            performSearch(1);
+        });
+    }
+
+    // Initial pagination event listeners
+    document.querySelectorAll('#pagination [data-page]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = parseInt(this.getAttribute('data-page'));
+            if (page) {
+                performSearch(page);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

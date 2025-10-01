@@ -1,0 +1,83 @@
+<!-- Seller Detail Modal Template (seller_detail_modal.html) -->
+<div class="seller-detail-content">
+    <div class="seller-header">
+        <h6>{{ seller.get_full_name|default:seller.username }}</h6>
+        <small class="text-muted">{{ selected_date|date:"d F Y" }} - Kunlik Statistika</small>
+    </div>
+
+    <div class="seller-detail-grid">
+        <div class="detail-item">
+            <div class="detail-value">${{ seller_stats.sales.total|floatformat:2 }}</div>
+            <div class="detail-label">Umumiy Savdo</div>
+        </div>
+
+        <div class="detail-item">
+            <div class="detail-value">${{ seller_stats.sales.cash|floatformat:2 }}</div>
+            <div class="detail-label">Naqd Pul</div>
+        </div>
+
+        <div class="detail-item">
+            <div class="detail-value">{{ seller_stats.counts.phone|default:0 }}</div>
+            <div class="detail-label">Telefon Soni</div>
+        </div>
+
+        <div class="detail-item">
+            <div class="detail-value">{{ seller_stats.counts.accessory|default:0 }}</div>
+            <div class="detail-label">Aksessuar</div>
+        </div>
+
+        <div class="detail-item">
+            <div class="detail-value">{{ seller_stats.counts.exchange|default:0 }}</div>
+            <div class="detail-label">Almashtirish</div>
+        </div>
+
+        <div class="detail-item">
+            <div class="detail-value">${{ seller_stats.profits.total_profit|floatformat:2 }}</div>
+            <div class="detail-label">Umumiy Foyda</div>
+        </div>
+    </div>
+
+    <!-- Recent Sales -->
+    {% if seller_stats.sales_data.phone_sales or seller_stats.sales_data.accessory_sales %}
+    <div class="recent-sales">
+        <h6>Oxirgi Savdolar</h6>
+
+        <!-- Phone Sales -->
+        {% for sale in seller_stats.sales_data.phone_sales|slice:":3" %}
+        <div class="sale-item sale-phone">
+            <div class="sale-row">
+                <div class="sale-info">
+                    <div class="sale-title">{{ sale.phone.brand }} {{ sale.phone.model }}</div>
+                    <div class="sale-subtitle">{{ sale.customer.name }}</div>
+                </div>
+                <div class="sale-price">${{ sale.sale_price|floatformat:2 }}</div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Accessory Sales -->
+        {% for sale in seller_stats.sales_data.accessory_sales|slice:":3" %}
+        <div class="sale-item sale-accessory">
+            <div class="sale-row">
+                <div class="sale-info">
+                    <div class="sale-title">{{ sale.accessory.name }} ({{ sale.quantity }}x)</div>
+                    <div class="sale-subtitle">{{ sale.customer.name }}</div>
+                </div>
+                <div class="sale-price">${{ sale.total_price|floatformat:2 }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div class="modal-actions" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+        <a href="{% url 'reports:seller_detail_page' seller.id %}?shop={{ shop_id }}&date={{ selected_date|date:'Y-m-d' }}"
+           class="btn btn-primary btn-sm" target="_blank">
+            Batafsil Ko'rish
+        </a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeModal()">
+            Yopish
+        </button>
+    </div>
+</div>

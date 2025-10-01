@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+
+{% block page_title %}
+    {% if is_edit %}Aksessuar Tahrirlash{% else %}Yangi Aksessuar{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-headphones me-2"></i>
+            {% if is_edit %}Aksessuar Tahrirlash{% else %}Yangi Aksessuar{% endif %}
+        </h2>
+        <a href="{% url 'inventory:accessory_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Orqaga
+        </a>
+    </div>
+
+    <!-- Form -->
+    <div class="card">
+        <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div class="row g-3">
+                    <!-- Do'kon -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Do'kon <span class="text-danger">*</span></label>
+                        {{ form.shop }}
+                        {% if form.shop.errors %}<div class="text-danger small">{{ form.shop.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <!-- Sana -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Qo'shilgan sana</label>
+                        {{ form.created_at }}
+                        {% if form.created_at.errors %}<div class="text-danger small">{{ form.created_at.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    {% if not is_edit %}
+                    <!-- Mavjud Kod -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Mavjud Kod (ixtiyoriy)</label>
+                        {{ form.existing_code }}
+                        {% if form.existing_code.errors %}<div class="text-danger small">{{ form.existing_code.errors.0 }}</div>{% endif %}
+                        <div class="form-text">Mavjud aksessuar ustiga qo'shish uchun kodini kiriting</div>
+
+                        <!-- Mavjud aksessuar ma'lumotlari -->
+                        <div id="existing-info" class="alert alert-success mt-2 d-none">
+                            <i class="fas fa-check-circle me-2"></i><strong>Mavjud aksessuar topildi!</strong>
+                            <div id="existing-details" class="mt-2"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Nomi -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Nomi <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <!-- Kod -->
+                    <div class="col-md-6" id="code-field">
+                        <label class="form-label fw-bold">Kod <span class="text-danger">*</span></label>
+                        {{ form.code }}
+                        {% if form.code.errors %}<div class="text-danger small">{{ form.code.errors.0 }}</div>{% endif %}
+                        <div class="form-text">Avtomatik beriladi yoki o'zingiz kiriting</div>
+                    </div>
+
+                    <!-- Taminotchi -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Taminotchi</label>
+                        {{ form.supplier }}
+                        {% if form.supplier.errors %}<div class="text-danger small">{{ form.supplier.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    {% if not is_edit %}
+                    <!-- Tannarx -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Tannarx (so'm) <span class="text-danger">*</span></label>
+                        {{ form.initial_purchase_price }}
+                        {% if form.initial_purchase_price.errors %}<div class="text-danger small">{{ form.initial_purchase_price.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <!-- Soni -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Soni <span class="text-danger">*</span></label>
+                        {{ form.initial_quantity }}
+                        {% if form.initial_quantity.errors %}<div class="text-danger small">{{ form.initial_quantity.errors.0 }}</div>{% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Sotish Narxi -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Sotish Narxi (so'm) <span class="text-danger">*</span></label>
+                        {{ form.sale_price }}
+                        {% if form.sale_price.errors %}<div class="text-danger small">{{ form.sale_price.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <!-- Rasm -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Rasm</label>
+                        {% if form.instance.image %}
+                            <div class="mb-2">
+                                <img src="{{ form.instance.image.url }}" class="rounded" style="max-height: 120px;">
+                            </div>
+                        {% endif %}
+                        {{ form.image }}
+                        {% if form.image.errors %}<div class="text-danger small">{{ form.image.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <!-- Tugmalar -->
+                    <div class="col-12 mt-4">
+                        <hr>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-1"></i>
+                                {% if is_edit %}Yangilash{% else %}Saqlash{% endif %}
+                            </button>
+                            <a href="{% url 'inventory:accessory_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>Bekor Qilish
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if not is_edit %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const shop = document.getElementById('id_shop');
+    const existingCode = document.getElementById('id_existing_code');
+    const codeField = document.getElementById('code-field');
+    const code = document.getElementById('id_code');
+    const name = document.getElementById('id_name');
+    const salePrice = document.getElementById('id_sale_price');
+    const existingInfo = document.getElementById('existing-info');
+    const existingDetails = document.getElementById('existing-details');
+
+    let timeout;
+
+    // Mavjud kodni tekshirish
+    async function checkExisting() {
+        if (!shop.value || !existingCode.value.trim()) {
+            hideExistingInfo();
+            showCodeField();
+            return;
+        }
+
+        const searchCode = existingCode.value.trim().padStart(4, '0');
+
+        try {
+            const response = await fetch(`/inventory/accessories/search/?shop_id=${shop.value}&code=${searchCode}`);
+            const data = await response.json();
+
+            if (data.accessories && data.accessories.length > 0) {
+                const acc = data.accessories[0];
+                showExistingInfo(acc);
+                hideCodeField();
+
+                // Auto-fill
+                if (!name.value) name.value = acc.name;
+                if (!salePrice.value) salePrice.value = acc.sale_price;
+            } else {
+                hideExistingInfo();
+                showCodeField();
+            }
+        } catch (error) {
+            console.error('Xatolik:', error);
+            hideExistingInfo();
+            showCodeField();
+        }
+    }
+
+    function showExistingInfo(acc) {
+        existingDetails.innerHTML = `
+            <div class="row small text-muted">
+                <div class="col-3">Nomi: <strong>${acc.name}</strong></div>
+                <div class="col-3">Soni: <strong class="text-primary">${acc.quantity} dona</strong></div>
+                <div class="col-3">Tannarx: <strong>${acc.purchase_price.toLocaleString()} so'm</strong></div>
+                <div class="col-3">Sotish: <strong>${acc.sale_price.toLocaleString()} so'm</strong></div>
+            </div>
+        `;
+        existingInfo.classList.remove('d-none');
+    }
+
+    function hideExistingInfo() {
+        existingInfo.classList.add('d-none');
+    }
+
+    function showCodeField() {
+        codeField.style.display = 'block';
+        code.required = true;
+        generateCode();
+    }
+
+    function hideCodeField() {
+        codeField.style.display = 'none';
+        code.required = false;
+        code.value = '';
+    }
+
+    // Keyingi kodni generatsiya qilish
+    async function generateCode() {
+        if (!shop.value || code.value) return;
+
+        try {
+            const response = await fetch(`/inventory/accessories/search/?shop_id=${shop.value}`);
+            const data = await response.json();
+
+            if (data.accessories && data.accessories.length > 0) {
+                const codes = data.accessories.map(a => parseInt(a.code)).filter(c => !isNaN(c));
+                const nextCode = codes.length > 0 ? Math.max(...codes) + 1 : 1;
+                code.value = nextCode.toString().padStart(4, '0');
+            } else {
+                code.value = '0001';
+            }
+        } catch (error) {
+            code.value = '0001';
+        }
+    }
+
+    // Events
+    existingCode.addEventListener('input', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(checkExisting, 300);
+    });
+
+    shop.addEventListener('change', function() {
+        if (existingCode.value) {
+            checkExisting();
+        } else {
+            generateCode();
+        }
+    });
+
+    // Initial
+    if (shop.value) {
+        generateCode();
+    }
+});
+</script>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,392 @@
+{% extends 'base.html' %}
+{% block page_title %}Ustalar Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--gray-200);
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+}
+
+.stat-label {
+    color: var(--gray-500);
+    font-size: 0.875rem;
+}
+
+.content-box {
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid var(--gray-200);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.box-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--gray-50);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.masters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.master-card {
+    background: var(--gray-50);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--gray-200);
+}
+
+.master-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.master-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 1rem;
+}
+
+.master-info h6 {
+    margin: 0 0 0.25rem 0;
+    font-weight: 600;
+}
+
+.master-phone {
+    color: var(--gray-500);
+    font-size: 0.875rem;
+}
+
+.master-stats {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.stat-badge {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    background: white;
+}
+
+.stat-badge-value {
+    font-weight: 700;
+    font-size: 1.125rem;
+}
+
+.stat-badge-label {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+}
+
+.services-table {
+    width: 100%;
+    font-size: 0.875rem;
+}
+
+.services-table th {
+    background: var(--gray-50);
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.services-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.services-table tbody tr:hover {
+    background: var(--gray-50);
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.status-active {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-done {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--gray-500);
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .masters-grid {
+        grid-template-columns: 1fr;
+    }
+    .services-table {
+        display: none;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header buttons -->
+    <div class="d-flex gap-2 mb-3">
+        <button class="btn btn-primary" onclick="location.href='{% url 'services:service_create' %}'">
+            + Xizmat berish
+        </button>
+        <button class="btn btn-outline-primary" onclick="location.href='{% url 'services:master_create' %}'">
+            + Usta qo'shish
+        </button>
+        <button class="btn btn-outline-secondary" onclick="location.href='{% url 'services:service_list' %}'">
+            Xizmatlar
+        </button>
+        <button class="btn btn-outline-secondary" onclick="location.href='{% url 'services:master_list' %}'">
+            Ustalar
+        </button>
+    </div>
+
+    <!-- Statistics -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value text-primary">{{ total_masters|default:0 }}</div>
+            <div class="stat-label">Jami ustalar</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value text-warning">{{ active_services|default:0 }}</div>
+            <div class="stat-label">Faol xizmatlar</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value text-success">{{ completed_services|default:0 }}</div>
+            <div class="stat-label">Tugallangan</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value text-danger">${{ total_unpaid|floatformat:0|default:0 }}</div>
+            <div class="stat-label">To'lanmagan</div>
+        </div>
+    </div>
+
+    <!-- Masters -->
+    <div class="content-box">
+        <div class="box-header">
+            <h5 class="mb-0">Ustalar</h5>
+            <a href="{% url 'services:master_list' %}" class="btn btn-sm btn-primary">Barchasi →</a>
+        </div>
+        {% if masters %}
+        <div class="masters-grid">
+            {% for master in masters|slice:":6" %}
+            <div class="master-card">
+                <div class="master-header">
+                    <div class="master-avatar">
+                        {{ master.first_name|first }}{{ master.last_name|first }}
+                    </div>
+                    <div class="master-info">
+                        <h6>{{ master.first_name }} {{ master.last_name }}</h6>
+                        <div class="master-phone">{{ master.phone_number }}</div>
+                    </div>
+                </div>
+
+                <div class="master-stats">
+                    <div class="stat-badge">
+                        <div class="stat-badge-value text-warning">{{ master.active_services_count|default:0 }}</div>
+                        <div class="stat-badge-label">Faol</div>
+                    </div>
+                    <div class="stat-badge">
+                        <div class="stat-badge-value text-success">{{ master.completed_services_count|default:0 }}</div>
+                        <div class="stat-badge-label">Bajarilgan</div>
+                    </div>
+                    <div class="stat-badge">
+                        <div class="stat-badge-value text-danger">${{ master.total_unpaid_amount|floatformat:0|default:0 }}</div>
+                        <div class="stat-badge-label">Qarz</div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <a href="{% url 'services:master_detail' master.pk %}" class="btn btn-outline-primary btn-sm flex-fill">
+                        Ko'rish
+                    </a>
+                    <a href="{% url 'services:service_create' %}?master={{ master.pk }}" class="btn btn-primary btn-sm flex-fill">
+                        Xizmat berish
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-users fa-3x mb-3"></i>
+            <h5>Ustalar yo'q</h5>
+            <p class="mb-3">Birinchi ustangizni qo'shing</p>
+            <a href="{% url 'services:master_create' %}" class="btn btn-primary">+ Usta qo'shish</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Services -->
+    <div class="content-box">
+        <div class="box-header">
+            <h5 class="mb-0">So'nggi xizmatlar</h5>
+            <a href="{% url 'services:service_list' %}" class="btn btn-sm btn-primary">Barchasi →</a>
+        </div>
+        {% if recent_services %}
+        <div class="table-responsive">
+            <table class="services-table">
+                <thead>
+                    <tr>
+                        <th>Telefon</th>
+                        <th>Usta</th>
+                        <th>Summa</th>
+                        <th>Holat</th>
+                        <th>Sana</th>
+                        <th>Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for service in recent_services %}
+                    <tr>
+                        <td>
+                            <strong>{{ service.phone.phone_model }}</strong>
+                            <br><small class="text-muted">{{ service.phone.imei|default:"N/A" }}</small>
+                        </td>
+                        <td>{{ service.master.first_name }} {{ service.master.last_name }}</td>
+                        <td>
+                            <strong>${{ service.service_fee|floatformat:2 }}</strong>
+                            {% if service.remaining_amount > 0 %}
+                            <br><small class="text-danger">-${{ service.remaining_amount|floatformat:2 }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if service.status == 'in_progress' %}
+                            <span class="status-badge status-active">Jarayonda</span>
+                            {% else %}
+                            <span class="status-badge status-done">Tugallangan</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ service.given_date|date:"d.m.Y" }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'services:service_detail' service.pk %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'services:service_edit' service.pk %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile version -->
+        <div class="d-md-none p-3">
+            {% for service in recent_services %}
+            <div class="master-card mb-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <strong>{{ service.phone.phone_model }}</strong>
+                        <br><small class="text-muted">{{ service.phone.imei|default:"N/A" }}</small>
+                    </div>
+                    {% if service.status == 'in_progress' %}
+                    <span class="status-badge status-active">Jarayonda</span>
+                    {% else %}
+                    <span class="status-badge status-done">Tugallangan</span>
+                    {% endif %}
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Usta:</small>
+                    <strong>{{ service.master.first_name }} {{ service.master.last_name }}</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <small class="text-muted">Summa:</small>
+                        <strong>${{ service.service_fee|floatformat:2 }}</strong>
+                    </div>
+                    <small class="text-muted">{{ service.given_date|date:"d.m.Y" }}</small>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'services:service_detail' service.pk %}" class="btn btn-sm btn-outline-primary flex-fill">
+                        <i class="fas fa-eye"></i> Ko'rish
+                    </a>
+                    <a href="{% url 'services:service_edit' service.pk %}" class="btn btn-sm btn-outline-secondary flex-fill">
+                        <i class="fas fa-edit"></i> Tahrir
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-clipboard-list fa-3x mb-3"></i>
+            <h5>Xizmatlar yo'q</h5>
+            <p class="mb-3">Hozircha xizmat mavjud emas</p>
+            <a href="{% url 'services:service_create' %}" class="btn btn-primary">+ Xizmat berish</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Dashboard yuklandi');
+});
+</script>
+{% endblock %}

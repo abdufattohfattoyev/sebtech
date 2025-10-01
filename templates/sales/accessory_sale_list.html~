@@ -1,0 +1,338 @@
+<!-- sales/templates/sales/accessory_sale_list.html -->
+{% extends "base.html" %}
+
+{% block page_title %}Aksessuar sotuvlari{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Aksessuar sotuvlari</h2>
+    <a href="{% url 'sales:accessory_sale_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>Yangi sotish
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if accessory_sales %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Aksessuar</th>
+                            <th>Mijoz</th>
+                            <th>Soni</th>
+                            <th>Birlik narxi</th>
+                            <th>Jami</th>
+                            <th>Naqd</th>
+                            <th>Karta</th>
+                            <th>Nasiya</th>
+                            <th>Qarz</th>
+                            <th>Sana</th>
+                            <th>Amallar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sale in accessory_sales %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ sale.accessory.name }}</div>
+                                <small class="text-muted">{{ sale.accessory.brand.name }}</small>
+                            </td>
+                            <td>{{ sale.customer.name }}</td>
+                            <td>{{ sale.quantity }}</td>
+                            <td>${{ sale.unit_price }}</td>
+                            <td class="fw-bold text-primary">${{ sale.total_price }}</td>
+                            <td class="text-success">${{ sale.cash_amount }}</td>
+                            <td class="text-info">${{ sale.card_amount }}</td>
+                            <td class="text-warning">${{ sale.credit_amount }}</td>
+                            <td class="text-danger">${{ sale.debt_amount }}</td>
+                            <td>{{ sale.sale_date|date:"d.m.Y" }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'sales:accessory_sale_detail' sale.pk %}" class="btn btn-outline-primary" title="Ko'rish">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'sales:accessory_sale_edit' sale.pk %}" class="btn btn-outline-secondary" title="Tahrirlash">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'sales:accessory_sale_delete' sale.pk %}" class="btn btn-outline-danger" title="O'chirish">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-headphones text-muted" style="font-size: 3rem;"></i>
+                <h4 class="text-muted mt-3">Hali aksessuar sotuvlari yo'q</h4>
+                <p class="text-muted">Birinchi aksessuar sotishini qo'shing!</p>
+                <a href="{% url 'sales:accessory_sale_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Aksessuar sotish
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+<!-- sales/templates/sales/accessory_sale_form.html -->
+{% extends "base.html" %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ title }}</h2>
+    <a href="{% url 'sales:accessory_sale_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-1"></i>Orqaga
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.accessory.id_for_label }}" class="form-label">{{ form.accessory.label }}</label>
+                    {{ form.accessory }}
+                    {% if form.accessory.errors %}
+                        <div class="text-danger mt-1">{{ form.accessory.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.customer.id_for_label }}" class="form-label">{{ form.customer.label }}</label>
+                    {{ form.customer }}
+                    {% if form.customer.errors %}
+                        <div class="text-danger mt-1">{{ form.customer.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="{{ form.quantity.id_for_label }}" class="form-label">{{ form.quantity.label }}</label>
+                    {{ form.quantity }}
+                    {% if form.quantity.errors %}
+                        <div class="text-danger mt-1">{{ form.quantity.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label for="{{ form.unit_price.id_for_label }}" class="form-label">{{ form.unit_price.label }}</label>
+                    {{ form.unit_price }}
+                    {% if form.unit_price.errors %}
+                        <div class="text-danger mt-1">{{ form.unit_price.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Jami narx</label>
+                    <input type="text" id="totalPrice" class="form-control" readonly>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label for="{{ form.sale_date.id_for_label }}" class="form-label">{{ form.sale_date.label }}</label>
+                    {{ form.sale_date }}
+                    {% if form.sale_date.errors %}
+                        <div class="text-danger mt-1">{{ form.sale_date.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="mb-0">To'lov turlari</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.cash_amount.id_for_label }}" class="form-label">{{ form.cash_amount.label }}</label>
+                            {{ form.cash_amount }}
+                            {% if form.cash_amount.errors %}
+                                <div class="text-danger mt-1">{{ form.cash_amount.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.card_amount.id_for_label }}" class="form-label">{{ form.card_amount.label }}</label>
+                            {{ form.card_amount }}
+                            {% if form.card_amount.errors %}
+                                <div class="text-danger mt-1">{{ form.card_amount.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.credit_amount.id_for_label }}" class="form-label">{{ form.credit_amount.label }}</label>
+                            {{ form.credit_amount }}
+                            {% if form.credit_amount.errors %}
+                                <div class="text-danger mt-1">{{ form.credit_amount.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.debt_amount.id_for_label }}" class="form-label">{{ form.debt_amount.label }}</label>
+                            {{ form.debt_amount }}
+                            {% if form.debt_amount.errors %}
+                                <div class="text-danger mt-1">{{ form.debt_amount.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}
+                    <div class="text-danger mt-1">{{ form.notes.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i>Saqlash
+                </button>
+                <a href="{% url 'sales:accessory_sale_list' %}" class="btn btn-outline-secondary">
+                    Bekor qilish
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const quantity = document.getElementById('{{ form.quantity.id_for_label }}');
+    const unitPrice = document.getElementById('{{ form.unit_price.id_for_label }}');
+    const totalPrice = document.getElementById('totalPrice');
+
+    function calculateTotalPrice() {
+        const qty = parseFloat(quantity.value) || 0;
+        const price = parseFloat(unitPrice.value) || 0;
+        const total = qty * price;
+        totalPrice.value = '$' + total.toFixed(2);
+    }
+
+    quantity.addEventListener('input', calculateTotalPrice);
+    unitPrice.addEventListener('input', calculateTotalPrice);
+    calculateTotalPrice();
+});
+</script>
+{% endblock %}
+
+<!-- sales/templates/sales/accessory_sale_detail.html -->
+{% extends "base.html" %}
+
+{% block page_title %}Aksessuar sotish tafsilotlari{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Aksessuar sotish tafsilotlari</h2>
+    <div class="btn-group">
+        <a href="{% url 'sales:accessory_sale_edit' accessory_sale.pk %}" class="btn btn-outline-primary">
+            <i class="fas fa-edit me-1"></i>Tahrirlash
+        </a>
+        <a href="{% url 'sales:accessory_sale_delete' accessory_sale.pk %}" class="btn btn-outline-danger">
+            <i class="fas fa-trash me-1"></i>O'chirish
+        </a>
+        <a href="{% url 'sales:accessory_sale_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Orqaga
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Sotish ma'lumotlari</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td class="fw-bold">Aksessuar:</td>
+                                <td>{{ accessory_sale.accessory.name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Brand:</td>
+                                <td>{{ accessory_sale.accessory.brand.name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Soni:</td>
+                                <td>{{ accessory_sale.quantity }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Birlik narxi:</td>
+                                <td>${{ accessory_sale.unit_price }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Mijoz:</td>
+                                <td>{{ accessory_sale.customer.name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Sotuvchi:</td>
+                                <td>{{ accessory_sale.salesman.get_full_name|default:accessory_sale.salesman.username }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Sana:</td>
+                                <td>{{ accessory_sale.sale_date|date:"d.m.Y" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                {% if accessory_sale.notes %}
+                <div class="mt-3">
+                    <strong>Izohlar:</strong>
+                    <p class="mt-2">{{ accessory_sale.notes|linebreaksbr }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Narx ma'lumotlari</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Jami narx:</span>
+                    <span class="fw-bold text-primary">${{ accessory_sale.total_price }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Foyda:</span>
+                    <span class="fw-bold text-success">${{ accessory_sale.profit }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-success">Naqd:</span>
+                    <span>${{ accessory_sale.cash_amount }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-info">Karta:</span>
+                    <span>${{ accessory_sale.card_amount }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-warning">Nasiya:</span>
+                    <span>${{ accessory_sale.credit_amount }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-danger">Qarz:</span>
+                    <span>${{ accessory_sale.debt_amount }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

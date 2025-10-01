@@ -1,0 +1,468 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block page_title %}{{ seller.get_full_name|default:seller.username }} - Oylik Maosh{% endblock %}
+
+{% block extra_css %}
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, sans-serif; background: #fafafa; }
+
+.header { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }
+.header-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+.header-subtitle { font-size: 1rem; opacity: 0.95; }
+
+.filter-card { background: white; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.filter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+
+/* ✅ QAYTARILGANLAR OGOHLANTIRUV */
+.returns-alert {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border-left: 4px solid #dc2626;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.returns-alert-icon {
+  font-size: 2rem;
+  color: #dc2626;
+}
+.returns-alert-content h4 {
+  margin: 0 0 0.5rem 0;
+  color: #991b1b;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.returns-alert-content p {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; }
+.summary-card { background: white; padding: 1.5rem; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.summary-label { font-size: 0.813rem; color: #6b7280; margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600; }
+.summary-value { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+.summary-currency { font-size: 0.875rem; color: #9ca3af; margin-top: 0.25rem; }
+
+.currency-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+.currency-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.currency-title { font-size: 1rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 3px solid; }
+.currency-title.usd { border-color: #10b981; color: #10b981; }
+.currency-title.uzs { border-color: #3b82f6; color: #3b82f6; }
+
+.currency-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+.currency-stat { text-align: center; padding: 1.25rem; background: #f9fafb; border-radius: 8px; }
+.currency-stat-label { font-size: 0.813rem; color: #6b7280; margin-bottom: 0.5rem; font-weight: 600; }
+.currency-stat-value { font-size: 1.75rem; font-weight: 700; }
+.currency-stat-value.usd { color: #10b981; }
+.currency-stat-value.uzs { color: #3b82f6; }
+
+.commission-section { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.commission-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb; }
+.commission-title { font-size: 1.125rem; font-weight: 700; color: #111827; }
+.commission-subtitle { font-size: 0.875rem; color: #6b7280; }
+
+.commission-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.commission-card { background: linear-gradient(135deg, #f9fafb, #ffffff); padding: 1.25rem; border-radius: 8px; border: 2px solid #e5e7eb; }
+.commission-card.usd { border-color: #10b981; }
+.commission-card.uzs { border-color: #3b82f6; }
+
+.commission-card-title { font-size: 0.875rem; font-weight: 700; text-transform: uppercase; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+.commission-card-title.usd { color: #10b981; }
+.commission-card-title.uzs { color: #3b82f6; }
+.currency-icon { font-size: 1.125rem; }
+
+.commission-items { display: grid; gap: 0.75rem; }
+.commission-item { display: flex; justify-content: space-between; align-items: center; padding: 0.875rem; background: white; border-radius: 6px; border-left: 3px solid; }
+.commission-item.phone { border-left-color: #10b981; }
+.commission-item.accessory { border-left-color: #3b82f6; }
+.commission-item.exchange { border-left-color: #f59e0b; }
+
+.commission-label { font-weight: 600; font-size: 0.875rem; color: #374151; }
+.commission-calc { font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem; }
+.commission-value { font-size: 1.125rem; font-weight: 700; }
+.commission-value.usd { color: #10b981; }
+.commission-value.uzs { color: #3b82f6; }
+
+.daily-section { background: white; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.daily-header { padding: 1.25rem; border-bottom: 2px solid #e5e7eb; font-weight: 700; display: flex; justify-content: space-between; font-size: 1.125rem; color: #111827; }
+
+.day-item { border-bottom: 1px solid #f3f4f6; }
+.day-toggle { padding: 1.25rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+.day-toggle:hover { background: #f9fafb; }
+.day-info { display: flex; gap: 1.25rem; align-items: center; }
+.day-date { font-weight: 700; min-width: 120px; font-size: 0.938rem; color: #111827; }
+.day-badges { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.badge { padding: 0.375rem 0.75rem; border-radius: 16px; font-size: 0.813rem; font-weight: 600; }
+.badge.phone { background: #dcfce7; color: #166534; }
+.badge.accessory { background: #dbeafe; color: #1e40af; }
+.badge.exchange { background: #fef3c7; color: #92400e; }
+.badge.return { background: #fee2e2; color: #991b1b; }
+
+.day-stats { display: flex; gap: 1.5rem; }
+.day-stat { text-align: right; }
+.day-stat-label { font-size: 0.75rem; color: #6b7280; font-weight: 600; }
+.day-stat-value { font-size: 1rem; font-weight: 700; margin-top: 0.25rem; }
+.expand-icon { color: #9ca3af; transition: transform 0.2s; font-size: 1.25rem; }
+.expand-icon.expanded { transform: rotate(180deg); }
+
+.day-details { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+.day-details.expanded { max-height: 3000px; }
+.details-content { padding: 1.5rem; background: #fafafa; }
+.details-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
+.detail-section { background: white; padding: 1.25rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.detail-title { font-size: 0.938rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid #e5e7eb; color: #111827; }
+
+.sale-list { max-height: 300px; overflow-y: auto; }
+.sale-card { padding: 1rem; background: #f9fafb; border-radius: 6px; margin-bottom: 0.75rem; border-left: 4px solid; transition: transform 0.2s; }
+.sale-card:hover { transform: translateX(2px); }
+.sale-card.phone { border-left-color: #10b981; }
+.sale-card.accessory { border-left-color: #3b82f6; }
+.sale-card.exchange { border-left-color: #f59e0b; }
+.sale-card.return { border-left-color: #dc2626; background: #fef2f2; }
+.sale-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+.sale-name { font-weight: 700; font-size: 0.875rem; color: #111827; }
+.sale-price { font-weight: 700; font-size: 1rem; }
+.sale-meta { font-size: 0.813rem; color: #6b7280; }
+
+.total-salary { background: linear-gradient(135deg, #10b981, #059669); border-radius: 8px; padding: 2rem; text-align: center; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.total-label { font-size: 1rem; opacity: 0.95; margin-bottom: 0.75rem; font-weight: 600; letter-spacing: 1px; }
+.total-value { font-size: 3rem; font-weight: 700; margin-bottom: 0.75rem; }
+.total-breakdown { font-size: 0.938rem; opacity: 0.95; line-height: 1.6; }
+
+.empty { text-align: center; padding: 2.5rem; color: #9ca3af; font-size: 0.938rem; }
+
+@media (max-width: 1024px) {
+    .currency-grid, .commission-grid { grid-template-columns: 1fr; }
+    .details-grid { grid-template-columns: repeat(2, 1fr); }
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+    .summary-grid, .filter-grid, .currency-stats, .day-stats { grid-template-columns: 1fr; }
+    .details-grid { grid-template-columns: 1fr; }
+    .day-info { flex-direction: column; align-items: flex-start; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+    <div class="header">
+        <div class="header-title">{{ seller.get_full_name|default:seller.username }} - Oylik Maosh</div>
+        <div class="header-subtitle">{{ month_names|get_item:month }} {{ year }} | {{ selected_shop.name }}</div>
+    </div>
+
+    <div class="filter-card">
+        <form method="get" class="filter-grid">
+            <select name="shop" class="form-select">
+                {% for shop in shops %}
+                <option value="{{ shop.id }}" {% if shop == selected_shop %}selected{% endif %}>{{ shop.name }}</option>
+                {% endfor %}
+            </select>
+            <select name="year" class="form-select">
+                {% for y in years %}
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+            <select name="month" class="form-select">
+                {% for m in months %}
+                <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}-oy</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">Ko'rsat</button>
+        </form>
+    </div>
+
+    <!-- ✅ QAYTARILGANLAR OGOHLANTIRUV -->
+    {% if salary_data.sales.returns_count > 0 %}
+    <div class="returns-alert">
+        <div class="returns-alert-icon">⚠️</div>
+        <div class="returns-alert-content">
+            <h4>Bu oyda {{ salary_data.sales.returns_count }} ta telefon qaytarildi!</h4>
+            <p>
+                Qaytarilgan telefonlar sotish sonidan ayirildi va ular uchun komissiya hisoblanmadi.
+                Yo'qotilgan foyda: <strong>${{ salary_data.profits.returns_profit|floatformat:2 }}</strong>
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-label">Ish Kunlari</div>
+            <div class="summary-value">{{ daily_data|length }}</div>
+            <div class="summary-currency">kun</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Jami Sotuvlar (Sof)</div>
+            <div class="summary-value">{{ salary_data.sales.phone_count|add:salary_data.sales.accessory_count|add:salary_data.sales.exchange_count }}</div>
+            <div class="summary-currency">dona</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Asosiy Maosh</div>
+            <div class="summary-value">${{ salary_data.commission.base_salary|floatformat:2 }}</div>
+            <div class="summary-currency">USD</div>
+        </div>
+        <div class="summary-card" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+            <div class="summary-label" style="color: white;">Jami Maosh</div>
+            <div class="summary-value" style="color: white;">${{ salary_data.commission.total_salary|floatformat:2 }}</div>
+            <div class="summary-currency" style="color: white;">USD</div>
+        </div>
+    </div>
+
+    <div class="currency-grid">
+        <div class="currency-card">
+            <div class="currency-title usd">💵 Telefon & Almashtirish (Dollar)</div>
+            <div class="currency-stats">
+                <div class="currency-stat">
+                    <div class="currency-stat-label">Savdo</div>
+                    <div class="currency-stat-value usd">${{ salary_data.sales.phone_total|floatformat:2 }}</div>
+                </div>
+                <div class="currency-stat">
+                    <div class="currency-stat-label">Soni (Sof)</div>
+                    <div class="currency-stat-value usd">{{ salary_data.sales.phone_count|add:salary_data.sales.exchange_count }}</div>
+                </div>
+                <div class="currency-stat">
+                    <div class="currency-stat-label">Foyda (Sof)</div>
+                    <div class="currency-stat-value usd">${{ salary_data.profits.phone_profit|floatformat:2 }}</div>
+                </div>
+                <div class="currency-stat">
+                    <div class="currency-stat-label">Komissiya</div>
+                    <div class="currency-stat-value usd">${{ salary_data.commission.phone_commission|add:salary_data.commission.exchange_commission|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="currency-card">
+            <div class="currency-title uzs">🛒 Aksessuar (So'm)</div>
+            <div class="currency-stats">
+                <div class="currency-stat">
+                    <div class="currency-stat-label">Savdo</div>
+                    <div class="currency-stat-value uzs">{{ salary_data.sales.accessory_total|floatformat:0 }}</div>
+                </div>
+                <div class="currency-stat">
+                    <div class="currency-stat-label">Soni</div>
+                    <div class="currency-stat-value uzs">{{ salary_data.sales.accessory_count }}</div>
+                </div>
+                <div class="currency-stat">
+                    <div class="currency-stat-label">Foyda</div>
+                    <div class="currency-stat-value uzs">{{ salary_data.profits.accessory_profit|floatformat:0 }}</div>
+                </div>
+                <div class="currency-stat">
+                    <div class="currency-stat-label">Komissiya</div>
+                    <div class="currency-stat-value uzs">{{ salary_data.commission.accessory_commission|floatformat:0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="commission-section">
+        <div class="commission-header">
+            <div>
+                <div class="commission-title">Komissiya Tafsilotlari</div>
+                <div class="commission-subtitle">
+                    Qaytarilganlar ayirilgandan keyin sof foydadan hisoblanadi
+                    {% if salary_data.sales.returns_count > 0 %}
+                    <span style="color: #dc2626;">({{ salary_data.sales.returns_count }} ta qaytarildi)</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="commission-grid">
+            <div class="commission-card usd">
+                <div class="commission-card-title usd">
+                    <span class="currency-icon">💵</span>
+                    <span>Dollar ($) - Komissiyalar</span>
+                </div>
+                <div class="commission-items">
+                    <div class="commission-item phone">
+                        <div>
+                            <div class="commission-label">Telefon (Sof)</div>
+                            <div class="commission-calc">${{ salary_data.profits.phone_profit|floatformat:2 }} × {{ salary_data.commission_rates.phone_rate }}%</div>
+                        </div>
+                        <div class="commission-value usd">${{ salary_data.commission.phone_commission|floatformat:2 }}</div>
+                    </div>
+                    <div class="commission-item exchange">
+                        <div>
+                            <div class="commission-label">Almashtirish</div>
+                            <div class="commission-calc">${{ salary_data.profits.exchange_profit|floatformat:2 }} × {{ salary_data.commission_rates.exchange_rate }}%</div>
+                        </div>
+                        <div class="commission-value usd">${{ salary_data.commission.exchange_commission|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="commission-card uzs">
+                <div class="commission-card-title uzs">
+                    <span class="currency-icon">🛒</span>
+                    <span>So'm - Komissiya</span>
+                </div>
+                <div class="commission-items">
+                    <div class="commission-item accessory">
+                        <div>
+                            <div class="commission-label">Aksessuar</div>
+                            <div class="commission-calc">{{ salary_data.profits.accessory_profit|floatformat:0 }} × {{ salary_data.commission_rates.accessory_rate }}%</div>
+                        </div>
+                        <div class="commission-value uzs">{{ salary_data.commission.accessory_commission|floatformat:0 }} so'm</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="daily-section">
+        <div class="daily-header">
+            <span>Kunlik Savdolar</span>
+            <span>{{ daily_data|length }} kun</span>
+        </div>
+
+        {% for day in daily_data %}
+        <div class="day-item">
+            <div class="day-toggle" onclick="toggleDay({{ forloop.counter }})">
+                <div class="day-info">
+                    <div class="day-date">{{ day.date|date:"d M, D" }}</div>
+                    <div class="day-badges">
+                        <span class="badge phone">T:{{ day.counts.phone }}</span>
+                        <span class="badge accessory">A:{{ day.counts.accessory }}</span>
+                        <span class="badge exchange">E:{{ day.counts.exchange }}</span>
+                        {% if day.counts.returns > 0 %}
+                        <span class="badge return">Q:{{ day.counts.returns }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1.5rem; align-items: center;">
+                    <div class="day-stats">
+                        <div class="day-stat">
+                            <div class="day-stat-label">Tel.$</div>
+                            <div class="day-stat-value" style="color: #10b981;">${{ day.sales.phone_total_usd|floatformat:0 }}</div>
+                        </div>
+                        <div class="day-stat">
+                            <div class="day-stat-label">Aks.so'm</div>
+                            <div class="day-stat-value" style="color: #3b82f6;">{{ day.sales.accessory_total_uzs|floatformat:0 }}</div>
+                        </div>
+                    </div>
+                    <span class="expand-icon" id="icon-{{ forloop.counter }}">▼</span>
+                </div>
+            </div>
+
+            <div class="day-details" id="details-{{ forloop.counter }}">
+                <div class="details-content">
+                    <div class="details-grid">
+                        <div class="detail-section">
+                            <div class="detail-title">📱 Telefonlar</div>
+                            <div class="sale-list">
+                                {% for sale in day.sales_data.phone_sales %}
+                                <div class="sale-card phone">
+                                    <div class="sale-header">
+                                        <div class="sale-name">{{ sale.phone.phone_model }} {{ sale.phone.memory_size }}</div>
+                                        <div class="sale-price" style="color: #10b981;">${{ sale.sale_price|floatformat:0 }}</div>
+                                    </div>
+                                    <div class="sale-meta">
+                                        {{ sale.customer.name|truncatewords:3 }} • Foyda: ${{ sale.calculated_profit|floatformat:2 }}
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="empty">Yo'q</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <div class="detail-title">🛒 Aksessuarlar</div>
+                            <div class="sale-list">
+                                {% for sale in day.sales_data.accessory_sales %}
+                                <div class="sale-card accessory">
+                                    <div class="sale-header">
+                                        <div class="sale-name">{{ sale.accessory.name }} ×{{ sale.quantity }}</div>
+                                        <div class="sale-price" style="color: #3b82f6;">{{ sale.total_price|floatformat:0 }} so'm</div>
+                                    </div>
+                                    <div class="sale-meta">
+                                        {{ sale.customer.name|truncatewords:3 }} • Foyda: {{ sale.profit|floatformat:0 }} so'm
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="empty">Yo'q</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <div class="detail-title">🔄 Almashtirishlar</div>
+                            <div class="sale-list">
+                                {% for exchange in day.sales_data.exchanges %}
+                                <div class="sale-card exchange">
+                                    <div class="sale-header">
+                                        <div class="sale-name">{{ exchange.old_phone_model }} → {{ exchange.new_phone.phone_model }}</div>
+                                        <div class="sale-price" style="color: #f59e0b;">${{ exchange.new_phone_price|floatformat:0 }}</div>
+                                    </div>
+                                    <div class="sale-meta">
+                                        {{ exchange.customer_name|truncatewords:3 }} • Foyda: ${{ exchange.calculated_profit|floatformat:2 }}
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="empty">Yo'q</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- ✅ QAYTARILGANLAR -->
+                        <div class="detail-section">
+                            <div class="detail-title" style="color: #dc2626;">⚠️ Qaytarilganlar</div>
+                            <div class="sale-list">
+                                {% for return in day.sales_data.phone_returns %}
+                                <div class="sale-card return">
+                                    <div class="sale-header">
+                                        <div class="sale-name">{{ return.phone_sale.phone.phone_model }}</div>
+                                        <div class="sale-price" style="color: #dc2626;">-${{ return.phone_sale.sale_price|floatformat:0 }}</div>
+                                    </div>
+                                    <div class="sale-meta" style="color: #991b1b;">
+                                        {{ return.phone_sale.customer.name|truncatewords:2 }} • Komissiya yo'q
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="empty">Yo'q</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty">Bu oyda savdo yo'q</div>
+        {% endfor %}
+    </div>
+
+    <div class="total-salary">
+        <div class="total-label">OYLIK MAOSH (SOF)</div>
+        <div class="total-value">${{ salary_data.commission.total_salary|floatformat:2 }}</div>
+        <div class="total-breakdown">
+            <strong>Dollar hisobida:</strong> Asosiy: ${{ salary_data.commission.base_salary|floatformat:2 }} +
+            Telefon (sof): ${{ salary_data.commission.phone_commission|floatformat:2 }} +
+            Almashtirish: ${{ salary_data.commission.exchange_commission|floatformat:2 }}<br>
+            <strong>So'm hisobida:</strong> Aksessuar komissiyasi: {{ salary_data.commission.accessory_commission|floatformat:0 }} so'm
+            {% if salary_data.sales.returns_count > 0 %}
+            <br><br>
+            <span style="background: rgba(220, 38, 38, 0.2); padding: 0.5rem 1rem; border-radius: 6px; display: inline-block; margin-top: 0.5rem;">
+                ⚠️ {{ salary_data.sales.returns_count }} ta qaytarilgan uchun komissiya ayirildi
+            </span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleDay(dayId) {
+    const details = document.getElementById(`details-${dayId}`);
+    const icon = document.getElementById(`icon-${dayId}`);
+    details.classList.toggle('expanded');
+    icon.classList.toggle('expanded');
+}
+</script>
+{% endblock %}

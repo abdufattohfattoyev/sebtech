@@ -1,0 +1,453 @@
+{% extends 'base.html' %}
+{% block page_title %}Xizmatlar Ro'yxati{% endblock %}
+
+{% block extra_css %}
+<style>
+.filter-bar {
+    background: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--gray-200);
+    margin-bottom: 1.5rem;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.service-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.service-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.service-header {
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.service-body {
+    padding: 1rem;
+}
+
+.service-footer {
+    padding: 1rem;
+    background: var(--gray-50);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.phone-info h6 {
+    margin: 0 0 0.25rem 0;
+    font-weight: 600;
+}
+
+.phone-detail {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+}
+
+.master-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--gray-100);
+    border-radius: 1rem;
+    font-size: 0.875rem;
+}
+
+.master-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.status-progress {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-done {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.price-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.price-item {
+    text-align: center;
+}
+
+.price-label {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    text-transform: uppercase;
+}
+
+.price-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--gray-500);
+}
+
+.table-view {
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+}
+
+.table {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.table thead th {
+    background: var(--gray-50);
+    font-weight: 600;
+    border-bottom: 1px solid var(--gray-200);
+    padding: 0.75rem;
+}
+
+.table tbody td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.table tbody tr:hover {
+    background: var(--gray-50);
+}
+
+@media (max-width: 768px) {
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+    .table-view {
+        display: none;
+    }
+    .price-grid {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    .price-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+@media (min-width: 769px) {
+    .service-card {
+        display: none;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <form method="get">
+            <div class="filter-grid">
+                <input type="text" name="search" class="form-control"
+                       placeholder="IMEI yoki model bo'yicha qidirish..."
+                       value="{{ request.GET.search }}">
+
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="">Barcha holatlar</option>
+                    <option value="in_progress" {% if current_status == 'in_progress' %}selected{% endif %}>Jarayonda</option>
+                    <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Tugallangan</option>
+                </select>
+
+                <select name="master" class="form-select" onchange="this.form.submit()">
+                    <option value="">Barcha ustalar</option>
+                    {% for master in masters %}
+                    <option value="{{ master.id }}" {% if current_master == master.id|stringformat:"s" %}selected{% endif %}>
+                        {{ master.first_name }} {{ master.last_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <a href="{% url 'services:service_create' %}" class="btn btn-primary">
+                    + Yangi
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Mobile View - Cards -->
+    {% for service in services %}
+    <div class="service-card">
+        <div class="service-header">
+            <div class="phone-info">
+                <h6>{{ service.phone.phone_model }} {{ service.phone.memory_size }}</h6>
+                <div class="phone-detail">
+                    IMEI: {{ service.phone.imei|default:"N/A" }} • {{ service.phone.condition_percentage }}%
+                </div>
+            </div>
+            {% if service.status == 'in_progress' %}
+            <span class="status-badge status-progress">Jarayonda</span>
+            {% else %}
+            <span class="status-badge status-done">Tugallangan</span>
+            {% endif %}
+        </div>
+
+        <div class="service-body">
+            <div class="master-badge">
+                <div class="master-avatar">
+                    {{ service.master.first_name|first }}{{ service.master.last_name|first }}
+                </div>
+                <span>{{ service.master.first_name }} {{ service.master.last_name }}</span>
+            </div>
+
+            <div class="price-grid">
+                <div class="price-item">
+                    <div class="price-label">Xizmat haqi</div>
+                    <div class="price-value text-primary">${{ service.service_fee|floatformat:2 }}</div>
+                </div>
+                <div class="price-item">
+                    <div class="price-label">To'langan</div>
+                    <div class="price-value text-success">${{ service.paid_amount|floatformat:2 }}</div>
+                </div>
+                <div class="price-item">
+                    <div class="price-label">Qolgan</div>
+                    <div class="price-value text-danger">${{ service.remaining_amount|floatformat:2 }}</div>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <small class="text-muted">{{ service.given_date|date:"d.m.Y" }}</small>
+            </div>
+        </div>
+
+        <div class="service-footer">
+            <div class="action-buttons">
+                <a href="{% url 'services:service_detail' service.pk %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-eye"></i> Ko'rish
+                </a>
+                <a href="{% url 'services:service_edit' service.pk %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="fas fa-edit"></i>
+                </a>
+                {% if service.status == 'in_progress' %}
+                <button class="btn btn-sm btn-outline-success" onclick="updateStatus({{ service.pk }})">
+                    <i class="fas fa-check"></i>
+                </button>
+                {% endif %}
+                <a href="{% url 'services:service_delete' service.pk %}" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-trash"></i>
+                </a>
+            </div>
+            {% if service.remaining_amount > 0 %}
+            <a href="{% url 'services:payment_create' service.pk %}" class="btn btn-sm btn-warning">
+                <i class="fas fa-dollar-sign"></i> To'lov
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <i class="fas fa-clipboard-list fa-3x mb-3"></i>
+        <h5>Xizmatlar topilmadi</h5>
+        <p class="mb-3">Hozircha birorta ham xizmat qo'shilmagan</p>
+        <a href="{% url 'services:service_create' %}" class="btn btn-primary">
+            + Birinchi xizmat
+        </a>
+    </div>
+    {% endfor %}
+
+    <!-- Desktop View - Table -->
+    <div class="table-view">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Telefon</th>
+                    <th>Usta</th>
+                    <th>Holat</th>
+                    <th class="text-end">Haqi</th>
+                    <th class="text-end">To'langan</th>
+                    <th class="text-end">Qolgan</th>
+                    <th>Sana</th>
+                    <th class="text-center">Amallar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for service in services %}
+                <tr>
+                    <td>
+                        <strong>{{ service.phone.phone_model }} {{ service.phone.memory_size }}</strong>
+                        <br><small class="text-muted">{{ service.phone.imei|default:"N/A" }}</small>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="master-avatar">
+                                {{ service.master.first_name|first }}{{ service.master.last_name|first }}
+                            </div>
+                            <span>{{ service.master.first_name }} {{ service.master.last_name }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if service.status == 'in_progress' %}
+                        <span class="status-badge status-progress">Jarayonda</span>
+                        {% else %}
+                        <span class="status-badge status-done">Tugallangan</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">${{ service.service_fee|floatformat:2 }}</td>
+                    <td class="text-end text-success">${{ service.paid_amount|floatformat:2 }}</td>
+                    <td class="text-end text-danger">${{ service.remaining_amount|floatformat:2 }}</td>
+                    <td>{{ service.given_date|date:"d.m.Y" }}</td>
+                    <td>
+                        <div class="d-flex gap-1 justify-content-center">
+                            <a href="{% url 'services:service_detail' service.pk %}" class="btn btn-sm btn-outline-primary" title="Ko'rish">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'services:service_edit' service.pk %}" class="btn btn-sm btn-outline-secondary" title="Tahrirlash">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if service.status == 'in_progress' %}
+                            <button class="btn btn-sm btn-outline-success" onclick="updateStatus({{ service.pk }})" title="Tugallash">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            {% endif %}
+                            {% if service.remaining_amount > 0 %}
+                            <a href="{% url 'services:payment_create' service.pk %}" class="btn btn-sm btn-warning" title="To'lov">
+                                <i class="fas fa-dollar-sign"></i>
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'services:service_delete' service.pk %}" class="btn btn-sm btn-outline-danger" title="O'chirish">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <i class="fas fa-clipboard-list fa-3x mb-3"></i>
+                            <h5>Xizmatlar topilmadi</h5>
+                            <a href="{% url 'services:service_create' %}" class="btn btn-primary">+ Birinchi xizmat</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if services.has_other_pages %}
+    <nav class="mt-3">
+        <ul class="pagination justify-content-center">
+            {% if services.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ services.previous_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}{% if current_master %}&master={{ current_master }}{% endif %}">←</a>
+            </li>
+            {% endif %}
+
+            {% for num in services.paginator.page_range %}
+            {% if services.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > services.number|add:'-3' and num < services.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}{% if current_status %}&status={{ current_status }}{% endif %}{% if current_master %}&master={{ current_master }}{% endif %}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+
+            {% if services.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ services.next_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}{% if current_master %}&master={{ current_master }}{% endif %}">→</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateStatus(serviceId) {
+    if (!confirm('Xizmatni tugallanganmi deb belgilaysizmi?')) return;
+
+    const form = new FormData();
+    form.append('status', 'completed');
+    form.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch(`/services/services/${serviceId}/update-status/`, {
+        method: 'POST',
+        body: form,
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert(data.message || 'Xatolik yuz berdi', 'danger');
+        }
+    })
+    .catch(e => {
+        console.error(e);
+        showAlert('Server bilan aloqada xatolik', 'danger');
+    });
+}
+
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alert.innerHTML = `${message}<button class="btn-close float-end" onclick="this.parentElement.remove()"></button>`;
+    document.body.appendChild(alert);
+    setTimeout(() => alert.remove(), 3000);
+}
+</script>
+{% endblock %}

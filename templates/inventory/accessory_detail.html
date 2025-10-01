@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}Aksessuar Tafsilotlari - {{ accessory.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+body { background: #f8fafc; }
+.container { max-width: 800px; margin: 1rem auto; }
+.card { background: white; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.card-header { font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem; }
+.card-image { max-width: 200px; margin-bottom: 1rem; }
+.card-image img { width: 100%; border-radius: 8px; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 0.5rem; border-bottom: 1px solid #e2e8f0; }
+.table th { background: #f1f5f9; font-weight: 600; text-align: left; }
+.btn { padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-secondary { background: #6b7280; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-headphones me-2"></i>{{ accessory.name }} ({{ accessory.code }})
+        </div>
+        {% if accessory.image %}
+            <div class="card-image">
+                <img src="{{ accessory.image.url }}" alt="{{ accessory.name }}">
+            </div>
+        {% endif %}
+        <p><strong>Do'kon:</strong> {{ accessory.shop.name }}</p>
+        <p><strong>Tannarx:</strong> {{ accessory.purchase_price|floatformat:0 }} so'm</p>
+        <p><strong>Sotish narxi:</strong> {{ accessory.sale_price|floatformat:0 }} so'm</p>
+        <p><strong>Soni:</strong> {{ accessory.quantity }}</p>
+        <p><strong>Umumiy qiymat:</strong> {{ accessory.total_cost|floatformat:0 }} so'm</p>
+        <p><strong>Taminotchi:</strong> {{ accessory.supplier.name|default:"N/A" }}</p>
+        <p><strong>Yaratilgan sana:</strong> {{ accessory.created_at|date:"d.m.Y" }}</p>
+
+        <h3>Sotib olish tarixi</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Sana</th>
+                    <th>Soni</th>
+                    <th>Tannarx (so'm)</th>
+                    <th>Umumiy (so'm)</th>
+                    <th>Qo'shgan</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for history in accessory.purchase_history.all %}
+                    <tr>
+                        <td>{{ history.created_at|date:"d.m.Y" }}</td>
+                        <td>{{ history.quantity }}</td>
+                        <td>{{ history.purchase_price|floatformat:0 }} so'm</td>
+                        <td>{% widthratio history.quantity 1 history.purchase_price %} so'm</td>
+                        <td>{{ history.created_by.username|default:"N/A" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">Tarix topilmadi</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="mt-3">
+            <a href="{% url 'inventory:accessory_list' %}" class="btn btn-secondary">Orqaga</a>
+            {% if request.user == accessory.shop.owner %}
+                <a href="{% url 'inventory:accessory_update' accessory.pk %}" class="btn btn-primary">Tahrirlash</a>
+                <a href="{% url 'inventory:accessory_add_quantity' accessory.pk %}" class="btn btn-primary">Miqdor qo'shish</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+<div style="padding: 15px;">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h6 style="color: #3b82f6; margin-bottom: 8px;">
+            {{ seller_stats.seller.get_full_name|default:seller_stats.seller.username }}
+        </h6>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+            <div>
+                <div style="font-size: 18px; font-weight: bold; color: #10b981;">${{ seller_stats.sales.total }}</div>
+                <small style="color: #6b7280;">Umumiy Savdo</small>
+            </div>
+            <div>
+                <div style="font-size: 18px; font-weight: bold; color: #3b82f6;">${{ seller_stats.sales.cash }}</div>
+                <small style="color: #6b7280;">Naqd</small>
+            </div>
+            <div>
+                <div style="font-size: 18px; font-weight: bold; color: #6b7280;">{{ seller_stats.counts.total }}</div>
+                <small style="color: #6b7280;">Tranzaksiya</small>
+            </div>
+        </div>
+    </div>
+
+    {% if seller_stats.sales_data.phone_sales %}
+    <div style="margin-bottom: 15px;">
+        <h6 style="margin-bottom: 10px;">Telefonlar ({{ seller_stats.counts.phone }})</h6>
+        {% for sale in seller_stats.sales_data.phone_sales %}
+        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
+            <div>
+                <div style="font-weight: 600;">{{ sale.phone }}</div>
+                <small style="color: #6b7280;">{{ sale.customer.name }}</small>
+            </div>
+            <div style="text-align: right;">
+                <div style="color: #10b981; font-weight: bold;">${{ sale.sale_price }}</div>
+                {% if sale.cash_amount %}<small style="color: #6b7280;">Naqd: ${{ sale.cash_amount }}</small>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if seller_stats.sales_data.accessory_sales %}
+    <div style="margin-bottom: 15px;">
+        <h6 style="margin-bottom: 10px;">Aksessuarlar ({{ seller_stats.counts.accessory }})</h6>
+        {% for sale in seller_stats.sales_data.accessory_sales %}
+        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
+            <div>
+                <div style="font-weight: 600;">{{ sale.accessory.name }} x{{ sale.quantity }}</div>
+                <small style="color: #6b7280;">{{ sale.customer.name }}</small>
+            </div>
+            <div style="text-align: right;">
+                <div style="color: #10b981; font-weight: bold;">${{ sale.total_price }}</div>
+                <small style="color: #6b7280;">@${{ sale.unit_price }}</small>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if seller_stats.sales_data.exchanges %}
+    <div style="margin-bottom: 15px;">
+        <h6 style="margin-bottom: 10px;">Almashtirishlar ({{ seller_stats.counts.exchange }})</h6>
+        {% for exchange in seller_stats.sales_data.exchanges %}
+        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
+            <div>
+                <div style="font-weight: 600;">{{ exchange.old_phone_model }} → {{ exchange.new_phone }}</div>
+                <small style="color: #6b7280;">{{ exchange.customer_name }}</small>
+            </div>
+            <div style="text-align: right;">
+                <div style="color: #10b981; font-weight: bold;">${{ exchange.new_phone_price }}</div>
+                <small style="color: #6b7280;">Farq: ${{ exchange.price_difference }}</small>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not seller_stats.sales_data.phone_sales and not seller_stats.sales_data.accessory_sales and not seller_stats.sales_data.exchanges %}
+    <div style="text-align: center; padding: 30px; color: #9ca3af;">
+        <div style="font-size: 32px; margin-bottom: 10px;">📭</div>
+        <p>Bugun savdo qilinmagan</p>
+    </div>
+    {% endif %}
+</div>

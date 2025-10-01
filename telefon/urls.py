@@ -1,0 +1,11 @@
+# from django.urls import path
+# from . import views
+#
+# urlpatterns = [
+#     path('', views.shop_list, name='shop_list'),
+#     path('shops/<int:shop_id>/', views.phone_list, name='phone_list'),
+#     path('shops/<int:shop_id>/accessories/', views.accessory_list, name='accessory_list'),
+#     path('add-phone/', views.add_phone, name='add_phone'),
+#     path('edit-phone/<int:phone_id>/', views.edit_phone, name='edit_phone'),
+#     path('delete-phone/<int:phone_id>/', views.delete_phone, name='delete_phone'),
+# ]

@@ -1,0 +1,614 @@
+# sales/models.py
+from django.db import models
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
+from django.utils import timezone
+from django.contrib.auth.models import User
+from decimal import Decimal
+from shops.models import Shop, Customer
+from inventory.models import Phone, Accessory, PhoneModel, MemorySize
+
+
+class Expense(models.Model):
+    """Xarajatlar modeli"""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="expenses", verbose_name="Do'kon")
+    name = models.CharField(max_length=200, verbose_name="Xarajat nomi")
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="Summa (so'm)"
+    )
+    expense_date = models.DateField(default=timezone.now, verbose_name="Xarajat sanasi")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   verbose_name="Qo'shgan foydalanuvchi")
+    notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
+
+    class Meta:
+        verbose_name = "Xarajat"
+        verbose_name_plural = "Xarajatlar"
+        ordering = ['-expense_date']
+
+    def __str__(self):
+        return f"{self.name} - {self.amount:,.0f} so'm"
+
+
+class Debt(models.Model):
+    """Qarzlar modeli - USD va UZS valyutalari bilan"""
+    DEBT_TYPE_CHOICES = [
+        ('customer_to_seller', 'Mijoz → Sotuvchi'),
+        ('seller_to_boss', 'Sotuvchi → Boshliq'),
+        ('boss_to_master', 'Boshliq → Usta'),
+    ]
+    DEBT_STATUS_CHOICES = [
+        ('active', 'Faol'),
+        ('paid', "To'langan"),
+        ('cancelled', 'Bekor qilingan'),
+    ]
+    CURRENCY_CHOICES = [
+        ('USD', 'Dollar'),
+        ('UZS', "So'm"),
+    ]
+
+    debt_type = models.CharField(max_length=20, choices=DEBT_TYPE_CHOICES, verbose_name="Qarz turi")
+    creditor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="given_debts",
+                                 verbose_name="Qarz bergan")
+    debtor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_debts",
+                               null=True, blank=True, verbose_name="Qarz olgan (Foydalanuvchi)")
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="debts",
+                                 null=True, blank=True, verbose_name="Qarz olgan (Mijoz)")
+    master = models.ForeignKey('services.Master', on_delete=models.CASCADE, related_name="debts",
+                               null=True, blank=True, verbose_name="Qarz olgan (Usta)")
+
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='USD', verbose_name="Valyuta")
+    debt_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00,
+                                      verbose_name="Qarz summasi")
+    paid_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00,
+                                      verbose_name="To'langan summa")
+
+    due_date = models.DateField(null=True, blank=True, verbose_name="Qaytarish muddati")
+    status = models.CharField(max_length=10, choices=DEBT_STATUS_CHOICES, default='active',
+                              verbose_name="Holati")
+    created_at = models.DateField(default=timezone.now, verbose_name="Yaratilgan sana")
+    updated_at = models.DateField(auto_now=True, verbose_name="Yangilangan sana")
+    notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
+
+    class Meta:
+        verbose_name = "Qarz"
+        verbose_name_plural = "Qarzlar"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'currency']),
+            models.Index(fields=['creditor', 'status']),
+        ]
+
+    def __str__(self):
+        creditor_name = self.creditor.get_full_name() or self.creditor.username
+        debtor_name = self.debtor_display_name
+        return f"{creditor_name} → {debtor_name}: {self.remaining_amount}{self.currency_symbol}"
+
+    @property
+    def remaining_amount(self):
+        """Qolgan qarz summasi"""
+        return max(Decimal('0'), self.debt_amount - self.paid_amount)
+
+    @property
+    def debtor_display_name(self):
+        """Qarz oluvchining nomi"""
+        if self.customer:
+            return self.customer.name
+        elif self.debtor:
+            return self.debtor.get_full_name() or self.debtor.username
+        elif self.master:
+            return f"Usta: {str(self.master)}"
+        return "Noma'lum"
+
+    @property
+    def is_fully_paid(self):
+        """Qarz to'liq to'langanmi?"""
+        return self.remaining_amount <= 0
+
+    @property
+    def payment_percentage(self):
+        """To'langan foiz"""
+        if self.debt_amount == 0:
+            return 0
+        return min(100, (self.paid_amount / self.debt_amount) * 100)
+
+    @property
+    def currency_symbol(self):
+        """Valyuta belgisi"""
+        return '$' if self.currency == 'USD' else ' so\'m'
+
+    def update_paid_amount(self):
+        """To'lovlar yig'indisini yangilash"""
+        from django.db.models import Sum
+
+        total_payments = self.payments.aggregate(
+            total=Sum('payment_amount')
+        )['total'] or Decimal('0')
+
+        if self.paid_amount != total_payments:
+            self.paid_amount = total_payments
+
+            # Status avtomatik yangilanadi
+            if self.is_fully_paid and self.status == 'active':
+                self.status = 'paid'
+            elif not self.is_fully_paid and self.status == 'paid':
+                self.status = 'active'
+
+            self.save(update_fields=['paid_amount', 'status', 'updated_at'])
+
+    def clean(self):
+        """Validatsiya"""
+        # Valyuta bo'yicha maksimal summa
+        if self.currency == 'USD' and self.debt_amount > 500:
+            raise ValidationError("Dollar qarz summasi maksimal 500$ bo'lishi kerak!")
+        elif self.currency == 'UZS' and self.debt_amount > 10000000:
+            raise ValidationError("So'm qarz summasi maksimal 10,000,000 so'm bo'lishi kerak!")
+
+        # Qarz oluvchi tekshiruvi
+        debt_recipients = [self.debtor, self.customer, self.master]
+        active_recipients = [r for r in debt_recipients if r is not None]
+
+        if len(active_recipients) == 0:
+            raise ValidationError("Qarz oluvchi ko'rsatilishi shart!")
+        if len(active_recipients) > 1:
+            raise ValidationError("Faqat bitta qarz oluvchi tanlanishi mumkin!")
+
+        if self.debt_amount <= 0:
+            raise ValidationError("Qarz summasi 0 dan katta bo'lishi kerak!")
+        if self.paid_amount > self.debt_amount:
+            raise ValidationError("To'langan summa qarz summasidan ko'p bo'lmasligi kerak!")
+
+    def save(self, *args, **kwargs):
+        """Saqlash - avtomatik status yangilash bilan"""
+        # Status avtomatik yangilash
+        if self.remaining_amount <= 0 and self.status == 'active':
+            self.status = 'paid'
+        elif self.remaining_amount > 0 and self.status == 'paid':
+            self.status = 'active'
+
+        # Validatsiya
+        if not kwargs.pop('skip_validation', False):
+            self.full_clean()
+
+        super().save(*args, **kwargs)
+
+
+class DebtPayment(models.Model):
+    """Qarz to'lovlari"""
+    debt = models.ForeignKey(Debt, on_delete=models.CASCADE, related_name="payments", verbose_name="Qarz")
+    payment_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)],
+        verbose_name="To'lov summasi"
+    )
+    payment_date = models.DateField(default=timezone.now, verbose_name="To'lov sanasi")
+    received_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Qabul qilgan")
+    notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
+
+    class Meta:
+        verbose_name = "Qarz to'lovi"
+        verbose_name_plural = "Qarz to'lovlari"
+        ordering = ['-payment_date']
+
+    def __str__(self):
+        currency_symbol = '$' if self.debt.currency == 'USD' else " so'm"
+        return f"{self.debt.debtor_display_name} - {self.payment_amount}{currency_symbol}"
+
+
+class AccessorySale(models.Model):
+    """Aksessuar sotish - So'mda"""
+    accessory = models.ForeignKey(Accessory, on_delete=models.CASCADE, related_name="sales",
+                                  verbose_name="Aksessuar")
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)], verbose_name="Soni")
+    unit_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)],
+        verbose_name="Birlik narxi (so'm)"
+    )
+    total_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        editable=False,
+        verbose_name="Umumiy narx (so'm)"
+    )
+    cash_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Naqd (so'm)"
+    )
+    card_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Karta (so'm)"
+    )
+    credit_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Nasiya savdo (so'm)"
+    )
+    debt_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(10000000)],
+        verbose_name="Qarz (so'm)"
+    )
+    salesman = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Sotuvchi")
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="accessory_sales",
+                                 verbose_name="Mijoz")
+    sale_date = models.DateField(default=timezone.now, verbose_name="Sotish sanasi")
+    notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
+
+    class Meta:
+        verbose_name = "Aksessuar sotish"
+        verbose_name_plural = "Aksessuar sotuvlari"
+        ordering = ['-sale_date']
+
+    def __str__(self):
+        return f"{self.accessory.name} x {self.quantity} - {self.total_price:,.0f} so'm"
+
+    @property
+    def profit(self):
+        """Foyda hisobi"""
+        total_cost = self.accessory.purchase_price * self.quantity
+        return self.total_price - total_cost
+
+    def save(self, *args, **kwargs):
+        """Saqlash - total_price hisoblanadi"""
+        self.total_price = self.unit_price * self.quantity
+
+        if not kwargs.pop('skip_validation', False):
+            self.full_clean()
+
+        super().save(*args, **kwargs)
+
+
+class PhoneSale(models.Model):
+    """Telefon sotish - Dollarla"""
+    phone = models.OneToOneField(Phone, on_delete=models.CASCADE, related_name="phonesale",
+                                 verbose_name="Telefon")
+    sale_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)],
+        verbose_name="Sotish narxi ($)"
+    )
+    cash_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Naqd ($)"
+    )
+    card_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Karta ($)"
+    )
+    credit_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Nasiya ($)"
+    )
+    debt_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(500)],
+        verbose_name="Qarz (max 500$)"
+    )
+    salesman = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Sotuvchi")
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="phone_sales",
+                                 verbose_name="Mijoz")
+    sale_date = models.DateField(default=timezone.now, verbose_name="Sotish sanasi")
+    notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
+
+    class Meta:
+        verbose_name = "Telefon sotish"
+        verbose_name_plural = "Telefon sotuvlari"
+        ordering = ['-sale_date']
+        indexes = [
+            models.Index(fields=['sale_date', 'salesman']),
+        ]
+
+    def __str__(self):
+        return f"{self.phone} - {self.customer.name} - ${self.sale_price}"
+
+    def clean(self):
+        """Validatsiya"""
+        if hasattr(self, 'phone') and hasattr(self, 'salesman') and hasattr(self, 'customer'):
+            if not all([self.phone, self.salesman, self.customer]):
+                raise ValidationError("Telefon, sotuvchi va mijoz tanlanishi shart!")
+
+        if self.sale_price:
+            total_payments = sum([
+                self.cash_amount or 0,
+                self.card_amount or 0,
+                self.credit_amount or 0,
+                self.debt_amount or 0
+            ])
+            if abs(total_payments - self.sale_price) > Decimal('0.01'):
+                raise ValidationError("To'lovlar yig'indisi sotish narxiga teng bo'lishi kerak!")
+
+        if not self.pk and hasattr(self, 'phone') and self.phone and self.phone.status != 'shop':
+            raise ValidationError(f"Bu telefon allaqachon sotilgan!")
+
+    def save(self, *args, **kwargs):
+        """Saqlash"""
+        if not kwargs.pop('skip_validation', False):
+            self.full_clean()
+
+        if self.phone:
+            self.phone.status = 'sold'
+            self.phone.save(update_fields=['status'])
+
+        super().save(*args, **kwargs)
+
+
+class PhoneReturn(models.Model):
+    """Telefon qaytarish"""
+    phone_sale = models.OneToOneField(PhoneSale, on_delete=models.CASCADE, related_name="phone_return",
+                                      verbose_name="Telefon sotish")
+    return_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="Qaytarilgan summa ($)"
+    )
+    return_date = models.DateField(default=timezone.now, verbose_name="Qaytarish sanasi")
+    reason = models.TextField(verbose_name="Qaytarish sababi")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                   verbose_name="Yaratgan foydalanuvchi")
+    notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
+
+    class Meta:
+        verbose_name = "Telefon qaytarish"
+        verbose_name_plural = "Telefon qaytarishlar"
+        ordering = ['-return_date']
+
+    def __str__(self):
+        return f"{self.phone_sale.customer.name} - {self.phone_sale.phone} - ${self.return_amount}"
+
+    @property
+    def phone(self):
+        return self.phone_sale.phone
+
+    def clean(self):
+        """Validatsiya"""
+        if not self.phone_sale:
+            raise ValidationError("Telefon sotish tanlanishi shart!")
+
+        if self.pk is None:
+            if PhoneReturn.objects.filter(phone_sale_id=self.phone_sale_id).exists():
+                raise ValidationError("Bu telefon allaqachon qaytarilgan!")
+
+        if self.return_amount > self.phone_sale.sale_price:
+            raise ValidationError(
+                f"Qaytarish summasi sotish narxidan ko'p bo'lmasligi kerak! "
+                f"Sotish narxi: ${self.phone_sale.sale_price}"
+            )
+
+        if not self.reason or not self.reason.strip():
+            raise ValidationError("Qaytarish sababi kiritilishi kerak!")
+
+    def save(self, *args, **kwargs):
+        """Saqlash"""
+        if not kwargs.pop('skip_validation', False):
+            self.full_clean()
+
+        super().save(*args, **kwargs)
+
+        if self.phone_sale and self.phone_sale.phone:
+            self.phone_sale.phone.status = 'returned'
+            self.phone_sale.phone.save(update_fields=['status'])
+
+
+class PhoneExchange(models.Model):
+    """Telefon almashtirish"""
+    EXCHANGE_TYPE_CHOICES = [
+        ('customer_pays', 'Mijoz qo\'shimcha pul to\'laydi'),
+        ('shop_pays', 'Do\'kon qo\'shimcha pul to\'laydi'),
+        ('equal', 'Teng qiymatda almashtirish'),
+    ]
+
+    new_phone = models.ForeignKey(Phone, on_delete=models.CASCADE, related_name="exchanges_as_new",
+                                  verbose_name="Yangi telefon")
+    new_phone_price = models.DecimalField(max_digits=10, decimal_places=2,
+                                          validators=[MinValueValidator(0.01)],
+                                          verbose_name="Yangi telefon narxi ($)")
+
+    old_phone_model = models.ForeignKey(PhoneModel, on_delete=models.CASCADE,
+                                        verbose_name="Eski telefon modeli")
+    old_phone_memory = models.ForeignKey(MemorySize, on_delete=models.CASCADE,
+                                         verbose_name="Eski telefon xotirasi")
+    old_phone_imei = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        verbose_name="Eski telefon IMEI",
+        validators=[RegexValidator(r'^\d{15}$', "IMEI 15 ta raqamdan iborat bo'lishi kerak")]
+    )
+    old_phone_condition_percentage = models.IntegerField(
+        default=80,
+        validators=[MinValueValidator(1), MaxValueValidator(100)],
+        verbose_name="Eski telefon holati (%)"
+    )
+    old_phone_accepted_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="Eski telefon qabul narxi ($)"
+    )
+    old_phone_repair_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Ta'mirlash xarajati ($)"
+    )
+    old_phone_imei_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="IMEI xarajati ($)"
+    )
+    old_phone_future_sale_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Kelajakdagi sotish narxi ($)"
+    )
+    old_phone_image = models.ImageField(
+        upload_to='phones/exchanged/',
+        blank=True,
+        null=True,
+        verbose_name="Eski telefon rasmi"
+    )
+
+    exchange_type = models.CharField(max_length=20, choices=EXCHANGE_TYPE_CHOICES,
+                                     verbose_name="Almashtirish turi")
+    price_difference = models.DecimalField(max_digits=10, decimal_places=2, editable=False,
+                                           verbose_name="Narx farqi ($)")
+
+    cash_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                      validators=[MinValueValidator(0)], verbose_name="Naqd ($)")
+    card_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                      validators=[MinValueValidator(0)], verbose_name="Karta ($)")
+    credit_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                        validators=[MinValueValidator(0)], verbose_name="Nasiya ($)")
+    debt_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(500)],
+        verbose_name="Qarz (max 500$)"
+    )
+
+    salesman = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Sotuvchi")
+    customer_name = models.CharField(max_length=100, verbose_name="Mijoz ismi")
+    customer_phone_number = models.CharField(max_length=15, verbose_name="Mijoz telefon raqami")
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="phone_exchanges",
+                                 verbose_name="Mijoz", null=True, blank=True)
+    exchange_date = models.DateField(verbose_name="Almashtirish sanasi")
+    notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
+
+    created_old_phone = models.OneToOneField(Phone, on_delete=models.SET_NULL, null=True, blank=True,
+                                             related_name="created_from_exchange",
+                                             verbose_name="Yaratilgan eski telefon")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="created_phone_exchanges",
+                                   verbose_name="Yaratgan foydalanuvchi")
+
+    class Meta:
+        verbose_name = "Telefon almashtirish"
+        verbose_name_plural = "Telefon almashtirishlar"
+        ordering = ['-exchange_date']
+
+    def __str__(self):
+        return f"{self.customer_name} — {self.old_phone_model} → {self.new_phone}"
+
+    def calculate_price_difference(self):
+        """Narx farqini hisoblash"""
+        self.price_difference = self.new_phone_price - self.old_phone_accepted_price
+
+    @property
+    def old_phone_total_cost(self):
+        """Eski telefonning umumiy tan narxi"""
+        return self.old_phone_accepted_price + self.old_phone_repair_cost + self.old_phone_imei_cost
+
+    @property
+    def old_phone_profit(self):
+        """Eski telefondan kutilgan foyda"""
+        return self.old_phone_future_sale_price - self.old_phone_total_cost
+
+    def clean(self):
+        """Validatsiya"""
+        self.calculate_price_difference()
+
+        # IMEI dublikat tekshiruvi
+        if self.old_phone_imei and self.old_phone_imei.strip():
+            # Faqat 15 raqamli IMEI ni tekshirish
+            imei = self.old_phone_imei.strip()
+            if len(imei) == 15 and imei.isdigit():
+                # Shu IMEI bilan telefon mavjudmi?
+                existing_phones = Phone.objects.filter(imei=imei)
+                if existing_phones.exists():
+                    raise ValidationError(
+                        f"IMEI {imei} raqami bilan telefon allaqachon mavjud! "
+                        f"Bu telefon: {existing_phones.first()}"
+                    )
+
+        if self.exchange_type == 'customer_pays':
+            total_payments = sum([
+                self.cash_amount or 0,
+                self.card_amount or 0,
+                self.credit_amount or 0,
+                self.debt_amount or 0
+            ])
+
+            if self.price_difference > 0 and abs(total_payments - self.price_difference) > Decimal('0.01'):
+                raise ValidationError(
+                    f"To'lovlar yig'indisi narx farqiga teng bo'lishi kerak. "
+                    f"Narx farqi: ${self.price_difference:.2f}, To'lovlar: ${total_payments:.2f}"
+                )
+
+        elif self.exchange_type in ['shop_pays', 'equal']:
+            if any([self.cash_amount, self.card_amount, self.credit_amount, self.debt_amount]):
+                raise ValidationError(
+                    "Teng almashtirish yoki do'kon to'laydigan holatda to'lov summalari 0 bo'lishi kerak."
+                )
+
+        # Yangi telefon tekshiruvi
+        if not self.new_phone_id:
+            raise ValidationError("Yangi telefon tanlanishi kerak!")
+
+        # Qabul narxi tekshiruvi
+        if self.old_phone_accepted_price < 0:
+            raise ValidationError("Qabul narxi manfiy bo'lishi mumkin emas!")
+
+    def save(self, *args, **kwargs):
+        """Saqlash"""
+        # Yangi telefonni "sotilgan" qilish
+        if self.new_phone:
+            self.new_phone.status = 'sold'
+            self.new_phone.save(update_fields=['status'])
+
+        # Asosiy saqlash
+        super().save(*args, **kwargs)
+
+        # Eski telefonni yaratish
+        if not self.created_old_phone:
+            old_phone = Phone.objects.create(
+                shop=self.new_phone.shop,
+                phone_model=self.old_phone_model,
+                memory_size=self.old_phone_memory,
+                imei=self.old_phone_imei or '',
+                condition_percentage=self.old_phone_condition_percentage,
+                status='shop',
+                purchase_price=self.old_phone_accepted_price,
+                imei_cost=self.old_phone_imei_cost,
+                repair_cost=self.old_phone_repair_cost,
+                cost_price=self.old_phone_total_cost,
+                sale_price=self.old_phone_future_sale_price or self.old_phone_accepted_price,
+                image=self.old_phone_image,
+                source_type='exchange',
+                original_owner_name=self.customer_name,
+                original_owner_phone=self.customer_phone_number,
+                created_by=self.salesman,
+            )
+            self.created_old_phone = old_phone
+            self.save(update_fields=['created_old_phone'])

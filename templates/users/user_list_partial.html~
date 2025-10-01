@@ -1,0 +1,418 @@
+{% if page_obj %}
+    <!-- Desktop table for larger screens -->
+    <div class="d-none d-lg-block">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Foydalanuvchi</th>
+                        <th>Rol</th>
+                        <th>Telefon</th>
+                        <th>Holati</th>
+                        <th>Qo'shilgan Sana</th>
+                        <th>Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user_profile in page_obj %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="user-avatar me-2 flex-shrink-0">
+                                    {{ user_profile.user.first_name.0|default:user_profile.user.username.0|upper }}
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">{{ user_profile.user.get_full_name|default:user_profile.user.username }}</div>
+                                    <small class="text-muted">@{{ user_profile.user.username }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ user_profile.role|yesno:'primary,secondary' }}">{{ user_profile.get_role_display }}</span>
+                        </td>
+                        <td>{{ user_profile.phone_number|default:"-" }}</td>
+                        <td>
+                            <span class="badge bg-{{ user_profile.user.is_active|yesno:'success,danger' }}">
+                                {{ user_profile.user.is_active|yesno:'Faol,Faol emas' }}
+                            </span>
+                        </td>
+                        <td>{{ user_profile.created_at|date:"d.m.Y H:i" }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'users:user_detail' user_profile.pk %}" class="btn btn-sm btn-info" title="Tafsilotlar">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'users:user_edit' user_profile.pk %}" class="btn btn-sm btn-primary" title="Tahrirlash">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="btn btn-sm btn-{{ user_profile.user.is_active|yesno:'warning,success' }}"
+                                        onclick="toggleStatus({{ user_profile.pk }})" title="{% if user_profile.user.is_active %}Faolsizlantirish{% else %}Faollashtirish{% endif %}">
+                                    <i class="fas fa-{{ user_profile.user.is_active|yesno:'ban,check' }}"></i>
+                                </button>
+                                <a href="{% url 'users:user_delete' user_profile.pk %}" class="btn btn-sm btn-danger" title="O'chirish">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Mobile card layout for smaller screens -->
+    <div class="d-lg-none">
+        {% for user_profile in page_obj %}
+        <div class="user-card">
+            <div class="user-header">
+                <div class="user-avatar">
+                    {{ user_profile.user.first_name.0|default:user_profile.user.username.0|upper }}
+                </div>
+                <div class="user-info">
+                    <h6 class="user-name">{{ user_profile.user.get_full_name|default:user_profile.user.username }}</h6>
+                    <p class="user-username">@{{ user_profile.user.username }}</p>
+                </div>
+                <div class="user-role-badge">
+                    {{ user_profile.get_role_display }}
+                </div>
+            </div>
+
+            <div class="user-details">
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Telefon:</small>
+                        <span class="fw-medium">{{ user_profile.phone_number|default:"-" }}</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Holati:</small>
+                        <span class="badge bg-{{ user_profile.user.is_active|yesno:'success,danger' }}">
+                            {{ user_profile.user.is_active|yesno:'Faol,Faol emas' }}
+                        </span>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted d-block">Qo'shilgan sana:</small>
+                        <span class="fw-medium">{{ user_profile.created_at|date:"d.m.Y H:i" }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="user-actions">
+                <a href="{% url 'users:user_detail' user_profile.pk %}" class="btn btn-info btn-sm">
+                    <i class="fas fa-eye me-1"></i>Ko'rish
+                </a>
+                <a href="{% url 'users:user_edit' user_profile.pk %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-edit me-1"></i>Tahrirlash
+                </a>
+                <button class="btn btn-sm btn-{{ user_profile.user.is_active|yesno:'warning,success' }}"
+                        onclick="toggleStatus({{ user_profile.pk }})">
+                    <i class="fas fa-{{ user_profile.user.is_active|yesno:'ban,check' }} me-1"></i>
+                    {% if user_profile.user.is_active %}Faolsizlantirish{% else %}Faollashtirish{% endif %}
+                </button>
+                <a href="{% url 'users:user_delete' user_profile.pk %}" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash me-1"></i>O'chirish
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav class="d-flex justify-content-center mt-4">
+        <ul class="pagination pagination-sm">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="{{ page_obj.previous_page_number }}">
+                        <i class="fas fa-chevron-left"></i>
+                        <span class="d-none d-sm-inline ms-1">Oldingi</span>
+                    </a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num > page_obj.number|add:'-2' and num < page_obj.number|add:'2' %}
+                    <li class="page-item">
+                        <a class="page-link" href="#" data-page="{{ num }}">{{ num }}</a>
+                    </li>
+                {% elif num == 1 or num == page_obj.paginator.num_pages %}
+                    <li class="page-item">
+                        <a class="page-link" href="#" data-page="{{ num }}">{{ num }}</a>
+                    </li>
+                {% elif num == page_obj.number|add:'-3' or num == page_obj.number|add:'3' %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="{{ page_obj.next_page_number }}">
+                        <span class="d-none d-sm-inline me-1">Keyingi</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+{% else %}
+    <div class="empty-state">
+        <div class="text-center py-5">
+            <div class="empty-icon mb-3">
+                <i class="fas fa-users fa-3x text-muted"></i>
+            </div>
+            <h5 class="text-muted mb-2">Foydalanuvchi topilmadi</h5>
+            <p class="text-muted mb-4">Qidiruv shartlaringizga mos foydalanuvchi mavjud emas.</p>
+            <a href="{% url 'users:user_list' %}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>Barcha Foydalanuvchilarni Ko'rish
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+<style>
+/* Mobile-first User Card Styles */
+.user-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
+}
+
+.user-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+}
+
+.user-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(13,110,253,0.2);
+}
+
+.user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.user-name {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #212529;
+    margin: 0 0 0.25rem 0;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.user-username {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.user-role-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 500;
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+    white-space: nowrap;
+    align-self: flex-start;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.user-details {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.user-details .text-muted {
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.2rem;
+}
+
+.user-details .fw-medium {
+    font-size: 0.85rem;
+    color: #212529;
+}
+
+.user-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.user-actions .btn {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-weight: 500;
+    white-space: nowrap;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.user-actions .btn i {
+    font-size: 0.75rem;
+}
+
+/* Desktop table user avatar */
+.table .user-avatar {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(13,110,253,0.15);
+}
+
+/* Empty state */
+.empty-state {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+}
+
+.empty-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+}
+
+/* Improved pagination */
+.pagination-sm .page-link {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+    color: #6c757d;
+    transition: all 0.2s ease;
+}
+
+.pagination-sm .page-item.active .page-link {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    border-color: #0d6efd;
+    box-shadow: 0 2px 4px rgba(13,110,253,0.2);
+}
+
+.pagination-sm .page-link:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+    transform: translateY(-1px);
+}
+
+/* Responsive breakpoints */
+@media (max-width: 575px) {
+    .user-card {
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .user-header {
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 0.8rem;
+    }
+
+    .user-name {
+        font-size: 0.9rem;
+    }
+
+    .user-actions {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .user-actions .btn {
+        font-size: 0.9rem;
+        padding: 0.6rem;
+        aspect-ratio: 1;
+    }
+
+    .user-actions .btn i {
+        font-size: 0.9rem;
+    }
+
+    .pagination-sm .page-link {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.75rem;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 991px) {
+    .user-actions {
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+    }
+}
+
+/* Badge improvements */
+.badge {
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+}
+
+/* Smooth animations */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+</style>

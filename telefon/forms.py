@@ -1,0 +1,262 @@
+# from django import forms
+# from .models import Shop, Supplier, PhoneModel, MemorySize, Accessory, Master, Phone, PhoneSale, PhoneReturn, AccessorySale
+#
+#
+# # Do'kon formasi
+# class ShopForm(forms.ModelForm):
+#     class Meta:
+#         model = Shop
+#         fields = ['name']
+#         widgets = {
+#             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Do'kon nomi"}),
+#         }
+#
+#
+# # Taminotchi formasi
+# class SupplierForm(forms.ModelForm):
+#     class Meta:
+#         model = Supplier
+#         fields = ['name', 'phone_number', 'address', 'notes']
+#         widgets = {
+#             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Taminotchi nomi"}),
+#             'phone_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Telefon raqami"}),
+#             'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': "Manzil (ixtiyoriy)"}),
+#             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': "Izoh (ixtiyoriy)"}),
+#         }
+#
+#
+# # Telefon modeli formasi
+# class PhoneModelForm(forms.ModelForm):
+#     class Meta:
+#         model = PhoneModel
+#         fields = ['model_name']
+#         widgets = {
+#             'model_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "iPhone modeli"}),
+#         }
+#
+#
+# # Xotira hajmi formasi
+# class MemorySizeForm(forms.ModelForm):
+#     class Meta:
+#         model = MemorySize
+#         fields = ['size']
+#         widgets = {
+#             'size': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Xotira hajmi (masalan: 64GB)"}),
+#         }
+#
+#
+# # Aksessuar formasi
+# class AccessoryForm(forms.ModelForm):
+#     class Meta:
+#         model = Accessory
+#         fields = [
+#             'shop', 'name', 'code', 'image',
+#             'purchase_price', 'sale_price', 'quantity',
+#             'supplier'
+#         ]
+#         widgets = {
+#             'shop': forms.Select(attrs={'class': 'form-select'}),
+#             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Aksessuar nomi"}),
+#             'code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Aksessuar kodi (masalan: 0001)"}),
+#             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+#             'purchase_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Tannarx (so'm)"}),
+#             'sale_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Sotish narxi (so'm)"}),
+#             'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'placeholder': "Soni"}),
+#             'supplier': forms.Select(attrs={'class': 'form-select'}),
+#         }
+#
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         # Supplier maydonini ixtiyoriy qilish
+#         self.fields['supplier'].required = False
+#         self.fields['supplier'].empty_label = "Taminotchini tanlang"
+#
+#
+# # Usta formasi
+# class MasterForm(forms.ModelForm):
+#     class Meta:
+#         model = Master
+#         fields = ['first_name', 'last_name', 'phone_number']
+#         widgets = {
+#             'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Ism"}),
+#             'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Familiya"}),
+#             'phone_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Telefon raqami"}),
+#         }
+#
+#
+# # Telefon formasi
+# class PhoneForm(forms.ModelForm):
+#     class Meta:
+#         model = Phone
+#         fields = [
+#             'shop', 'phone_model', 'memory_size', 'imei',
+#             'condition_percentage', 'status',
+#             'purchase_price', 'sale_price', 'imei_cost', 'image',
+#             'source_type', 'supplier', 'client_name', 'client_phone_number',
+#             'master', 'repair_reason', 'repair_cost', 'given_to_master_at',
+#         ]
+#         widgets = {
+#             'shop': forms.Select(attrs={'class': 'form-select'}),
+#             'phone_model': forms.Select(attrs={'class': 'form-select'}),
+#             'memory_size': forms.Select(attrs={'class': 'form-select'}),
+#             'imei': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "IMEI (ixtiyoriy)"}),
+#             'condition_percentage': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 100, 'value': 100}),
+#             'status': forms.Select(attrs={'class': 'form-select'}),
+#             'purchase_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Tannarx"}),
+#             'sale_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Sotish narxi"}),
+#             'imei_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "IMEI narxi"}),
+#             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+#             'source_type': forms.Select(attrs={'class': 'form-select', 'id': 'id_source_type'}),
+#             'supplier': forms.Select(attrs={'class': 'form-select', 'id': 'id_supplier'}),
+#             'client_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Mijoz ismi", 'id': 'id_client_name'}),
+#             'client_phone_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Mijoz telefon raqami", 'id': 'id_client_phone_number'}),
+#             'master': forms.Select(attrs={'class': 'form-select'}),
+#             'repair_reason': forms.Select(attrs={'class': 'form-select'}),
+#             'repair_cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Usta haqqi"}),
+#             'given_to_master_at': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+#         }
+#
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         # Maydonlarni ixtiyoriy qilish
+#         self.fields['supplier'].required = False
+#         self.fields['supplier'].empty_label = "Taminotchini tanlang"
+#         self.fields['client_name'].required = False
+#         self.fields['client_phone_number'].required = False
+#         self.fields['master'].required = False
+#         self.fields['master'].empty_label = "Ustani tanlang"
+#         self.fields['repair_reason'].required = False
+#         self.fields['repair_cost'].required = False
+#         self.fields['given_to_master_at'].required = False
+#         self.fields['imei_cost'].required = False
+#
+#     def clean(self):
+#         cleaned_data = super().clean()
+#         source_type = cleaned_data.get('source_type')
+#         supplier = cleaned_data.get('supplier')
+#         client_name = cleaned_data.get('client_name')
+#         client_phone_number = cleaned_data.get('client_phone_number')
+#
+#         # Taminotchi uchun tekshirish
+#         if source_type == 'supplier' and not supplier:
+#             raise forms.ValidationError("Taminotchidan olingan telefon uchun taminotchi tanlanishi shart!")
+#
+#         # Mijoz uchun tekshirish
+#         if source_type == 'client':
+#             if not client_name:
+#                 raise forms.ValidationError("Mijozdan olingan telefon uchun mijoz ismi kiritilishi shart!")
+#             if not client_phone_number:
+#                 raise forms.ValidationError("Mijozdan olingan telefon uchun mijoz telefon raqami kiritilishi shart!")
+#
+#         return cleaned_data
+#
+#
+# # Telefon sotish formasi
+# class PhoneSaleForm(forms.ModelForm):
+#     class Meta:
+#         model = PhoneSale
+#         fields = [
+#             'phone', 'sale_price',
+#             'cash_amount', 'card_amount', 'credit_amount', 'debt_amount',
+#             'buyer_name', 'buyer_phone', 'notes'
+#         ]
+#         widgets = {
+#             'phone': forms.Select(attrs={'class': 'form-select'}),
+#             'sale_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Umumiy sotish narxi"}),
+#             'cash_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Naqd", 'value': 0}),
+#             'card_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Karta", 'value': 0}),
+#             'credit_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Nasiya", 'value': 0}),
+#             'debt_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Qarz", 'value': 0}),
+#             'buyer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Xaridor ismi"}),
+#             'buyer_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Xaridor telefon raqami"}),
+#             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': "Izoh (ixtiyoriy)"}),
+#         }
+#
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         # Faqat do'kondagi telefonlarni ko'rsatish
+#         self.fields['phone'].queryset = Phone.objects.filter(status='shop')
+#         self.fields['buyer_name'].required = False
+#         self.fields['buyer_phone'].required = False
+#         self.fields['notes'].required = False
+#
+#     def clean(self):
+#         cleaned_data = super().clean()
+#         sale_price = cleaned_data.get('sale_price', 0)
+#         cash_amount = cleaned_data.get('cash_amount', 0)
+#         card_amount = cleaned_data.get('card_amount', 0)
+#         credit_amount = cleaned_data.get('credit_amount', 0)
+#         debt_amount = cleaned_data.get('debt_amount', 0)
+#
+#         total_paid = cash_amount + card_amount + credit_amount + debt_amount
+#         if total_paid != sale_price:
+#             raise forms.ValidationError("To'lovlar yig'indisi sotish narxiga teng bo'lishi shart!")
+#
+#         return cleaned_data
+#
+#
+# # Telefon qaytarish formasi
+# class PhoneReturnForm(forms.ModelForm):
+#     class Meta:
+#         model = PhoneReturn
+#         fields = ['phone', 'return_reason']
+#         widgets = {
+#             'phone': forms.Select(attrs={'class': 'form-select'}),
+#             'return_reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': "Qaytarish sababini kiriting"}),
+#         }
+#
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         # Faqat sotilgan telefonlarni ko'rsatish
+#         self.fields['phone'].queryset = Phone.objects.filter(status='sold')
+#
+#
+# # Aksessuar sotish formasi
+# class AccessorySaleForm(forms.ModelForm):
+#     class Meta:
+#         model = AccessorySale
+#         fields = [
+#             'accessory', 'quantity', 'unit_sale_price',
+#             'cash_amount', 'card_amount', 'debt_amount',
+#             'buyer_name', 'buyer_phone', 'notes'
+#         ]
+#         widgets = {
+#             'accessory': forms.Select(attrs={'class': 'form-select'}),
+#             'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'placeholder': "Sotilgan soni"}),
+#             'unit_sale_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Bitta dona sotish narxi"}),
+#             'cash_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Naqd", 'value': 0}),
+#             'card_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Karta", 'value': 0}),
+#             'debt_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': "Qarz", 'value': 0}),
+#             'buyer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Xaridor ismi"}),
+#             'buyer_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Xaridor telefon raqami"}),
+#             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': "Izoh (ixtiyoriy)"}),
+#         }
+#
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         # Faqat mavjud aksessuarlarni ko'rsatish
+#         self.fields['accessory'].queryset = Accessory.objects.filter(quantity__gt=0)
+#         self.fields['buyer_name'].required = False
+#         self.fields['buyer_phone'].required = False
+#         self.fields['notes'].required = False
+#
+#     def clean(self):
+#         cleaned_data = super().clean()
+#         accessory = cleaned_data.get('accessory')
+#         quantity = cleaned_data.get('quantity', 0)
+#         unit_sale_price = cleaned_data.get('unit_sale_price', 0)
+#         cash_amount = cleaned_data.get('cash_amount', 0)
+#         card_amount = cleaned_data.get('card_amount', 0)
+#         debt_amount = cleaned_data.get('debt_amount', 0)
+#
+#         # Aksessuar sonini tekshirish
+#         if accessory and quantity > accessory.quantity:
+#             raise forms.ValidationError(f"Aksessuardan faqat {accessory.quantity} dona mavjud!")
+#
+#         # To'lov summalarini tekshirish
+#         total_sale_price = unit_sale_price * quantity
+#         total_paid = cash_amount + card_amount + debt_amount
+#         if total_paid != total_sale_price:
+#             raise forms.ValidationError("To'lovlar yig'indisi umumiy sotish narxiga teng bo'lishi shart!")
+#
+#         return cleaned_data

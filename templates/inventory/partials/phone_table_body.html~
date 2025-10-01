@@ -1,0 +1,69 @@
+{% if phones %}
+    {% for phone in phones %}
+        <tr>
+            <td>
+                {% if phone.image %}
+                    <img src="{{ phone.image.url }}" alt="Phone" class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
+                {% else %}
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                        <i class="fas fa-mobile-alt text-muted"></i>
+                    </div>
+                {% endif %}
+            </td>
+            <td><strong>{{ phone.phone_model.model_name }}</strong></td>
+            <td><span class="badge bg-info">{{ phone.memory_size.size }}</span></td>
+            <td>{% if phone.imei %}<code>{{ phone.imei }}</code>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            <td><small class="text-primary">{{ phone.shop.name }}</small></td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="progress me-2" style="width: 60px; height: 8px;">
+                        <div class="progress-bar
+                            {% if phone.condition_percentage >= 80 %}bg-success
+                            {% elif phone.condition_percentage >= 50 %}bg-warning
+                            {% else %}bg-danger{% endif %}"
+                            style="width: {{ phone.condition_percentage }}%">
+                        </div>
+                    </div>
+                    <small>{{ phone.condition_percentage }}%</small>
+                </div>
+            </td>
+            <td>
+                <span class="badge bg-{% if phone.status == 'shop' %}info{% elif phone.status == 'sold' %}success{% elif phone.status == 'master' %}warning{% elif phone.status == 'returned' %}danger{% else %}primary{% endif %}">
+                    {{ phone.get_status_display }}
+                </span>
+            </td>
+            <td>
+                <div class="small">
+                    <div><strong>${{ phone.sale_price|default:"—" }}</strong></div>
+                    <div class="text-muted">Tannarx: ${{ phone.cost_price }}</div>
+                </div>
+            </td>
+            <td>
+                <small>{{ phone.created_at|date:"d.m.Y" }}</small><br>
+                <small class="text-muted">{{ phone.created_by.username|default:"—" }}</small>
+            </td>
+            <td>
+                {% if request.user == phone.shop.owner %}
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="{% url 'inventory:phone_update' phone.pk %}" class="btn btn-outline-primary" title="Tahrirlash">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{% url 'inventory:phone_delete' phone.pk %}" class="btn btn-outline-danger" title="O'chirish">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </div>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+{% else %}
+    <tr>
+        <td colspan="10" class="text-center py-4">
+            <i class="fas fa-mobile-alt fa-3x text-muted mb-3"></i>
+            <h5>Telefonlar topilmadi</h5>
+            <p class="text-muted">Qidiruv yoki filtr bo'yicha telefonlar mavjud emas.</p>
+        </td>
+    </tr>
+{% endif %}

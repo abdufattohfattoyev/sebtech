@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+
+{% block page_title %}Qarzlar ro'yxati{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-hand-holding-usd text-warning me-2"></i>
+        Qarzlar ro'yxati
+    </h2>
+    <a href="{% url 'sales:debt_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Yangi qarz qo'shish
+    </a>
+</div>
+
+<!-- Filter va statistika -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h4>{{ total_debts_count|default:0 }}</h4>
+                <p class="mb-0">Jami qarzlar</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h4>{{ active_debts_count|default:0 }}</h4>
+                <p class="mb-0">Faol qarzlar</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h4>{{ paid_debts_count|default:0 }}</h4>
+                <p class="mb-0">To'langan qarzlar</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h4>{{ cancelled_debts_count|default:0 }}</h4>
+                <p class="mb-0">Bekor qilingan</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter buttons -->
+<div class="mb-3">
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-secondary active" onclick="filterDebts('all')">
+            Barchasi
+        </button>
+        <button type="button" class="btn btn-outline-warning" onclick="filterDebts('active')">
+            Faol
+        </button>
+        <button type="button" class="btn btn-outline-success" onclick="filterDebts('paid')">
+            To'langan
+        </button>
+        <button type="button" class="btn btn-outline-danger" onclick="filterDebts('cancelled')">
+            Bekor qilingan
+        </button>
+    </div>
+
+    <!-- Qarz turi filter -->
+    <div class="btn-group ms-3" role="group">
+        <button type="button" class="btn btn-outline-info active" onclick="filterDebtType('all')">
+            Barcha turlar
+        </button>
+        <button type="button" class="btn btn-outline-info" onclick="filterDebtType('customer_to_seller')">
+            Mijoz → Sotuvchi
+        </button>
+        <button type="button" class="btn btn-outline-warning" onclick="filterDebtType('seller_to_boss')">
+            Sotuvchi → Boshliq
+        </button>
+        <button type="button" class="btn btn-outline-primary" onclick="filterDebtType('boss_to_master')">
+            Boshliq → Usta
+        </button>
+    </div>
+</div>
+
+{% if debts %}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Qarz turi</th>
+                        <th>Qarz bergan</th>
+                        <th>Qarz olgan</th>
+                        <th>Qarz summasi</th>
+                        <th>To'langan</th>
+                        <th>Qoldiq</th>
+                        <th>Holati</th>
+                        <th>Sana</th>
+                        <th>Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for debt in debts %}
+                    <tr class="debt-row" data-status="{{ debt.status }}" data-debt-type="{{ debt.debt_type }}">
+                        <td>
+                            <span class="badge
+                                {% if debt.debt_type == 'customer_to_seller' %}bg-info
+                                {% elif debt.debt_type == 'seller_to_boss' %}bg-warning
+                                {% elif debt.debt_type == 'boss_to_master' %}bg-primary
+                                {% else %}bg-secondary{% endif %}">
+                                {% if debt.debt_type == 'boss_to_master' %}Usta → Boshliq{% else %}{{ debt.get_debt_type_display }}{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <!-- QARZ BERGAN (CREDITOR) -->
+                            <div class="d-flex align-items-center">
+                                {% if debt.debt_type == 'boss_to_master' %}
+                                    <!-- USTA → BOSHLIQ: Usta qarz bergan -->
+                                    <i class="fas fa-tools text-primary me-2" title="Usta qarz bergan"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ debt.debtor_display_name }}</div>
+                                        <small class="text-muted">Usta</small>
+                                    </div>
+                                {% else %}
+                                    <!-- BOSHQA QARZ TURLARI: User qarz bergan -->
+                                    <i class="fas fa-user-tie text-muted me-2" title="Qarz bergan"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ debt.creditor.get_full_name|default:debt.creditor.username }}</div>
+                                        <small class="text-muted">{{ debt.creditor.username }}</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <!-- QARZ OLGAN -->
+                            <div class="d-flex align-items-center">
+                                {% if debt.debt_type == 'boss_to_master' %}
+                                    <!-- USTA → BOSHLIQ: Boshliq qarz olgan -->
+                                    <i class="fas fa-user-tie text-warning me-2" title="Boshliq qarz olgan"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ debt.creditor.get_full_name|default:debt.creditor.username }}</div>
+                                        <small class="text-muted">{{ debt.creditor.username }}</small>
+                                    </div>
+                                {% elif debt.customer %}
+                                    <!-- MIJOZ QARZI -->
+                                    <i class="fas fa-user text-info me-2" title="Mijoz"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ debt.customer.name }}</div>
+                                        <small class="text-muted">{{ debt.customer.phone_number|default:'-' }}</small>
+                                    </div>
+                                {% elif debt.debtor %}
+                                    <!-- FOYDALANUVCHI QARZI -->
+                                    <i class="fas fa-user-tie text-warning me-2" title="Foydalanuvchi"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ debt.debtor.get_full_name|default:debt.debtor.username }}</div>
+                                        <small class="text-muted">{{ debt.debtor.username }}</small>
+                                    </div>
+                                {% else %}
+                                    <!-- NOMA'LUM -->
+                                    <i class="fas fa-question-circle text-muted me-2" title="Noma'lum"></i>
+                                    <div>
+                                        <div class="fw-bold text-muted">{{ debt.debtor_display_name }}</div>
+                                        <small class="text-muted">-</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="fw-bold text-danger">
+                                {% if debt.currency == 'USD' %}${% endif %}{{ debt.debt_amount|floatformat:2 }}{% if debt.currency == 'UZS' %} so'm{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="fw-bold text-success">
+                                {% if debt.currency == 'USD' %}${% endif %}{{ debt.paid_amount|floatformat:2 }}{% if debt.currency == 'UZS' %} so'm{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="fw-bold
+                                {% if debt.remaining_amount > 0 %}text-warning
+                                {% else %}text-success{% endif %}">
+                                {% if debt.currency == 'USD' %}${% endif %}{{ debt.remaining_amount|floatformat:2 }}{% if debt.currency == 'UZS' %} so'm{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if debt.status == 'active' %}bg-warning
+                                {% elif debt.status == 'paid' %}bg-success
+                                {% else %}bg-secondary{% endif %}">
+                                {{ debt.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div>
+                                <div class="fw-bold">{{ debt.created_at|date:"d.m.Y" }}</div>
+                                {% if debt.due_date %}
+                                    <small class="text-muted">Muddat: {{ debt.due_date|date:"d.m.Y" }}</small>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'sales:debt_detail' debt.pk %}"
+                                   class="btn btn-outline-primary" title="Ko'rish">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if debt.status == 'active' %}
+                                    <a href="{% url 'sales:debt_edit' debt.pk %}"
+                                       class="btn btn-outline-warning" title="Tahrirlash">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if debt.creditor == request.user or request.user.is_superuser %}
+                                        <button type="button"
+                                                class="btn btn-outline-danger"
+                                                title="O'chirish"
+                                                onclick="deleteDebt({{ debt.pk }}, '{{ debt.debtor_display_name|escapejs }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% endif %}
+                                {% endif %}
+                                {% if debt.status == 'active' and debt.remaining_amount > 0 %}
+                                    <a href="{% url 'sales:debt_payment_create' debt.pk %}"
+                                       class="btn btn-outline-success btn-sm" title="To'lov qo'shish">
+                                        <i class="fas fa-plus"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+<nav aria-label="Qarzlar pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">&laquo; Birinchi</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Oldingi</a>
+            </li>
+        {% endif %}
+
+        <li class="page-item active">
+            <span class="page-link">
+                {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Keyingi</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Oxirgi &raquo;</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-hand-holding-usd text-muted mb-3" style="font-size: 4rem;"></i>
+    <h4 class="text-muted">Hozircha qarzlar yo'q</h4>
+    <p class="text-muted mb-4">Yangi qarz qo'shish uchun yuqoridagi tugmani bosing</p>
+    <a href="{% url 'sales:debt_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Birinchi qarzni qo'shish
+    </a>
+</div>
+{% endif %}
+
+<!-- Delete confirmation modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Qarzni o'chirish</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Rostdan ham <strong id="debtorName"></strong> ning qarzini o'chirmoqchimisiz?</p>
+                <p class="text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Bu amalni bekor qilib bo'lmaydi!
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor qilish</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">O'chirish</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Filter by status
+function filterDebts(status) {
+    const rows = document.querySelectorAll('.debt-row');
+    const buttons = document.querySelectorAll('.btn-group:first-child button');
+
+    // Remove active class from status buttons
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    rows.forEach(row => {
+        const rowStatus = row.dataset.status;
+        const rowDebtType = row.dataset.debtType;
+        const currentDebtTypeFilter = getCurrentDebtTypeFilter();
+
+        const statusMatch = status === 'all' || rowStatus === status;
+        const debtTypeMatch = currentDebtTypeFilter === 'all' || rowDebtType === currentDebtTypeFilter;
+
+        if (statusMatch && debtTypeMatch) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Filter by debt type
+function filterDebtType(debtType) {
+    const rows = document.querySelectorAll('.debt-row');
+    const buttons = document.querySelectorAll('.btn-group:nth-child(2) button');
+
+    // Remove active class from debt type buttons
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    rows.forEach(row => {
+        const rowStatus = row.dataset.status;
+        const rowDebtType = row.dataset.debtType;
+        const currentStatusFilter = getCurrentStatusFilter();
+
+        const statusMatch = currentStatusFilter === 'all' || rowStatus === currentStatusFilter;
+        const debtTypeMatch = debtType === 'all' || rowDebtType === debtType;
+
+        if (statusMatch && debtTypeMatch) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Get current status filter
+function getCurrentStatusFilter() {
+    const activeStatusBtn = document.querySelector('.btn-group:first-child button.active');
+    if (activeStatusBtn) {
+        const onclick = activeStatusBtn.getAttribute('onclick');
+        const match = onclick.match(/filterDebts\('([^']+)'\)/);
+        return match ? match[1] : 'all';
+    }
+    return 'all';
+}
+
+// Get current debt type filter
+function getCurrentDebtTypeFilter() {
+    const activeDebtTypeBtn = document.querySelector('.btn-group:nth-child(2) button.active');
+    if (activeDebtTypeBtn) {
+        const onclick = activeDebtTypeBtn.getAttribute('onclick');
+        const match = onclick.match(/filterDebtType\('([^']+)'\)/);
+        return match ? match[1] : 'all';
+    }
+    return 'all';
+}
+
+// Delete debt confirmation
+function deleteDebt(debtId, debtorName) {
+    document.getElementById('debtorName').textContent = debtorName;
+    document.getElementById('deleteForm').action = `/sales/debts/${debtId}/delete/`;
+
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+
+<style>
+.debt-row:hover {
+    background-color: #f8f9fa;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.badge {
+    font-size: 0.8em;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.875rem;
+}
+
+.pagination .page-link {
+    color: #6c757d;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+
+    .btn-group {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .btn-group .btn {
+        flex: 1;
+        min-width: 0;
+        padding: 0.375rem 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .card-body .row {
+        margin: 0 -5px;
+    }
+
+    .card-body .row .col-md-3 {
+        padding: 0 5px;
+        margin-bottom: 10px;
+    }
+}
+
+@media (max-width: 576px) {
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .btn-group {
+        margin-bottom: 0.5rem;
+    }
+
+    .table th,
+    .table td {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.8rem;
+    }
+
+    .fw-bold {
+        font-size: 0.9rem;
+    }
+
+    small {
+        font-size: 0.7rem;
+    }
+}
+</style>
+
+{% endblock %}

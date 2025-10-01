@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ title|default:"Foydalanuvchi" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.form-container { max-width: 600px; margin: 0 auto; }
+.form-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.form-header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid #e5e7eb; }
+.form-header h5 { font-size: 1.25rem; font-weight: 700; color: #111827; }
+
+.form-group { margin-bottom: 1.25rem; }
+.form-label { display: block; font-weight: 600; color: #374151; margin-bottom: 0.5rem; font-size: 0.875rem; }
+.required { color: #ef4444; }
+.form-control, .form-select { width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 0.9rem; }
+.form-control:focus, .form-select:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+
+.form-check { margin-bottom: 1rem; }
+.form-check-input { width: 1.25rem; height: 1.25rem; margin-right: 0.5rem; }
+.form-check-label { font-weight: 500; color: #374151; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+.form-actions { display: flex; gap: 0.75rem; margin-top: 2rem; }
+.btn { padding: 0.75rem 1.5rem; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-secondary { background: #6b7280; color: white; }
+.btn-secondary:hover { background: #4b5563; }
+
+.alert { padding: 1rem; border-radius: 6px; margin-bottom: 1rem; }
+.alert-danger { background: #fee2e2; color: #991b1b; border-left: 4px solid #dc2626; }
+
+.help-text { font-size: 0.8rem; color: #6b7280; margin-top: 0.25rem; }
+.error-text { font-size: 0.8rem; color: #dc2626; margin-top: 0.25rem; display: none; }
+
+@media (max-width: 768px) {
+    .form-card { padding: 1.5rem; }
+    .form-row, .form-row-3 { grid-template-columns: 1fr; gap: 0; }
+    .form-actions { flex-direction: column; }
+    .btn { width: 100%; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-card">
+        <div class="form-header">
+            <h5>{{ title|default:"Foydalanuvchi Ma'lumotlari" }}</h5>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" id="userForm" novalidate>
+            {% csrf_token %}
+
+            {% if user_form.non_field_errors or profile_form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ user_form.non_field_errors }}
+                {{ profile_form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <!-- Username (faqat yaratishda) -->
+            {% if user_form.username %}
+            <div class="form-group">
+                <label class="form-label">{{ user_form.username.label }} <span class="required">*</span></label>
+                {{ user_form.username }}
+                {% if user_form.username.errors %}<div class="help-text" style="color: #dc2626;">{{ user_form.username.errors.0 }}</div>{% endif %}
+                <div class="error-text"></div>
+            </div>
+            {% endif %}
+
+            <!-- Ism va Familiya -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ user_form.first_name.label }}</label>
+                    {{ user_form.first_name }}
+                    {% if user_form.first_name.errors %}<div class="help-text" style="color: #dc2626;">{{ user_form.first_name.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ user_form.last_name.label }}</label>
+                    {{ user_form.last_name }}
+                    {% if user_form.last_name.errors %}<div class="help-text" style="color: #dc2626;">{{ user_form.last_name.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label class="form-label">{{ user_form.email.label }}</label>
+                {{ user_form.email }}
+                {% if user_form.email.errors %}<div class="help-text" style="color: #dc2626;">{{ user_form.email.errors.0 }}</div>{% endif %}
+                <div class="error-text"></div>
+            </div>
+
+            <!-- Parollar (faqat yaratishda) -->
+            {% if user_form.password %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ user_form.password.label }} <span class="required">*</span></label>
+                    {{ user_form.password }}
+                    <div class="help-text">Kamida 8 belgi</div>
+                    {% if user_form.password.errors %}<div class="help-text" style="color: #dc2626;">{{ user_form.password.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ user_form.password_confirm.label }} <span class="required">*</span></label>
+                    {{ user_form.password_confirm }}
+                    {% if user_form.password_confirm.errors %}<div class="help-text" style="color: #dc2626;">{{ user_form.password_confirm.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Yangi parol (tahrirlashda) -->
+            {% if user_form.new_password %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ user_form.new_password.label }}</label>
+                    {{ user_form.new_password }}
+                    <div class="help-text">Bo'sh qoldiring agar o'zgartirmasangiz</div>
+                    {% if user_form.new_password.errors %}<div class="help-text" style="color: #dc2626;">{{ user_form.new_password.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ user_form.confirm_password.label }}</label>
+                    {{ user_form.confirm_password }}
+                    {% if user_form.confirm_password.errors %}<div class="help-text" style="color: #dc2626;">{{ user_form.confirm_password.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Rol va Telefon -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.role.label }} <span class="required">*</span></label>
+                    {{ profile_form.role }}
+                    {% if profile_form.role.errors %}<div class="help-text" style="color: #dc2626;">{{ profile_form.role.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.phone_number.label }}</label>
+                    {{ profile_form.phone_number }}
+                    <div class="help-text">Format: +998901234567</div>
+                    {% if profile_form.phone_number.errors %}<div class="help-text" style="color: #dc2626;">{{ profile_form.phone_number.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+            </div>
+
+            <!-- Maoshlar -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.base_salary_usd.label }}</label>
+                    {{ profile_form.base_salary_usd }}
+                    <div class="help-text">Dollar hisobida</div>
+                    {% if profile_form.base_salary_usd.errors %}<div class="help-text" style="color: #dc2626;">{{ profile_form.base_salary_usd.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.base_salary_uzs.label }}</label>
+                    {{ profile_form.base_salary_uzs }}
+                    <div class="help-text">So'm hisobida</div>
+                    {% if profile_form.base_salary_uzs.errors %}<div class="help-text" style="color: #dc2626;">{{ profile_form.base_salary_uzs.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+            </div>
+
+            <!-- Komissiya foizlari -->
+            <div class="form-row-3">
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.phone_commission_percent.label }}</label>
+                    {{ profile_form.phone_commission_percent }}
+                    <div class="help-text">Telefon % (0-100)</div>
+                    {% if profile_form.phone_commission_percent.errors %}<div class="help-text" style="color: #dc2626;">{{ profile_form.phone_commission_percent.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.accessory_commission_percent.label }}</label>
+                    {{ profile_form.accessory_commission_percent }}
+                    <div class="help-text">Aksessuar % (0-100)</div>
+                    {% if profile_form.accessory_commission_percent.errors %}<div class="help-text" style="color: #dc2626;">{{ profile_form.accessory_commission_percent.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">{{ profile_form.exchange_commission_percent.label }}</label>
+                    {{ profile_form.exchange_commission_percent }}
+                    <div class="help-text">Almashtirish % (0-100)</div>
+                    {% if profile_form.exchange_commission_percent.errors %}<div class="help-text" style="color: #dc2626;">{{ profile_form.exchange_commission_percent.errors.0 }}</div>{% endif %}
+                    <div class="error-text"></div>
+                </div>
+            </div>
+
+            <!-- Avatar -->
+            {% if profile_form.avatar %}
+            <div class="form-group">
+                <label class="form-label">{{ profile_form.avatar.label }}</label>
+                {{ profile_form.avatar }}
+                {% if profile_form.avatar.errors %}<div class="help-text" style="color: #dc2626;">{{ profile_form.avatar.errors.0 }}</div>{% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Faol/Nofaol -->
+            {% if user_form.is_active %}
+            <div class="form-check">
+                {{ user_form.is_active }}
+                <label class="form-check-label">{{ user_form.is_active.label }}</label>
+            </div>
+            {% endif %}
+
+            <!-- Tugmalar -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{{ submit_text|default:"Saqlash" }}</button>
+                <a href="{% url 'users:dashboard' %}" class="btn btn-secondary">Bekor Qilish</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('userForm');
+    if (!form) return;
+
+    // Telefon raqam formatlash
+    const phoneInput = form.querySelector('input[name="phone_number"]');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            let value = this.value.replace(/\D/g, '');
+
+            if (value && !value.startsWith('998')) {
+                if (value.length <= 9) {
+                    value = '998' + value;
+                }
+            }
+
+            if (value.length > 12) {
+                value = value.slice(0, 12);
+            }
+
+            this.value = value ? '+' + value : '';
+        });
+
+        phoneInput.addEventListener('paste', function(e) {
+            e.preventDefault();
+            let pastedText = (e.clipboardData || window.clipboardData).getData('text');
+            let digits = pastedText.replace(/\D/g, '');
+
+            if (digits && !digits.startsWith('998')) {
+                if (digits.length <= 9) {
+                    digits = '998' + digits;
+                }
+            }
+
+            if (digits.length > 12) {
+                digits = digits.slice(0, 12);
+            }
+
+            this.value = digits ? '+' + digits : '';
+        });
+    }
+
+    // Foiz maydonlari
+    const percentInputs = form.querySelectorAll('input[name$="_commission_percent"]');
+    percentInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            let value = parseFloat(this.value);
+            if (!isNaN(value)) {
+                if (value < 0) this.value = '0';
+                if (value > 100) this.value = '100';
+            }
+        });
+
+        input.addEventListener('blur', function() {
+            let value = parseFloat(this.value);
+            if (!isNaN(value)) {
+                this.value = value.toFixed(2);
+            }
+        });
+    });
+
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        let isValid = true;
+
+        // Clear previous errors
+        form.querySelectorAll('.error-text').forEach(el => {
+            el.style.display = 'none';
+            el.textContent = '';
+        });
+
+        // Password validation
+        const password = form.querySelector('input[name="password"]') || form.querySelector('input[name="new_password"]');
+        const passwordConfirm = form.querySelector('input[name="password_confirm"]') || form.querySelector('input[name="confirm_password"]');
+
+        if (password && passwordConfirm) {
+            if (password.value || passwordConfirm.value) {
+                if (password.value !== passwordConfirm.value) {
+                    showError(passwordConfirm, 'Parollar mos kelmadi');
+                    isValid = false;
+                }
+                if (password.value.length > 0 && password.value.length < 8) {
+                    showError(password, 'Parol kamida 8 belgi');
+                    isValid = false;
+                }
+            }
+        }
+
+        // Phone validation
+        if (phoneInput && phoneInput.value) {
+            const phoneRegex = /^\+998\d{9}$/;
+            if (!phoneRegex.test(phoneInput.value)) {
+                showError(phoneInput, 'Format: +998XXXXXXXXX');
+                isValid = false;
+            }
+        }
+
+        // Percent validation
+        percentInputs.forEach(input => {
+            if (input.value) {
+                const value = parseFloat(input.value);
+                if (value < 0 || value > 100) {
+                    showError(input, 'Foiz 0-100 oralig\'ida');
+                    isValid = false;
+                }
+            }
+        });
+
+        if (!isValid) {
+            e.preventDefault();
+        }
+    });
+
+    function showError(field, message) {
+        const errorDiv = field.parentElement.querySelector('.error-text');
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        field.style.borderColor = '#dc2626';
+    }
+
+    // Clear error on input
+    form.querySelectorAll('input, select').forEach(input => {
+        input.addEventListener('input', function() {
+            const errorDiv = this.parentElement.querySelector('.error-text');
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+            }
+            this.style.borderColor = '';
+        });
+    });
+});
+</script>
+{% endblock %}

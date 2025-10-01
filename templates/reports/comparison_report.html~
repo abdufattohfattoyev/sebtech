@@ -1,0 +1,250 @@
+
+{% extends 'base.html' %}
+
+{% block page_title %}Taqqoslash Hisoboti{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.comparison-card {
+    background: white;
+    border: 1px solid #e3e6f0;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+.comparison-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 10px 0;
+}
+.comparison-diff {
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h4>{{ selected_shop.name }} - Taqqoslash Hisoboti</h4>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'reports:daily' %}" class="btn btn-outline-secondary btn-sm">Kunlik</a>
+    </div>
+</div>
+
+<!-- Filtrlar -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <form method="get" class="row g-3">
+            <div class="col-md-8">
+                <select name="shop" class="form-select">
+                    {% for shop in shops %}
+                        <option value="{{ shop.id }}" {% if shop == selected_shop %}selected{% endif %}>
+                            {{ shop.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">Ko'rsat</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Kunlik Taqqoslash (Bugun vs Kecha) -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6>Bugun vs Kecha</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="comparison-card">
+                    <div class="text-muted">Umumiy Savdo</div>
+                    <div class="comparison-value text-success">${{ today_stats.total_sales }}</div>
+                    <div class="text-muted">Bugun</div>
+                    <div class="comparison-diff">
+                        {% with diff=today_stats.total_sales|sub:yesterday_stats.total_sales %}
+                            {% if diff > 0 %}
+                                <span class="text-success">+${{ diff }}</span>
+                            {% elif diff < 0 %}
+                                <span class="text-danger">${{ diff }}</span>
+                            {% else %}
+                                <span class="text-muted">Teng</span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="comparison-card">
+                    <div class="text-muted">Naqd</div>
+                    <div class="comparison-value text-primary">${{ today_stats.total_cash }}</div>
+                    <div class="text-muted">Bugun</div>
+                    <div class="comparison-diff">
+                        {% with diff=today_stats.total_cash|sub:yesterday_stats.total_cash %}
+                            {% if diff > 0 %}
+                                <span class="text-success">+${{ diff }}</span>
+                            {% elif diff < 0 %}
+                                <span class="text-danger">${{ diff }}</span>
+                            {% else %}
+                                <span class="text-muted">Teng</span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="comparison-card">
+                    <div class="text-muted">Telefonlar</div>
+                    <div class="comparison-value text-info">{{ today_stats.phone_count }}</div>
+                    <div class="text-muted">Bugun</div>
+                    <div class="comparison-diff">
+                        {% with diff=today_stats.phone_count|sub:yesterday_stats.phone_count %}
+                            {% if diff > 0 %}
+                                <span class="text-success">+{{ diff }}</span>
+                            {% elif diff < 0 %}
+                                <span class="text-danger">{{ diff }}</span>
+                            {% else %}
+                                <span class="text-muted">Teng</span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="comparison-card">
+                    <div class="comparison-value text-warning">${{ today_stats.net_cash }}</div>
+                    <div class="text-muted">Bugun</div>
+                    <div class="comparison-diff">
+                        {% with diff=today_stats.net_cash|sub:yesterday_stats.net_cash %}
+                            {% if diff > 0 %}
+                                <span class="text-success">+${{ diff }}</span>
+                            {% elif diff < 0 %}
+                                <span class="text-danger">${{ diff }}</span>
+                            {% else %}
+                                <span class="text-muted">Teng</span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Oylik Taqqoslash (Bu oy vs O'tgan oy) -->
+<div class="card">
+    <div class="card-header">
+        <h6>Bu Oy vs O'tgan Oy</h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="comparison-card">
+                    <div class="text-muted">Umumiy Savdo</div>
+                    <div class="comparison-value text-success">${{ this_month_stats.total_sales }}</div>
+                    <div class="text-muted">Bu oy</div>
+                    <div class="comparison-diff">
+                        {% with diff=this_month_stats.total_sales|sub:last_month_stats.total_sales %}
+                            {% if diff > 0 %}
+                                <span class="text-success">+${{ diff }}</span>
+                            {% elif diff < 0 %}
+                                <span class="text-danger">${{ diff }}</span>
+                            {% else %}
+                                <span class="text-muted">Teng</span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="comparison-card">
+                    <div class="text-muted">O'rtacha Kunlik</div>
+                    <div class="comparison-value text-info">${{ this_month_stats.avg_daily }}</div>
+                    <div class="text-muted">Bu oy</div>
+                    <div class="comparison-diff">
+                        {% with diff=this_month_stats.avg_daily|sub:last_month_stats.avg_daily %}
+                            {% if diff > 0 %}
+                                <span class="text-success">+${{ diff }}</span>
+                            {% elif diff < 0 %}
+                                <span class="text-danger">${{ diff }}</span>
+                            {% else %}
+                                <span class="text-muted">Teng</span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Taqqoslash Grafigi -->
+        <div class="mt-4">
+            <canvas id="comparisonChart" style="height: 300px;"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Taqqoslash grafigi
+const ctx = document.getElementById('comparisonChart').getContext('2d');
+
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['Umumiy Savdo', 'Naqd', 'Xarajat', 'Sof Naqd'],
+        datasets: [
+            {
+                label: 'Bu Oy',
+                data: [
+                    {{ this_month_stats.total_sales }},
+                    {{ this_month_stats.total_cash }},
+                    {{ this_month_stats.total_expenses }},
+                    {{ this_month_stats.net_cash }}
+                ],
+                backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                borderColor: '#28a745',
+                borderWidth: 2
+            },
+            {
+                label: 'O\'tgan Oy',
+                data: [
+                    {{ last_month_stats.total_sales }},
+                    {{ last_month_stats.total_cash }},
+                    {{ last_month_stats.total_expenses }},
+                    {{ last_month_stats.net_cash }}
+                ],
+                backgroundColor: 'rgba(108, 117, 125, 0.5)',
+                borderColor: '#6c757d',
+                borderWidth: 2
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

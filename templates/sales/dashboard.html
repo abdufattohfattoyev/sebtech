@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_title %}Sotuvlar Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 px-md-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="fas fa-chart-line me-2 text-primary"></i>Sotuvlar
+        </h2>
+        <span class="badge bg-light text-dark border">{% now "d F, Y" %}</span>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Phone Sales -->
+        <div class="col-6 col-lg-3">
+            <div class="stat-card" onclick="window.location.href='{% url 'sales:phone_sale_list' %}'">
+                <div class="stat-icon bg-primary-soft">
+                    <i class="fas fa-mobile-alt text-primary"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ today_phone_sales_count }}</div>
+                    <div class="stat-label">Telefon sotuvlari</div>
+                    <div class="stat-amount text-success">${{ today_phone_sales_total|floatformat:0 }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accessory Sales -->
+        <div class="col-6 col-lg-3">
+            <div class="stat-card" onclick="window.location.href='{% url 'sales:accessory_sale_list' %}'">
+                <div class="stat-icon bg-info-soft">
+                    <i class="fas fa-headphones text-info"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ today_accessory_sales_count }}</div>
+                    <div class="stat-label">Aksessuar</div>
+                    <div class="stat-amount text-success">{{ today_accessory_sales_total|floatformat:0|default:"0" }} so'm</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Debts USD -->
+        <div class="col-6 col-lg-3">
+            <div class="stat-card" onclick="window.location.href='{% url 'sales:debt_list' %}'">
+                <div class="stat-icon bg-warning-soft">
+                    <i class="fas fa-dollar-sign text-warning"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ active_debts_usd_count }}</div>
+                    <div class="stat-label">Qarzlar (USD)</div>
+                    <div class="stat-amount text-warning">${{ active_debts_usd_total|floatformat:0 }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Debts UZS -->
+        <div class="col-6 col-lg-3">
+            <div class="stat-card" onclick="window.location.href='{% url 'sales:debt_list' %}'">
+                <div class="stat-icon bg-warning-soft">
+                    <i class="fas fa-coins text-warning"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ active_debts_uzs_count }}</div>
+                    <div class="stat-label">Qarzlar (UZS)</div>
+                    <div class="stat-amount text-warning">{{ active_debts_uzs_total|floatformat:0|default:"0" }} so'm</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions & Summary -->
+    <div class="row g-3 mb-4">
+        <!-- Quick Actions -->
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pb-0">
+                    <h6 class="mb-0">
+                        <i class="fas fa-bolt me-2 text-primary"></i>Tezkor amallar
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6 col-sm-3">
+                            <a href="{% url 'sales:phone_sale_create' %}" class="action-btn btn-primary">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span>Telefon</span>
+                            </a>
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <a href="{% url 'sales:accessory_sale_create' %}" class="action-btn btn-info">
+                                <i class="fas fa-headphones"></i>
+                                <span>Aksessuar</span>
+                            </a>
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <a href="{% url 'sales:phone_exchange_create' %}" class="action-btn btn-warning">
+                                <i class="fas fa-exchange-alt"></i>
+                                <span>Almashtirish</span>
+                            </a>
+                        </div>
+                        <div class="col-6 col-sm-3">
+                            <a href="{% url 'sales:phone_return_create' %}" class="action-btn btn-secondary">
+                                <i class="fas fa-undo"></i>
+                                <span>Qaytarish</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today Summary -->
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 pb-0">
+                    <h6 class="mb-0">
+                        <i class="fas fa-calendar-day me-2 text-success"></i>Bugungi natijalar
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="summary-list">
+                        <div class="summary-item">
+                            <span class="summary-label">
+                                <i class="fas fa-mobile-alt text-primary me-2"></i>Telefon
+                            </span>
+                            <span class="summary-value text-success">${{ today_phone_sales_total|floatformat:0 }}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">
+                                <i class="fas fa-headphones text-info me-2"></i>Aksessuar
+                            </span>
+                            <span class="summary-value text-success">{{ today_accessory_sales_total|floatformat:0|default:"0" }} so'm</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">
+                                <i class="fas fa-receipt text-danger me-2"></i>Xarajatlar
+                            </span>
+                            <span class="summary-value text-danger">{{ today_expenses_total|floatformat:0|default:"0" }} so'm</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Management Links -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 pb-0">
+            <h6 class="mb-0">
+                <i class="fas fa-cogs me-2 text-secondary"></i>Boshqaruv
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-6 col-sm-4 col-lg-2">
+                    <a href="{% url 'sales:phone_sale_list' %}" class="management-link">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Telefonlar</span>
+                    </a>
+                </div>
+                <div class="col-6 col-sm-4 col-lg-2">
+                    <a href="{% url 'sales:accessory_sale_list' %}" class="management-link">
+                        <i class="fas fa-headphones"></i>
+                        <span>Aksessuarlar</span>
+                    </a>
+                </div>
+                <div class="col-6 col-sm-4 col-lg-2">
+                    <a href="{% url 'sales:debt_list' %}" class="management-link">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        <span>Qarzlar</span>
+                    </a>
+                </div>
+                <div class="col-6 col-sm-4 col-lg-2">
+                    <a href="{% url 'sales:debt_payment_list' %}" class="management-link">
+                        <i class="fas fa-dollar-sign"></i>
+                        <span>To'lovlar</span>
+                    </a>
+                </div>
+                <div class="col-6 col-sm-4 col-lg-2">
+                    <a href="{% url 'sales:expense_list' %}" class="management-link">
+                        <i class="fas fa-receipt"></i>
+                        <span>Xarajatlar</span>
+                    </a>
+                </div>
+                <div class="col-6 col-sm-4 col-lg-2">
+                    <a href="{% url 'sales:phone_exchange_list' %}" class="management-link">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span>Almashtirishlar</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Stat Cards */
+.stat-card {
+    display: flex;
+    align-items: center;
+    padding: 1.25rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    margin-right: 1rem;
+}
+
+.stat-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #1a202c;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #718096;
+    margin: 0.25rem 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-amount {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+/* Background Colors */
+.bg-primary-soft { background: rgba(13, 110, 253, 0.1); }
+.bg-info-soft { background: rgba(13, 202, 240, 0.1); }
+.bg-warning-soft { background: rgba(255, 193, 7, 0.1); }
+.bg-danger-soft { background: rgba(220, 53, 69, 0.1); }
+
+/* Action Buttons */
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0.5rem;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    background: white;
+    border: 2px solid;
+    min-height: 80px;
+}
+
+.action-btn i {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.action-btn span {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.action-btn.btn-primary {
+    color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.action-btn.btn-primary:hover {
+    background: #0d6efd;
+    color: white;
+}
+
+.action-btn.btn-info {
+    color: #0dcaf0;
+    border-color: #0dcaf0;
+}
+
+.action-btn.btn-info:hover {
+    background: #0dcaf0;
+    color: white;
+}
+
+.action-btn.btn-warning {
+    color: #ffc107;
+    border-color: #ffc107;
+}
+
+.action-btn.btn-warning:hover {
+    background: #ffc107;
+    color: #000;
+}
+
+.action-btn.btn-secondary {
+    color: #6c757d;
+    border-color: #6c757d;
+}
+
+.action-btn.btn-secondary:hover {
+    background: #6c757d;
+    color: white;
+}
+
+/* Summary List */
+.summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: #495057;
+}
+
+.summary-value {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Management Links */
+.management-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #495057;
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+    min-height: 70px;
+}
+
+.management-link:hover {
+    background: #e9ecef;
+    color: #212529;
+    transform: translateY(-2px);
+}
+
+.management-link i {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.management-link span {
+    font-size: 0.75rem;
+    text-align: center;
+}
+
+/* Card Styling */
+.card {
+    border-radius: 12px;
+}
+
+.card-header {
+    padding: 1.25rem;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.25rem;
+        margin-right: 0.75rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
+    }
+
+    .stat-amount {
+        font-size: 0.8rem;
+    }
+
+    .action-btn {
+        min-height: 70px;
+        padding: 0.75rem 0.25rem;
+    }
+
+    .action-btn i {
+        font-size: 1.25rem;
+    }
+
+    .action-btn span {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .container-fluid {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+}
+
+@media print {
+    .action-btn,
+    .management-link {
+        display: none;
+    }
+}
+</style>
+{% endblock %}

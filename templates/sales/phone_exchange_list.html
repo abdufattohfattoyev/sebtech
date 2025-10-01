@@ -1,0 +1,161 @@
+<!-- sales/templates/sales/phone_exchange_list.html -->
+{% extends "base.html" %}
+
+{% block page_title %}Telefon almashtirishlar{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-exchange-alt me-2"></i>Telefon almashtirishlar</h2>
+        <a href="{% url 'sales:phone_exchange_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Yangi almashtirish
+        </a>
+    </div>
+
+    <!-- Statistika kartlari -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-left-primary">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-exchange-alt fa-2x text-primary"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Jami Almashtirishlar
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ phone_exchanges|length }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-success">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-dollar-sign fa-2x text-success"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Bugungi Almashtirishlar
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% with today_exchanges=phone_exchanges|length %}{{ today_exchanges }}{% endwith %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Almashtirishlar ro'yxati</h6>
+        </div>
+        <div class="card-body">
+            {% if phone_exchanges %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Mijoz</th>
+                                <th>Eski telefon</th>
+                                <th>Yangi telefon</th>
+                                <th>Almashtirish turi</th>
+                                <th>Narx farqi</th>
+                                <th>To'lov usuli</th>
+                                <th>Sana</th>
+                                <th>Sotuvchi</th>
+                                <th>Amallar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exchange in phone_exchanges %}
+                            <tr>
+                                <td>#{{ exchange.id }}</td>
+                                <td>
+                                    <div class="fw-bold">{{ exchange.customer_name }}</div>
+                                    <small class="text-muted">{{ exchange.customer_phone_number }}</small>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">{{ exchange.old_phone_model.name }}</div>
+                                    <small class="text-muted">{{ exchange.old_phone_memory.size }}</small>
+                                    <br><small class="text-primary">IMEI: {{ exchange.old_phone_imei|default:"-" }}</small>
+                                    <br><small class="text-success">Holat: {{ exchange.old_phone_condition_percentage }}%</small>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">{{ exchange.new_phone.phone_model.name }}</div>
+                                    <small class="text-muted">{{ exchange.new_phone.memory_size.size }}</small>
+                                    <br><small class="text-primary">IMEI: {{ exchange.new_phone.imei|default:"-" }}</small>
+                                </td>
+                                <td>
+                                    {% if exchange.exchange_type == 'customer_pays' %}
+                                        <span class="badge bg-info">Mijoz to'laydi</span>
+                                    {% elif exchange.exchange_type == 'shop_pays' %}
+                                        <span class="badge bg-warning">Do'kon to'laydi</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Teng</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold text-primary">${{ exchange.price_difference }}</td>
+                                <td>
+                                    {% if exchange.cash_amount %}<span class="badge bg-success">Naqd: ${{ exchange.cash_amount }}</span><br>{% endif %}
+                                    {% if exchange.card_amount %}<span class="badge bg-info">Karta: ${{ exchange.card_amount }}</span><br>{% endif %}
+                                    {% if exchange.credit_amount %}<span class="badge bg-warning">Nasiya: ${{ exchange.credit_amount }}</span><br>{% endif %}
+                                    {% if exchange.debt_amount %}<span class="badge bg-danger">Qarz: ${{ exchange.debt_amount }}</span>{% endif %}
+                                </td>
+                                <td>{{ exchange.exchange_date|date:"d.m.Y" }}</td>
+
+                                <td>{{ exchange.salesman.get_full_name|default:exchange.salesman.username }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'sales:phone_exchange_detail' exchange.pk %}"
+                                           class="btn btn-outline-primary" title="Ko'rish">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'sales:phone_exchange_edit' exchange.pk %}"
+                                           class="btn btn-outline-secondary" title="Tahrirlash">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'sales:phone_exchange_delete' exchange.pk %}"
+                                           class="btn btn-outline-danger" title="O'chirish"
+                                           onclick="return confirm('Rostdan ham bu almashtirishni o\'chirmoqchimisiz?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-exchange-alt text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="text-muted mt-3">Hali telefon almashtirishlar yo'q</h4>
+                    <p class="text-muted">Birinchi telefon almashtirishni qo'shing!</p>
+                    <a href="{% url 'sales:phone_exchange_create' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-1"></i>Telefon almashtirish
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.border-left-primary {
+    border-left: 4px solid #4e73df !important;
+}
+.border-left-success {
+    border-left: 4px solid #1cc88a !important;
+}
+</style>
+{% endblock %}
+
+<!-- ================= FORM TEMPLATE ================= -->

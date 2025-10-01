@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block page_title %}O'chirish Tasdiqlash{% endblock %}
+
+{% block extra_css %}
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.delete-container { max-width: 500px; margin: 0 auto; }
+.delete-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); text-align: center; }
+
+.delete-icon { width: 80px; height: 80px; background: linear-gradient(135deg, #fee2e2, #fecaca); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #dc2626; font-size: 2rem; }
+.delete-title { font-size: 1.5rem; font-weight: 700; color: #dc2626; margin-bottom: 1rem; }
+.delete-text { color: #6b7280; margin-bottom: 1.5rem; line-height: 1.6; }
+.delete-user { font-weight: 700; color: #111827; }
+
+.alert-warning { background: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; text-align: left; }
+.alert-warning strong { color: #92400e; }
+
+.delete-actions { display: flex; gap: 0.75rem; justify-content: center; }
+.btn { padding: 0.75rem 1.5rem; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn-danger { background: #dc2626; color: white; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-secondary { background: #6b7280; color: white; }
+.btn-secondary:hover { background: #4b5563; }
+
+@media (max-width: 768px) {
+    .delete-card { padding: 1.5rem; }
+    .delete-actions { flex-direction: column-reverse; }
+    .btn { width: 100%; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="delete-container">
+    <div class="delete-card">
+        <div class="delete-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h4 class="delete-title">O'chirishni Tasdiqlang</h4>
+        <p class="delete-text">
+            Siz haqiqatan ham <span class="delete-user">{{ profile.user.get_full_name|default:profile.user.username }}</span> 
+            foydalanuvchisini o'chirmoqchimisiz?
+        </p>
+
+        <div class="alert-warning">
+            <strong>⚠️ Diqqat!</strong> Bu amal qaytarilmaydi. Barcha ma'lumotlar butunlay o'chib ketadi.
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="delete-actions">
+                <a href="{% url 'users:dashboard' %}" class="btn btn-secondary">Bekor Qilish</a>
+                <button type="submit" class="btn btn-danger">Ha, O'chirish</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

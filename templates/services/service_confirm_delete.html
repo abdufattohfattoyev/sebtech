@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block page_title %}Xizmatni O'chirish{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">⚠️ Xizmatni O'chirish</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <strong>Diqqat!</strong> Bu xizmatni o'chirmoqchimisiz?
+                    </div>
+
+                    <h6>Xizmat ma'lumotlari:</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Telefon:</strong> {{ service.phone.phone_model }} {{ service.phone.memory_size }}</li>
+                        <li><strong>IMEI:</strong> {{ service.phone.imei|default:"N/A" }}</li>
+                        <li><strong>Usta:</strong> {{ service.master.full_name }}</li>
+                        <li><strong>Xizmat haqi:</strong> ${{ service.service_fee|floatformat:2 }}</li>
+                        <li><strong>To'langan:</strong> ${{ service.paid_amount|floatformat:2 }}</li>
+                        {% if service.remaining_amount > 0 %}
+                        <li><strong>Qolgan qarz:</strong> <span class="text-danger">${{ service.remaining_amount|floatformat:2 }}</span></li>
+                        {% endif %}
+                        <li><strong>Holat:</strong> 
+                            {% if service.status == 'in_progress' %}
+                                <span class="badge bg-warning">Jarayonda</span>
+                            {% else %}
+                                <span class="badge bg-success">Tugallangan</span>
+                            {% endif %}
+                        </li>
+                    </ul>
+
+                    <div class="alert alert-info mt-3">
+                        <h6>O'chirilganda:</h6>
+                        <ul class="mb-0">
+                            <li>Telefon do'konga qaytariladi</li>
+                            <li>Repair cost ${{ service.service_fee|floatformat:2 }} kamayadi</li>
+                            {% if service.remaining_amount > 0 %}
+                            <li>Qarz ma'lumotlari o'chiriladi</li>
+                            {% endif %}
+                            <li>Barcha to'lovlar o'chiriladi</li>
+                        </ul>
+                    </div>
+
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Ha, O'chirish
+                            </button>
+                            <a href="{% url 'services:service_detail' service.pk %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Bekor qilish
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

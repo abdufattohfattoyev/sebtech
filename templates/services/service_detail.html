@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Xizmat Tafsilotlari - {{ service.phone }}{% endblock %}
+{% block page_title %}Xizmat Tafsilotlari{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Service and Financial Info -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Xizmat Ma'lumotlari
+                    </h5>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'services:service_edit' service.pk %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-edit me-1"></i>Tahrirlash
+                        </a>
+                        {% if service.status == 'in_progress' %}
+                        <button class="btn btn-success btn-sm" onclick="showStatusUpdateModal({{ service.pk }})">
+                            <i class="fas fa-check me-1"></i>Tugallash
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Telefon Ma'lumotlari</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Model</label>
+                                <div class="fw-semibold">{{ service.phone.phone_model }} {{ service.phone.memory_size }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">IMEI</label>
+                                <div class="fw-semibold">{{ service.phone.imei|default:"N/A" }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Holati</label>
+                                <div class="fw-semibold">{{ service.phone.condition_percentage }}%</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Tannarx</label>
+                                <div class="fw-semibold">{{ service.phone.cost_price|floatformat:0 }} so'm</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Usta Ma'lumotlari</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Usta</label>
+                                <div class="fw-semibold">
+                                    <a href="{% url 'services:master_detail' service.master.pk %}" class="text-decoration-none">
+                                        {{ service.master.full_name }}
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Telefon Raqami</label>
+                                <div class="fw-semibold">{{ service.master.phone_number|default:"Ma'lumot yo'q" }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Berilgan Sana</label>
+                                <div class="fw-semibold">{{ service.given_date|date:"d.m.Y" }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Qaytarish Sanasi</label>
+                                <div class="fw-semibold">
+                                    {% if service.expected_return_date %}
+                                        {{ service.expected_return_date|date:"d.m.Y" }}
+                                    {% else %}
+                                        <span class="text-muted">Belgilanmagan</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label">Ta'mirlash Sabablari</label>
+                        <div class="bg-light p-3 rounded">{{ service.repair_reasons|default:"Ma'lumot yo'q" }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Holati</label>
+                        <div>
+                            <span class="badge {% if service.status == 'in_progress' %}bg-warning{% else %}bg-success{% endif %}">
+                                {{ service.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-money-bill me-2"></i>Moliyaviy Ma'lumotlar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-12 mb-3">
+                            <div class="stat-value text-primary">{{ service.service_fee|floatformat:0 }} so'm</div>
+                            <div class="stat-label">Jami Xizmat Haqi</div>
+                        </div>
+                    </div>
+                    <div class="row text-center mb-3">
+                        <div class="col-6">
+                            <div class="stat-value text-success">{{ service.paid_amount|floatformat:0 }} so'm</div>
+                            <div class="stat-label">To'langan</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-value text-danger">{{ unpaid_amount|floatformat:0 }} so'm</div>
+                            <div class="stat-label">Qolgan</div>
+                        </div>
+                    </div>
+                    {% if service.service_fee > 0 %}
+                        <div class="mb-3">
+                            <small class="text-muted">To'lov Holati</small>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" style="width: {% widthratio service.paid_amount service.service_fee 100 %}%"></div>
+                            </div>
+                            <div class="text-center mt-1">
+                                <small class="text-muted">{% widthratio service.paid_amount service.service_fee 100 %}%</small>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if unpaid_amount > 0 %}
+                        <div class="d-grid">
+                            <a href="{% url 'services:payment_create' service.pk %}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-plus me-1"></i>To'lov Qo'shish
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payments History -->
+    {% if payments %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>To'lovlar Tarixi</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>To'lov Summasi</th>
+                                <th>To'lov Sanasi</th>
+                                <th>To'lovchi</th>
+                                <th>Izoh</th>
+                                <th>Amallar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payments %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td class="fw-semibold text-success">{{ payment.amount|floatformat:0 }} so'm</td>
+                                    <td>{{ payment.payment_date|date:"d.m.Y" }}</td>
+                                    <td>{{ payment.paid_by.get_full_name|default:payment.paid_by.username }}</td>
+                                    <td>{{ payment.notes|default:"Izoh yo'q" }}</td>
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            <a href="{% url 'services:payment_edit' service.pk payment.pk %}" class="btn btn-primary btn-sm" title="Tahrirlash">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="post" action="{% url 'services:payment_delete' service.pk payment.pk %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Bu to\'lovni o\'chirishni tasdiqlaysizmi?')" title="O'chirish">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                <h5>Hech qanday to'lov topilmadi</h5>
+                <p>Bu xizmat uchun hali to'lovlar qo'shilmagan.</p>
+                {% if unpaid_amount > 0 %}
+                <a href="{% url 'services:payment_create' service.pk %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i>To'lov Qo'shish
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Status Update Modal -->
+    <div class="modal fade" id="statusUpdateModal" tabindex="-1" aria-labelledby="statusUpdateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="statusUpdateModalLabel">Xizmatni tugallash</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% if unpaid_amount > 0 %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Diqqat!</strong> Bu xizmat uchun hali <strong>{{ unpaid_amount|floatformat:0 }} so'm</strong> to'lanmagan.
+                        </div>
+                        <p>Xizmatni tugallash uchun avval to'liq to'lov qilishingiz kerak.</p>
+                        <div class="text-muted">
+                            <p>Xizmat narxi: <strong>{{ service.service_fee|floatformat:0 }} so'm</strong></p>
+                            <p>To'langan: <strong>{{ service.paid_amount|floatformat:0 }} so'm</strong></p>
+                            <p>Qolgan qarz: <strong class="text-danger">{{ unpaid_amount|floatformat:0 }} so'm</strong></p>
+                        </div>
+                    {% else %}
+                        <p>Siz haqiqatan ham bu xizmatni tugallangan deb belgilamoqchimisiz?</p>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> Xizmat tugallangandan so'ng:
+                            <ul class="mb-0 mt-2">
+                                <li>Telefon avtomatik ravishda do'kon holatiga o'tkaziladi</li>
+                                <li>Ustaga to'liq to'lov qilingan bo'ladi</li>
+                                <li>Bu amalni ortga qaytarib bo'lmaydi</li>
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor qilish</button>
+                    {% if unpaid_amount == 0 %}
+                        <button type="button" class="btn btn-success" id="confirmStatusUpdate">
+                            <i class="fas fa-check me-2"></i>Tugallash
+                        </button>
+                    {% else %}
+                        <a href="{% url 'services:payment_create' service.pk %}" class="btn btn-primary">
+                            <i class="fas fa-money-bill me-2"></i>To'lov qilish
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentServiceId = {{ service.pk }};
+
+    window.showStatusUpdateModal = function(serviceId) {
+        currentServiceId = serviceId;
+        const modal = new bootstrap.Modal(document.getElementById('statusUpdateModal'));
+        modal.show();
+    };
+
+    const confirmBtn = document.getElementById('confirmStatusUpdate');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            if (!currentServiceId) return;
+
+            // Button'ni disable qilish
+            this.disabled = true;
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Yuklanmoqda...';
+
+            const formData = new FormData();
+            formData.append('status', 'completed');
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+            fetch("{% url 'services:service_update_status' service.pk %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Modal yopish
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('statusUpdateModal'));
+                    modal.hide();
+
+                    // Success xabari
+                    alert(data.message);
+
+                    // Sahifani yangilash
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    alert('Xatolik: ' + data.message);
+                    // Button'ni qayta yoqish
+                    this.disabled = false;
+                    this.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Server bilan aloqada xatolik yuz berdi!');
+                // Button'ni qayta yoqish
+                this.disabled = false;
+                this.innerHTML = originalText;
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

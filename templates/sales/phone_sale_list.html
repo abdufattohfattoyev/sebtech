@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block page_title %}Telefon sotuvlari{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Telefon sotuvlari</h2>
+    <a href="{% url 'sales:phone_sale_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>Yangi sotish
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if phone_sales %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Telefon</th>
+                            <th>Mijoz</th>
+                            <th>Sotuvchi</th>
+                            <th>Narx</th>
+                            <th>Naqd</th>
+                            <th>Karta</th>
+                            <th>Nasiya</th>
+                            <th>Qarz</th>
+                            <th>Sana</th>
+                            <th>Amallar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sale in phone_sales %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ sale.phone.phone_model.name }}</div>
+                                <small class="text-muted">{{ sale.phone.memory_size.size }}</small>
+                            </td>
+                            <td>{{ sale.customer.name }}</td>
+                            <td>{{ sale.salesman.get_full_name|default:sale.salesman.username }}</td>
+                            <td class="fw-bold text-primary">${{ sale.sale_price }}</td>
+                            <td class="text-success">${{ sale.cash_amount }}</td>
+                            <td class="text-info">${{ sale.card_amount }}</td>
+                            <td class="text-warning">${{ sale.credit_amount }}</td>
+                            <td class="text-danger">${{ sale.debt_amount }}</td>
+                            <td>{{ sale.sale_date|date:"d.m.Y" }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'sales:phone_sale_detail' sale.pk %}" class="btn btn-outline-primary" title="Ko'rish">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'sales:phone_sale_edit' sale.pk %}" class="btn btn-outline-secondary" title="Tahrirlash">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'sales:phone_sale_delete' sale.pk %}" class="btn btn-outline-danger" title="O'chirish">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-mobile-alt text-muted" style="font-size: 3rem;"></i>
+                <h4 class="text-muted mt-3">Hali telefon sotuvlari yo'q</h4>
+                <p class="text-muted">Birinchi telefon sotishini qo'shing!</p>
+                <a href="{% url 'sales:phone_sale_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Telefon sotish
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

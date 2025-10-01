@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-2">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <!-- Header -->
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0 text-primary">
+                    <i class="fas fa-dollar-sign me-2"></i>{{ title }}
+                </h5>
+                {% if request.GET.debt_id and selected_debt %}
+                    <a href="{% url 'sales:debt_detail' selected_debt.pk %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                {% else %}
+                    <a href="{% url 'sales:debt_payment_list' %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                {% endif %}
+            </div>
+
+            <!-- Qarz ma'lumotlari (agar tanlangan bo'lsa) -->
+            {% if request.GET.debt_id and selected_debt %}
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <small class="text-muted">Qarz ma'lumotlari</small>
+                            <span class="badge bg-primary">{{ selected_debt.get_debt_type_display }}</span>
+                        </div>
+
+                        <div class="row g-2 text-center">
+                            <div class="col-4">
+                                <div class="text-danger fw-bold fs-6">${{ selected_debt.debt_amount|floatformat:2 }}</div>
+                                <small class="text-muted">Jami</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-success fw-bold fs-6">${{ selected_debt.paid_amount|floatformat:2 }}</div>
+                                <small class="text-muted">To'langan</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-warning fw-bold fs-6">${{ selected_debt.remaining_amount|floatformat:2 }}</div>
+                                <small class="text-muted">Qoldiq</small>
+                            </div>
+                        </div>
+
+                        <!-- Progress -->
+                        <div class="mt-2">
+                            {% widthratio selected_debt.paid_amount selected_debt.debt_amount 100 as progress %}
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar bg-success" style="width: {{ progress }}%"></div>
+                            </div>
+                            <small class="text-muted">{{ progress }}% to'langan</small>
+                        </div>
+
+                        <!-- Qarz olgan/bergan -->
+                        <div class="mt-2 d-flex justify-content-between">
+                            <div>
+                                <small class="text-muted">Bergan:</small>
+                                <div class="fw-bold small">{{ selected_debt.creditor.get_full_name|default:selected_debt.creditor.username }}</div>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">Olgan:</small>
+                                <div class="fw-bold small">
+                                    {% if selected_debt.customer %}
+                                        {{ selected_debt.customer.name }}
+                                    {% else %}
+                                        {{ selected_debt.debtor.get_full_name|default:selected_debt.debtor.username }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Form -->
+            <form method="post" id="paymentForm">
+                {% csrf_token %}
+
+                <!-- Hidden field agar debt_id bor bo'lsa -->
+                {% if request.GET.debt_id %}
+                    <input type="hidden" name="debt" value="{{ request.GET.debt_id }}">
+                {% else %}
+                    <!-- Qarz tanlash -->
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-body p-3">
+                            <label class="form-label small text-muted mb-2">Qarzni tanlang</label>
+                            {{ form.debt }}
+                            {% if form.debt.errors %}
+                                <div class="text-danger small mt-1">{{ form.debt.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- To'lov summasi -->
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label small text-muted mb-0">To'lov summasi</label>
+                            {% if selected_debt and selected_debt.remaining_amount > 0 %}
+                                <button type="button" class="btn btn-sm btn-success" onclick="setFullAmount()">
+                                    To'liq to'lash (${{ selected_debt.remaining_amount|floatformat:2 }})
+                                </button>
+                            {% endif %}
+                        </div>
+
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number"
+                                   name="payment_amount"
+                                   id="id_payment_amount"
+                                   class="form-control"
+                                   step="0.01"
+                                   min="0.01"
+                                   {% if selected_debt %}max="{{ selected_debt.remaining_amount }}"{% endif %}
+                                   required>
+                        </div>
+
+                        {% if form.payment_amount.errors %}
+                            <div class="text-danger small mt-1">{{ form.payment_amount.errors.0 }}</div>
+                        {% endif %}
+
+                        {% if selected_debt %}
+                            <small class="text-muted">Maksimal: ${{ selected_debt.remaining_amount|floatformat:2 }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Sana va Izoh -->
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body p-3">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-1">Sana</label>
+                                <input type="date" name="payment_date" id="id_payment_date" class="form-control" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-1">Izoh (ixtiyoriy)</label>
+                                <input type="text" name="notes" id="id_notes" class="form-control" placeholder="Izoh...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div id="previewCard" class="card border-0 shadow-sm mb-3" style="display: none;">
+                    <div class="card-body p-3 bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-muted">To'lovdan keyin qoldiq:</small>
+                                <div id="newRemaining" class="fw-bold text-success"></div>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">Holat:</small>
+                                <div id="newStatus" class="fw-bold"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Xatoliklar -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2">
+                        {{ form.non_field_errors.0 }}
+                    </div>
+                {% endif %}
+
+                <!-- Submit button -->
+                <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
+                    <i class="fas fa-save me-2"></i>To'lovni saqlash
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global data - Bu yerda syntax xatosi bor edi
+var debtData = {
+    {% if selected_debt %}
+    remaining: parseFloat('{{ selected_debt.remaining_amount|floatformat:2 }}'),
+    total: parseFloat('{{ selected_debt.debt_amount|floatformat:2 }}')
+    {% else %}
+    remaining: 0,
+    total: 0
+    {% endif %}
+};
+
+// Set today's date
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('id_payment_date').value = today;
+
+    // Focus on payment input
+    const paymentInput = document.getElementById('id_payment_amount');
+    if (paymentInput) {
+        paymentInput.focus();
+        // Add input listener for preview
+        paymentInput.addEventListener('input', updatePreview);
+    }
+});
+
+// Set full amount - Bu funksiya yo'q edi
+function setFullAmount() {
+    if (debtData.remaining > 0) {
+        const paymentInput = document.getElementById('id_payment_amount');
+        if (paymentInput) {
+            paymentInput.value = debtData.remaining.toFixed(2);
+            updatePreview();
+        }
+    }
+}
+
+// Update preview
+function updatePreview() {
+    const paymentInput = document.getElementById('id_payment_amount');
+    const previewCard = document.getElementById('previewCard');
+    const newRemaining = document.getElementById('newRemaining');
+    const newStatus = document.getElementById('newStatus');
+
+    if (!paymentInput || !previewCard || !newRemaining || !newStatus) {
+        return;
+    }
+
+    const amount = parseFloat(paymentInput.value) || 0;
+
+    if (amount > 0 && debtData.remaining > 0) {
+        const remaining = Math.max(0, debtData.remaining - amount);
+        const status = remaining === 0 ? "To'langan" : "Qisman";
+
+        newRemaining.textContent = '$' + remaining.toFixed(2);
+        newStatus.textContent = status;
+        newStatus.className = remaining === 0 ? 'fw-bold text-success' : 'fw-bold text-warning';
+
+        previewCard.style.display = 'block';
+
+        // Input validation visual feedback
+        if (amount > debtData.remaining) {
+            paymentInput.classList.add('is-invalid');
+        } else {
+            paymentInput.classList.remove('is-invalid');
+        }
+    } else {
+        previewCard.style.display = 'none';
+        paymentInput.classList.remove('is-invalid');
+    }
+}
+
+// Form validation
+document.getElementById('paymentForm').addEventListener('submit', function(e) {
+    const amountInput = document.getElementById('id_payment_amount');
+    const amount = parseFloat(amountInput.value) || 0;
+
+    if (amount <= 0) {
+        e.preventDefault();
+        alert('To\'lov summasini kiriting!');
+        amountInput.focus();
+        return;
+    }
+
+    if (debtData.remaining > 0 && amount > debtData.remaining) {
+        e.preventDefault();
+        alert('To\'lov summasi qarz qoldig\'idan ko\'p bo\'lishi mumkin emas!');
+        amountInput.focus();
+        return;
+    }
+
+    if (!confirm('$' + amount.toFixed(2) + ' to\'lovni saqlashni tasdiqlaysizmi?')) {
+        e.preventDefault();
+    }
+});
+</script>
+
+<style>
+/* Minimalist styles */
+.card {
+    border-radius: 8px;
+}
+
+.form-control, .form-select {
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    font-size: 14px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.1rem rgba(13, 110, 253, 0.15);
+}
+
+.btn {
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.input-group-text {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    font-weight: 600;
+}
+
+.progress {
+    border-radius: 2px;
+}
+
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* Mobile optimizations */
+@media (max-width: 576px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+
+    .card-body {
+        padding: 1rem !important;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+    }
+
+    .fs-6 {
+        font-size: 0.9rem !important;
+    }
+
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+/* Input validation */
+.form-control.is-invalid {
+    border-color: #dc3545;
+    animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Button interactions */
+.btn:active {
+    transform: translateY(1px);
+}
+
+/* Smooth transitions */
+.card, .btn, .form-control {
+    transition: all 0.2s ease;
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block page_title %}Aksessuar sotish tafsilotlari{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3 py-2">
+    <div class="row">
+        <!-- Header -->
+        <div class="col-12">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0 text-primary">
+                    <i class="fas fa-headphones me-2"></i>Aksessuar sotish tafsilotlari
+                </h5>
+                <div class="btn-group">
+                    <a href="{% url 'sales:accessory_sale_list' %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Orqaga
+                    </a>
+                    <a href="{% url 'sales:accessory_sale_edit' accessory_sale.pk %}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-edit me-1"></i>Tahrirlash
+                    </a>
+                    <a href="{% url 'sales:accessory_sale_delete' accessory_sale.pk %}" 
+                       class="btn btn-sm btn-outline-danger"
+                       onclick="return confirm('Bu aksessuar sotishni o\'chirishni xohlaysizmi?')">
+                        <i class="fas fa-trash me-1"></i>O'chirish
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Asosiy ma'lumotlar -->
+        <div class="col-md-8 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Sotish ma'lumotlari
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Aksessuar ma'lumotlari -->
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light">
+                                <h6 class="text-muted mb-2">Aksessuar</h6>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-headphones text-info me-3 fa-2x"></i>
+                                    <div>
+                                        <h6 class="mb-1">{{ accessory_sale.accessory.name }}</h6>
+                                        <small class="text-muted">{{ accessory_sale.accessory.category }}</small>
+                                        {% if accessory_sale.accessory.brand %}
+                                            <div class="small text-muted">{{ accessory_sale.accessory.brand }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <hr class="my-2">
+                                
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="text-info fw-bold">{{ accessory_sale.quantity }}</div>
+                                        <small class="text-muted">Soni</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-success fw-bold">${{ accessory_sale.unit_price|floatformat:2 }}</div>
+                                        <small class="text-muted">Birlik narxi</small>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-primary fw-bold">${{ accessory_sale.total_price|floatformat:2 }}</div>
+                                        <small class="text-muted">Jami</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mijoz ma'lumotlari -->
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-muted mb-2">Mijoz ma'lumotlari</h6>
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-user text-muted me-3 fa-2x"></i>
+                                    <div>
+                                        <h6 class="mb-1">{{ accessory_sale.customer.name }}</h6>
+                                        <div class="text-muted">
+                                            <i class="fas fa-phone me-1"></i>{{ accessory_sale.customer.phone_number }}
+                                        </div>
+                                        {% if accessory_sale.customer.address %}
+                                            <div class="text-muted small mt-1">
+                                                <i class="fas fa-map-marker-alt me-1"></i>{{ accessory_sale.customer.address }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sotuvchi ma'lumotlari -->
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-muted mb-2">Sotuvchi</h6>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user-tie text-muted me-3 fa-2x"></i>
+                                    <div>
+                                        <h6 class="mb-1">{{ accessory_sale.salesman.get_full_name|default:accessory_sale.salesman.username }}</h6>
+                                        <div class="text-muted">{{ accessory_sale.salesman.username }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sana va vaqt -->
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-muted mb-2">Sotish sanasi</h6>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-calendar text-muted me-3 fa-2x"></i>
+                                    <div>
+                                        <h6 class="mb-1">{{ accessory_sale.sale_date|date:"d.m.Y" }}</h6>
+                                        <div class="text-muted">{{ accessory_sale.sale_date|date:"l" }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Izoh -->
+                    {% if accessory_sale.notes %}
+                    <div class="mt-3">
+                        <h6 class="text-muted mb-2">Izoh</h6>
+                        <div class="bg-light p-3 rounded">
+                            {{ accessory_sale.notes|linebreaks }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Moliyaviy ma'lumotlar -->
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>Moliyaviy ma'lumotlar
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <!-- Umumiy narx -->
+                    <div class="text-center mb-3">
+                        <div class="fs-3 fw-bold text-success">${{ accessory_sale.total_price|floatformat:2 }}</div>
+                        <small class="text-muted">Umumiy sotish narxi</small>
+                    </div>
+
+                    <hr>
+
+                    <!-- To'lov tafsilotlari -->
+                    <div class="row g-2 text-center mb-3">
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="fw-bold text-primary">${{ accessory_sale.cash_amount|floatformat:2 }}</div>
+                                <small class="text-muted">Naqd</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="fw-bold text-info">${{ accessory_sale.card_amount|floatformat:2 }}</div>
+                                <small class="text-muted">Karta</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="fw-bold text-warning">${{ accessory_sale.credit_amount|floatformat:2 }}</div>
+                                <small class="text-muted">Nasiya</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="fw-bold text-danger">${{ accessory_sale.debt_amount|floatformat:2 }}</div>
+                                <small class="text-muted">Qarz</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Foyda hisoblash -->
+                    {% if accessory_sale.profit %}
+                    <div class="alert alert-success py-2 mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Foyda:</span>
+                            <span class="fw-bold">${{ accessory_sale.profit|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Qarz holati -->
+                    {% if accessory_sale.debt_amount > 0 %}
+                    <div class="alert alert-warning py-2">
+                        <h6 class="alert-heading mb-1">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Qarz mavjud
+                        </h6>
+                        <p class="mb-1">Bu sotish uchun ${{ accessory_sale.debt_amount|floatformat:2 }} qarz bor.</p>
+                        <a href="{% url 'sales:debt_list' %}" class="btn btn-sm btn-warning">
+                            Qarzlarni ko'rish
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Do'kon ma'lumotlari -->
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-store me-2"></i>Do'kon ma'lumotlari
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-store text-muted me-3 fa-2x"></i>
+                        <div>
+                            <h6 class="mb-1">{{ accessory_sale.accessory.shop.name }}</h6>
+                            <div class="text-muted small">{{ accessory_sale.accessory.shop.address }}</div>
+                            {% if accessory_sale.accessory.shop.phone %}
+                                <div class="text-muted small">
+                                    <i class="fas fa-phone me-1"></i>{{ accessory_sale.accessory.shop.phone }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Qolgan aksessuar soni -->
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Qolgan soni:</span>
+                            <span class="fw-bold">{{ accessory_sale.accessory.quantity }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bog'liq amallar -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>Bog'liq amallar
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-3 col-6">
+                            <a href="{% url 'sales:accessory_sale_create' %}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-plus me-2"></i>Yangi sotish
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <a href="{% url 'sales:accessory_sale_list' %}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-list me-2"></i>Barcha sotuvlar
+                            </a>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-outline-info w-100" onclick="window.print()">
+                                <i class="fas fa-print me-2"></i>Chop etish
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <button class="btn btn-outline-success w-100" onclick="shareDetails()">
+                                <i class="fas fa-share me-2"></i>Ulashish
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Ulashish funksiyasi
+function shareDetails() {
+    const text = `Aksessuar sotish tafsilotlari:
+• Aksessuar: {{ accessory_sale.accessory.name }}
+• Soni: {{ accessory_sale.quantity }}
+• Narxi: ${{ accessory_sale.total_price|floatformat:2 }}
+• Mijoz: {{ accessory_sale.customer.name }}
+• Sana: {{ accessory_sale.sale_date|date:"d.m.Y" }}`;
+
+    if (navigator.share) {
+        navigator.share({
+            title: 'Aksessuar sotish tafsilotlari',
+            text: text
+        });
+    } else {
+        // Fallback - matnni clipboard ga nusxalash
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Ma\'lumotlar clipboard ga nusxalandi!');
+        });
+    }
+}
+
+// Auto-refresh har 5 daqiqada
+setInterval(() => {
+    window.location.reload();
+}, 300000);
+</script>
+
+<style>
+/* Print styles */
+@media print {
+    .btn, .btn-group, .card-header {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .card-body {
+        padding: 1rem !important;
+    }
+}
+
+/* Card hover effects */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+/* Button styling */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Badge styling */
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+        width: auto;
+    }
+    
+    .btn-group .btn {
+        margin-bottom: 0.25rem;
+        border-radius: 6px !important;
+    }
+    
+    .fs-3 {
+        font-size: 1.5rem !important;
+    }
+    
+    .fa-2x {
+        font-size: 1.5em !important;
+    }
+}
+
+/* Responsive columns */
+@media (max-width: 576px) {
+    .col-md-8, .col-md-4 {
+        margin-bottom: 1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .row.g-3 > * {
+        margin-bottom: 1rem;
+    }
+}
+</style>
+
+{% endblock %}

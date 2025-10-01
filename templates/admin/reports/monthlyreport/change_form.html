@@ -1,0 +1,243 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block after_field_sets %}
+<div style="padding: 20px; background: #f9f9f9; margin-top: 30px; border-radius: 8px;">
+    <h3 style="margin-bottom: 20px;">📊 Hisobot diagrammalari</h3>
+
+    <!-- Daromad va Foyda -->
+    <div style="width: 100%; max-width: 600px; margin-bottom: 40px;">
+        <canvas id="revenueProfitChart" height="200"></canvas>
+    </div>
+
+    <!-- To'lov turlari -->
+    <div style="display: inline-block; width: 45%; margin-right: 5%; vertical-align: top;">
+        <h4>To'lov turlari</h4>
+        <canvas id="paymentChart" height="200"></canvas>
+    </div>
+
+    <!-- Xarajatlar -->
+    <div style="display: inline-block; width: 45%; vertical-align: top;">
+        <h4>Xarajatlar taqsimoti</h4>
+        <canvas id="expenseChart" height="200"></canvas>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Ma'lumotlarni olish va xavfsizlik tekshiruvi
+    const totalRevenue = parseFloat({{ original.total_revenue|default:0|floatformat:2 }}) || 0;
+    const totalProfit = parseFloat({{ original.total_profit|default:0|floatformat:2 }}) || 0;
+    const cashReceived = parseFloat({{ original.cash_received|default:0|floatformat:2 }}) || 0;
+    const cardReceived = parseFloat({{ original.card_received|default:0|floatformat:2 }}) || 0;
+    const creditAmount = parseFloat({{ original.credit_amount|default:0|floatformat:2 }}) || 0;
+    const debtAmount = parseFloat({{ original.debt_amount|default:0|floatformat:2 }}) || 0;
+    const imeiCosts = parseFloat({{ original.imei_costs|default:0|floatformat:2 }}) || 0;
+    const otherExpenses = parseFloat({{ original.other_expenses|default:0|floatformat:2 }}) || 0;
+
+    // Chart.js global konfiguratsiyasi
+    Chart.defaults.font.family = 'Arial, sans-serif';
+    Chart.defaults.color = '#333';
+
+    // 1. Daromad va Foyda — Bar Chart
+    const revenueProfitCtx = document.getElementById('revenueProfitChart');
+    if (revenueProfitCtx) {
+        new Chart(revenueProfitCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Daromad', 'Foyda'],
+                datasets: [{
+                    label: 'AQSH dollari ($)',
+                    data: [totalRevenue, totalProfit],
+                    backgroundColor: ['#36a2eb', '#4bc0c0'],
+                    borderColor: ['#2691d9', '#3ba7a7'],
+                    borderWidth: 2,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Daromad va Sof Foyda',
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '$' + context.raw.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        },
+                        grid: {
+                            color: '#e0e0e0'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. To'lov turlari — Pie Chart
+    const paymentCtx = document.getElementById('paymentChart');
+    if (paymentCtx) {
+        const paymentData = [cashReceived, cardReceived, creditAmount, debtAmount];
+        const hasPaymentData = paymentData.some(value => value > 0);
+
+        new Chart(paymentCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Naqd', 'Karta', 'Nasiya', 'Qarz'],
+                datasets: [{
+                    data: hasPaymentData ? paymentData : [1, 1, 1, 1],
+                    backgroundColor: ['#4CAF50', '#2196F3', '#FF9800', '#F44336'],
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'To\'lov turlari',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return label + ': $' + value.toLocaleString() + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 3. Xarajatlar — Doughnut Chart
+    const expenseCtx = document.getElementById('expenseChart');
+    if (expenseCtx) {
+        const expenseData = [imeiCosts, otherExpenses];
+        const hasExpenseData = expenseData.some(value => value > 0);
+
+        new Chart(expenseCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['IMEI xarajatlari', 'Boshqa xarajatlar'],
+                datasets: [{
+                    data: hasExpenseData ? expenseData : [1, 1],
+                    backgroundColor: ['#FF6384', '#36A2EB'],
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Xarajatlar taqsimoti',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return label + ': $' + value.toLocaleString() + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+
+<style>
+    /* Responsive design */
+    @media (max-width: 768px) {
+        div[style*="display: inline-block"] {
+            display: block !important;
+            width: 100% !important;
+            margin-right: 0 !important;
+            margin-bottom: 30px;
+        }
+    }
+
+    /* Chart container styling */
+    canvas {
+        max-height: 400px;
+    }
+
+    /* Loading state */
+    .chart-loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 200px;
+        background: #f5f5f5;
+        border-radius: 4px;
+        font-style: italic;
+        color: #666;
+    }
+</style>
+{% endblock %}

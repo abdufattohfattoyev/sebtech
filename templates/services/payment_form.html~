@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Xizmat ma'lumotlari -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Xizmat ma'lumotlari
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Telefon</label>
+                            <div class="fw-semibold">{{ service.phone.phone_model }} {{ service.phone.memory_size }}</div>
+                            {% if service.phone.imei %}
+                            <small class="text-muted">IMEI: {{ service.phone.imei }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Usta</label>
+                            <div class="fw-semibold">{{ service.master.first_name }} {{ service.master.last_name }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Jami xizmat haqi</label>
+                            <div class="fw-semibold text-primary fs-5">${{ service.service_fee|floatformat:2 }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">To'langan summa</label>
+                            <div class="fw-semibold text-success">${{ service.paid_amount|floatformat:2 }}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted">Qolgan summa</label>
+                            <div class="fw-semibold text-danger fs-5">${{ service.remaining_amount|floatformat:2 }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress bar -->
+                {% if service.service_fee > 0 %}
+                <div class="mb-3">
+                    <label class="form-label text-muted">To'lov holati</label>
+                    <div class="progress mb-2" style="height: 12px;">
+                        <div class="progress-bar bg-success" style="width: {% widthratio service.paid_amount service.service_fee 100 %}%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted">To'langan: {% widthratio service.paid_amount service.service_fee 100 %}%</small>
+                        <small class="text-muted">Qolgan: {% widthratio service.remaining_amount service.service_fee 100 %}%</small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- To'lov formasi -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-dollar-sign me-2"></i>Yangi to'lov qo'shish
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="paymentForm" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <!-- To'lov summasi -->
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.payment_amount.id_for_label }}" class="form-label">
+                                {{ form.payment_amount.label }}
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.payment_amount }}
+                                <button type="button" class="btn btn-outline-secondary" id="maxAmountBtn" title="Maksimal summa">
+                                    Max
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                Maksimal: ${{ service.remaining_amount|floatformat:2 }}
+                            </div>
+                            {% if form.payment_amount.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.payment_amount.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- To'lov sanasi -->
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.payment_date.id_for_label }}" class="form-label">
+                                {{ form.payment_date.label }}
+                                <span class="text-danger">*</span>
+                            </label>
+                            {{ form.payment_date }}
+                            {% if form.payment_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.payment_date.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Izoh -->
+                    <div class="mb-3">
+                        <label for="{{ form.notes.id_for_label }}" class="form-label">
+                            {{ form.notes.label }}
+                        </label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.notes.errors.0 }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            To'lov haqida qo'shimcha ma'lumot (ixtiyoriy)
+                        </div>
+                    </div>
+
+                    <!-- To'lov haqida ogohlantirish -->
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Eslatma:</strong> To'lov qo'shilgandan so'ng, usta qarzlar ro'yxati avtomatik yangilanadi.
+                    </div>
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'services:service_detail' service.pk %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Orqaga
+                        </a>
+                        {% if payment %}
+                        <button type="button" class="btn btn-outline-danger" onclick="confirmDelete()">
+                            <i class="fas fa-trash me-2"></i>O'chirish
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Yangilash
+                        </button>
+                        {% else %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>To'lovni saqlash
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentAmountInput = document.getElementById('{{ form.payment_amount.id_for_label }}');
+    const maxAmountBtn = document.getElementById('maxAmountBtn');
+    const maxAmount = {{ service.remaining_amount }};
+    
+    // Maksimal summa tugmasi
+    maxAmountBtn.addEventListener('click', function() {
+        paymentAmountInput.value = maxAmount.toFixed(2);
+        paymentAmountInput.focus();
+    });
+
+    // To'lov summasi validatsiyasi
+    paymentAmountInput.addEventListener('input', function() {
+        const value = parseFloat(this.value) || 0;
+        
+        // Maksimal qiymatdan oshib ketganini tekshirish
+        if (value > maxAmount) {
+            this.value = maxAmount.toFixed(2);
+        }
+        
+        // Manfiy qiymatni oldini olish
+        if (value < 0) {
+            this.value = '';
+        }
+    });
+
+    // Form validatsiyasi
+    const form = document.getElementById('paymentForm');
+    form.addEventListener('submit', function(e) {
+        let isValid = true;
+        
+        // Clear previous errors
+        document.querySelectorAll('.is-invalid').forEach(el => {
+            el.classList.remove('is-invalid');
+        });
+        
+        // Validate payment amount
+        const paymentAmount = parseFloat(paymentAmountInput.value) || 0;
+        if (paymentAmount <= 0) {
+            paymentAmountInput.classList.add('is-invalid');
+            isValid = false;
+        } else if (paymentAmount > maxAmount) {
+            paymentAmountInput.classList.add('is-invalid');
+            isValid = false;
+        }
+        
+        // Validate payment date
+        const paymentDate = document.getElementById('{{ form.payment_date.id_for_label }}');
+        if (!paymentDate.value) {
+            paymentDate.classList.add('is-invalid');
+            isValid = false;
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+            const firstInvalid = document.querySelector('.is-invalid');
+            if (firstInvalid) {
+                firstInvalid.focus();
+                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else {
+            // Loading animation
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saqlanmoqda...';
+            submitBtn.disabled = true;
+        }
+    });
+
+    // Bugüngi sanani o'rnatish
+    const paymentDate = document.getElementById('{{ form.payment_date.id_for_label }}');
+    if (!paymentDate.value) {
+        const today = new Date().toISOString().split('T')[0];
+        paymentDate.value = today;
+    }
+
+    // Auto-focus payment amount input
+    paymentAmountInput.focus();
+    
+    // Delete confirmation function
+    {% if payment %}
+    window.confirmDelete = function() {
+        if (confirm('Bu to\'lovni o\'chirishni tasdiqlaysizmi?\nBu amalni bekor qilish mumkin emas!')) {
+            // Form yaratish va yuborish
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "services:payment_delete" payment.pk %}';
+
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = getCookie('csrftoken');
+            form.appendChild(csrfInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    };
+    {% endif %}
+
+    // CSRF token olish
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Quick amount buttons
+    const quickAmountsContainer = document.createElement('div');
+    quickAmountsContainer.className = 'mt-2';
+    
+    // Common payment amounts based on remaining amount
+    const quickAmounts = [];
+    if (maxAmount >= 10) {
+        if (maxAmount >= 100) quickAmounts.push(100);
+        if (maxAmount >= 50) quickAmounts.push(50);
+        if (maxAmount >= 20) quickAmounts.push(20);
+        if (maxAmount >= 10) quickAmounts.push(10);
+    }
+    quickAmounts.push(Math.floor(maxAmount)); // Full amount
+    
+    quickAmounts.forEach(amount => {
+        if (amount <= maxAmount && amount > 0) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-outline-primary btn-sm me-1 mb-1';
+            btn.textContent = `${amount}`;
+            btn.addEventListener('click', function() {
+                paymentAmountInput.value = amount.toFixed(2);
+                paymentAmountInput.focus();
+            });
+            quickAmountsContainer.appendChild(btn);
+        }
+    });
+    
+    if (quickAmountsContainer.children.length > 0) {
+        const label = document.createElement('small');
+        label.className = 'text-muted';
+        label.textContent = 'Tez tanlash: ';
+        quickAmountsContainer.insertBefore(label, quickAmountsContainer.firstChild);
+        
+        paymentAmountInput.parentNode.parentNode.appendChild(quickAmountsContainer);
+    }
+});
+</script>
+{% endblock %}

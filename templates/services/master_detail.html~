@@ -1,0 +1,656 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}{{ master.first_name }} {{ master.last_name }}{% endblock %}
+
+{% block content %}
+<div class="detail-page">
+    <!-- Header -->
+    <div class="header">
+        <div class="master-info">
+            <div class="avatar">{{ master.first_name|first }}{{ master.last_name|first }}</div>
+            <div class="info">
+                <h1>{{ master.first_name }} {{ master.last_name }}</h1>
+                <p>{{ master.phone_number }}</p>
+            </div>
+        </div>
+        <a href="{% url 'services:master_edit' master.pk %}" class="btn-edit">
+            <i class="fas fa-edit"></i> Tahrirlash
+        </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-tasks"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="total">{{ stats.total_services }}</div>
+                <div class="stat-label">Jami</div>
+            </div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="active">{{ stats.active_services }}</div>
+                <div class="stat-label">Faol</div>
+            </div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-icon">
+                <i class="fas fa-check"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="completed">{{ stats.completed_services }}</div>
+                <div class="stat-label">Tugallangan</div>
+            </div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-icon">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="unpaid">${{ stats.total_unpaid|floatformat:2 }}</div>
+                <div class="stat-label">Qarz</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services -->
+    <div class="services">
+        <div class="services-header">
+            <h2>Xizmatlar</h2>
+            <div class="tabs">
+                <button class="tab active" onclick="filterServices('all', this)">Barchasi</button>
+                <button class="tab" onclick="filterServices('in_progress', this)">Faol</button>
+                <button class="tab" onclick="filterServices('completed', this)">Tugallangan</button>
+            </div>
+        </div>
+
+        <div class="services-list">
+            {% for service in services %}
+            <div class="service-item" data-status="{{ service.status }}" data-id="{{ service.pk }}">
+                <div class="service-main">
+                    <div class="service-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <div class="service-info">
+                        <div class="service-title">{{ service.phone.phone_model }} {{ service.phone.memory_size }}</div>
+                        <div class="service-imei">IMEI: {{ service.phone.imei|default:"N/A" }}</div>
+                        <div class="service-date">{{ service.given_date|date:"d.m.Y" }}</div>
+                    </div>
+                </div>
+
+                <div class="service-details">
+                    <span class="badge {{ service.status }}">
+                        {% if service.status == 'in_progress' %}Jarayonda{% else %}Tugallangan{% endif %}
+                    </span>
+                    <div class="service-price">${{ service.service_fee|floatformat:2 }}</div>
+                    {% if service.status == 'in_progress' %}
+                        {% with unpaid=service.service_fee|subtract:service.paid_amount %}
+                        {% if unpaid > 0 %}
+                        <div class="service-debt">${{ unpaid|floatformat:2 }} qarz</div>
+                        {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </div>
+
+                <div class="service-actions">
+                    <a href="{% url 'services:service_detail' service.pk %}" class="action-btn" title="Ko'rish">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <button class="action-btn toggle-btn"
+                            data-id="{{ service.pk }}"
+                            data-status="{{ service.status }}"
+                            data-unpaid="{% if service.status == 'in_progress' %}{{ service.service_fee|subtract:service.paid_amount|floatformat:2 }}{% else %}0.00{% endif %}"
+                            onclick="toggleStatus(this)"
+                            title="{% if service.status == 'in_progress' %}Tugallash{% else %}Qaytarish{% endif %}">
+                        <i class="fas fa-{% if service.status == 'in_progress' %}check{% else %}undo{% endif %}"></i>
+                    </button>
+                    {% if service.status == 'in_progress' %}
+                        {% with unpaid=service.service_fee|subtract:service.paid_amount %}
+                        {% if unpaid > 0 %}
+                        <a href="{% url 'services:payment_create' service.pk %}" class="action-btn warning" title="To'lov">
+                            <i class="fas fa-dollar-sign"></i>
+                        </a>
+                        {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty">
+                <i class="fas fa-inbox"></i>
+                <p>Hozircha xizmatlar yo'q</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+function filterServices(status, btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.service-item').forEach(item => {
+        item.style.display = status === 'all' || item.dataset.status === status ? 'flex' : 'none';
+    });
+}
+
+function toggleStatus(btn) {
+    const id = btn.dataset.id;
+    const currentStatus = btn.dataset.status;
+    const unpaid = parseFloat(btn.dataset.unpaid) || 0;
+    const newStatus = currentStatus === 'in_progress' ? 'completed' : 'in_progress';
+
+    if (newStatus === 'completed' && unpaid > 0) {
+        if (!confirm(`Diqqat: $${unpaid} to'lanmagan qarz mavjud!\n\nXizmatni baribir tugallashni tasdiqlaysizmi?`)) {
+            return;
+        }
+    }
+
+    btn.disabled = true;
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    const formData = new FormData();
+    formData.append('status', newStatus);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch(`/services/services/${id}/update-status/`, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(res => res.ok ? res.json() : Promise.reject(res))
+    .then(data => {
+        if (data.success) {
+            updateServiceUI(id, newStatus);
+            updateStats(data.active_services, data.completed_services, data.total_unpaid);
+            showToast(data.message, 'success');
+            if (data.warning) {
+                setTimeout(() => showToast(data.warning, 'warning'), 1500);
+            }
+        } else {
+            showToast(data.message || 'Xatolik yuz berdi!', 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showToast('Server xatosi yuz berdi!', 'error');
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    });
+}
+
+function updateServiceUI(id, status) {
+    const item = document.querySelector(`[data-id="${id}"]`);
+    if (!item) return;
+
+    item.dataset.status = status;
+
+    const badge = item.querySelector('.badge');
+    badge.className = `badge ${status}`;
+    badge.textContent = status === 'in_progress' ? 'Jarayonda' : 'Tugallangan';
+
+    const toggleBtn = item.querySelector('.toggle-btn');
+    toggleBtn.dataset.status = status;
+    toggleBtn.innerHTML = `<i class="fas fa-${status === 'in_progress' ? 'check' : 'undo'}"></i>`;
+    toggleBtn.title = status === 'in_progress' ? 'Tugallash' : 'Qaytarish';
+
+    const debtEl = item.querySelector('.service-debt');
+    const paymentBtn = item.querySelector('.action-btn.warning');
+
+    if (status === 'completed') {
+        toggleBtn.dataset.unpaid = '0.00';
+        if (debtEl) debtEl.remove();
+        if (paymentBtn) paymentBtn.remove();
+    } else {
+        const unpaid = parseFloat(toggleBtn.dataset.unpaid) || 0;
+        if (unpaid > 0 && !debtEl) {
+            const details = item.querySelector('.service-details');
+            const newDebt = document.createElement('div');
+            newDebt.className = 'service-debt';
+            newDebt.textContent = `$${unpaid.toFixed(2)} qarz`;
+            details.appendChild(newDebt);
+
+            if (!paymentBtn) {
+                const actions = item.querySelector('.service-actions');
+                const newPaymentBtn = document.createElement('a');
+                newPaymentBtn.href = `/services/services/${id}/payment/create/`;
+                newPaymentBtn.className = 'action-btn warning';
+                newPaymentBtn.title = 'To\'lov';
+                newPaymentBtn.innerHTML = '<i class="fas fa-dollar-sign"></i>';
+                actions.appendChild(newPaymentBtn);
+            }
+        }
+    }
+}
+
+function updateStats(active, completed, unpaid) {
+    document.getElementById('active').textContent = active;
+    document.getElementById('completed').textContent = completed;
+    document.getElementById('unpaid').textContent = `$${unpaid.toFixed(2)}`;
+}
+
+function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = `toast ${type} show`;
+    setTimeout(() => toast.className = 'toast', type === 'warning' ? 4000 : 3000);
+}
+</script>
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+.detail-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.header {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.master-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+.info h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.25rem;
+}
+
+.info p {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.btn-edit {
+    padding: 0.75rem 1.25rem;
+    background: #3b82f6;
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-edit:hover {
+    background: #2563eb;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #3b82f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.stat-card.warning .stat-icon {
+    background: #fffbeb;
+    color: #f59e0b;
+}
+
+.stat-card.success .stat-icon {
+    background: #d1fae5;
+    color: #10b981;
+}
+
+.stat-card.danger .stat-icon {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+.services {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.services-header {
+    padding: 1.25rem;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.services-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.tab {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab:hover {
+    background: #f9fafb;
+}
+
+.tab.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+}
+
+.services-list {
+    padding: 1rem;
+}
+
+.service-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #f3f4f6;
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
+    transition: all 0.2s;
+}
+
+.service-item:hover {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+}
+
+.service-main {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.service-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: #f3f4f6;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+}
+
+.service-title {
+    font-weight: 600;
+    color: #111827;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.service-imei {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-family: monospace;
+    margin-bottom: 0.25rem;
+}
+
+.service-date {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.service-details {
+    text-align: right;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 0.5rem;
+}
+
+.badge.in_progress {
+    background: #f59e0b;
+}
+
+.badge.completed {
+    background: #10b981;
+}
+
+.service-price {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.service-debt {
+    font-size: 0.75rem;
+    color: #ef4444;
+    font-weight: 500;
+    margin-top: 0.25rem;
+}
+
+.service-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background: #f9fafb;
+}
+
+.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.action-btn.warning {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.action-btn.warning:hover {
+    background: #fffbeb;
+}
+
+.empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #9ca3af;
+}
+
+.empty i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-weight: 500;
+    transform: translateX(400px);
+    transition: transform 0.3s;
+    z-index: 1000;
+    border-left: 4px solid;
+}
+
+.toast.show {
+    transform: translateX(0);
+}
+
+.toast.success {
+    border-left-color: #10b981;
+    color: #065f46;
+    background: #d1fae5;
+}
+
+.toast.error {
+    border-left-color: #ef4444;
+    color: #991b1b;
+    background: #fee2e2;
+}
+
+.toast.warning {
+    border-left-color: #f59e0b;
+    color: #92400e;
+    background: #fef3c7;
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-edit {
+        justify-content: center;
+    }
+
+    .services-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tabs {
+        justify-content: center;
+    }
+
+    .service-item {
+        flex-wrap: wrap;
+    }
+
+    .service-details {
+        text-align: left;
+        order: 3;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 0.75rem;
+        border-top: 1px solid #f3f4f6;
+    }
+
+    .service-actions {
+        order: 2;
+        margin-left: auto;
+    }
+
+    .toast {
+        right: 10px;
+        left: 10px;
+        transform: translateY(-100px);
+    }
+
+    .toast.show {
+        transform: translateY(0);
+    }
+}
+</style>
+{% endblock %}

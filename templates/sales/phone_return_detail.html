@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block page_title %}Telefon qaytarish tafsilotlari{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-undo-alt me-2"></i>Telefon qaytarish tafsilotlari
+    </h2>
+    <div class="btn-group">
+        <a href="{% url 'sales:phone_return_delete' phone_return.pk %}"
+           class="btn btn-outline-danger">
+            <i class="fas fa-trash me-1"></i>O'chirish
+        </a>
+        <a href="{% url 'sales:phone_return_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Orqaga
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Asosiy ma'lumotlar -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Qaytarish ma'lumotlari</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small">Telefon</label>
+                        <p class="fw-bold mb-0">
+                            {{ phone_return.phone_sale.phone.phone_model.model_name }}
+                            {{ phone_return.phone_sale.phone.memory_size.size }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">IMEI</label>
+                        <p class="mb-0"><code>{{ phone_return.phone_sale.phone.imei }}</code></p>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="text-muted small">Mijoz</label>
+                        <p class="mb-0">{{ phone_return.phone_sale.customer.name }}</p>
+                        <small class="text-muted">
+                            {{ phone_return.phone_sale.customer.phone_number|default:"Telefon yo'q" }}
+                        </small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted small">Qaytarish sanasi</label>
+                        <p class="mb-0">{{ phone_return.return_date|date:"d.m.Y" }}</p>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="text-muted small">Sotish narxi</label>
+                        <p class="h5 mb-0">${{ phone_return.phone_sale.sale_price }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="text-muted small">Qaytarilgan summa</label>
+                        <p class="h5 mb-0 text-warning">${{ phone_return.return_amount }}</p>
+                    </div>
+                    <div>
+                        <label class="text-muted small">Farq</label>
+                        <p class="h5 mb-0">${{ phone_return.difference }}</p>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="mb-3">
+                    <label class="text-muted small">Qaytarish sababi</label>
+                    <div class="border rounded p-3 bg-light">
+                        {{ phone_return.reason }}
+                    </div>
+                </div>
+
+                {% if phone_return.notes %}
+                <div class="mb-3">
+                    <label class="text-muted small">Qo'shimcha izohlar</label>
+                    <div class="border rounded p-3 bg-light">
+                        {{ phone_return.notes|linebreaksbr }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="text-muted small">Amalga oshirgan</label>
+                        <p class="mb-0">
+                            {{ phone_return.created_by.get_full_name|default:phone_return.created_by.username }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dastlabki sotish ma'lumotlari -->
+    <div class="col-lg-4 mb-4">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">
+                    <i class="fas fa-shopping-cart me-1"></i>Dastlabki sotish
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="text-muted small">Sotish sanasi</label>
+                    <p class="mb-0">{{ phone_return.phone_sale.sale_date|date:"d.m.Y" }}</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="text-muted small">Sotuvchi</label>
+                    <p class="mb-0">
+                        {{ phone_return.phone_sale.salesman.get_full_name|default:phone_return.phone_sale.salesman.username }}
+                    </p>
+                </div>
+
+                <hr>
+
+                <h6 class="text-muted small mb-2">To'lov tafsilotlari</h6>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Naqd:</span>
+                    <span class="fw-bold">${{ phone_return.phone_sale.cash_amount }}</span>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Karta:</span>
+                    <span class="fw-bold">${{ phone_return.phone_sale.card_amount }}</span>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Nasiya:</span>
+                    <span class="fw-bold">${{ phone_return.phone_sale.credit_amount }}</span>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Qarz:</span>
+                    <span class="fw-bold">${{ phone_return.phone_sale.debt_amount }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

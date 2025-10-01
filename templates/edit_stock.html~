@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+
+{% block title %}Mahsulot Tahrirlash - Apple Tech Do'koni{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="mb-1">✏️ Mahsulot Tahrirlash</h1>
+            <p class="text-muted mb-0">{{ stock }} ma'lumotlarini yangilash</p>
+        </div>
+        <div>
+            <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Orqaga
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    {% if stock.item_type == 'phone' %}
+                        <i class="fas fa-mobile-alt text-primary"></i> iPhone Ma'lumotlari
+                    {% else %}
+                        <i class="fas fa-headphones text-success"></i> Aksessuar Ma'lumotlari
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <!-- Basic Info - Read Only -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Do'kon</label>
+                            <input type="text" class="form-control" value="{{ stock.shop.get_name_display }}" readonly>
+                        </div>
+                        
+                        {% if stock.item_type == 'phone' %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">iPhone Modeli</label>
+                                <input type="text" class="form-control" value="{{ stock.phone_model }} {{ stock.memory_size }}" readonly>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">IMEI</label>
+                                <input type="text" class="form-control" value="{{ stock.imei }}" readonly>
+                            </div>
+                        {% else %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Aksessuar</label>
+                                <input type="text" class="form-control" value="{{ stock.accessory.name }}" readonly>
+                            </div>
+                            
+                            {% if stock.accessory.brand %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Brend</label>
+                                <input type="text" class="form-control" value="{{ stock.accessory.brand }}" readonly>
+                            </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Editable Fields -->
+                    <div class="row">
+                        {% if stock.item_type == 'accessory' %}
+                        <div class="col-md-4 mb-3">
+                            <label for="quantity" class="form-label">
+                                <i class="fas fa-sort-numeric-up"></i> Miqdor *
+                            </label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" 
+                                   value="{{ stock.quantity }}" min="1" required>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="condition" class="form-label">
+                                <i class="fas fa-star"></i> Holati
+                            </label>
+                            <select class="form-select" id="condition" name="condition">
+                                <option value="yangi" {% if stock.condition == 'yangi' %}selected{% endif %}>✨ Yangi</option>
+                                <option value="eski" {% if stock.condition == 'eski' %}selected{% endif %}>📦 Eski</option>
+                                <option value="refurbished" {% if stock.condition == 'refurbished' %}selected{% endif %}>🔄 Refurbished</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="purchase_price" class="form-label">
+                                <i class="fas fa-dollar-sign"></i> Sotib Olish Narxi *
+                            </label>
+                            <input type="number" class="form-control" id="purchase_price" name="purchase_price" 
+                                   value="{{ stock.purchase_price }}" step="0.01" min="0" required>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="sale_price" class="form-label">
+                                <i class="fas fa-tags"></i> Sotish Narxi *
+                            </label>
+                            <input type="number" class="form-control" id="sale_price" name="sale_price" 
+                                   value="{{ stock.sale_price }}" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Profit Display -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="alert alert-info" id="profit-display">
+                                <strong>Hozirgi foyda:</strong> 
+                                {% with profit=stock.profit_amount %}
+                                    {% if profit > 0 %}
+                                        <span class="text-success">+{{ profit|floatformat:0 }} so'm ({{ stock.profit_percentage|floatformat:1 }}%)</span>
+                                    {% elif profit < 0 %}
+                                        <span class="text-danger">{{ profit|floatformat:0 }} so'm ({{ stock.profit_percentage|floatformat:1 }}%)</span>
+                                    {% else %}
+                                        <span class="text-muted">0 so'm (0%)</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-end">
+                        <a href="{% url 'product_list' %}" class="btn btn-secondary me-2">
+                            <i class="fas fa-times"></i> Bekor Qilish
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Saqlash
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Product Info Sidebar -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Mahsulot Ma'lumotlari
+                </h6>
+            </div>
+            <div class="card-body">
+                <!-- Product Image -->
+                {% if stock.image %}
+                <div class="text-center mb-3">
+                    <img src="{{ stock.image.url }}" alt="{{ stock }}" class="img-fluid rounded" style="max-height: 200px;">
+                </div>
+                {% else %}
+                <div class="text-center mb-3">
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 150px;">
+                        {% if stock.item_type == 'phone' %}
+                            <i class="fas fa-mobile-alt fa-4x text-muted"></i>
+                        {% else %}
+                            <i class="fas fa-headphones fa-4x text-muted"></i>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Product Details -->
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Turi:</strong></td>
+                            <td>
+                                {% if stock.item_type == 'phone' %}
+                                    <span class="badge bg-primary">📱 Telefon</span>
+                                {% else %}
+                                    <span class="badge bg-success">🔌 Aksessuar</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Status:</strong></td>
+                            <td>
+                                {% if stock.status == 'skladda' %}
+                                    <span class="badge bg-success">✅ Skladda</span>
+                                {% else %}
+                                    <span class="badge bg-danger">❌ Sotilgan</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Holat:</strong></td>
+                            <td>
+                                {% if stock.condition == 'yangi' %}
+                                    <span class="badge bg-success">✨ Yangi</span>
+                                {% elif stock.condition == 'eski' %}
+                                    <span class="badge bg-warning">📦 Eski</span>
+                                {% else %}
+                                    <span class="badge bg-info">🔄 Refurbished</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Miqdor:</strong></td>
+                            <td>{{ stock.quantity }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Qo'shilgan:</strong></td>
+                            <td>{{ stock.purchase_date|date:"d.m.Y H:i" }}</td>
+                        </tr>
+                        {% if stock.sale_date %}
+                        <tr>
+                            <td><strong>Sotilgan:</strong></td>
+                            <td>{{ stock.sale_date|date:"d.m.Y H:i" }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="d-grid gap-2">
+                    {% if stock.status == 'skladda' %}
+                    <button class="btn btn-outline-danger btn-sm" onclick="confirmDelete()">
+                        <i class="fas fa-trash"></i> Mahsulotni O'chirish
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const purchaseInput = document.getElementById('purchase_price');
+        const saleInput = document.getElementById('sale_price');
+        const quantityInput = document.getElementById('quantity');
+        const profitDisplay = document.getElementById('profit-display');
+        
+        function updateProfit() {
+            const purchase = parseFloat(purchaseInput.value) || 0;
+            const sale = parseFloat(saleInput.value) || 0;
+            const quantity = parseInt(quantityInput?.value) || 1;
+            
+            const profit = (sale - purchase) * quantity;
+            const percentage = purchase > 0 ? ((profit / (purchase * quantity)) * 100).toFixed(1) : 0;
+            
+            let colorClass = '';
+            let icon = '';
+            
+            if (profit > 0) {
+                colorClass = 'text-success';
+                icon = '+';
+            } else if (profit < 0) {
+                colorClass = 'text-danger';
+                icon = '';
+            } else {
+                colorClass = 'text-muted';
+                icon = '';
+            }
+            
+            profitDisplay.innerHTML = `
+                <strong>Yangi foyda:</strong> 
+                <span class="${colorClass}">${icon}${profit.toLocaleString()} so'm (${percentage}%)</span>
+            `;
+        }
+        
+        // Add event listeners
+        purchaseInput.addEventListener('input', updateProfit);
+        saleInput.addEventListener('input', updateProfit);
+        if (quantityInput) {
+            quantityInput.addEventListener('input', updateProfit);
+        }
+        
+        // Initial calculation
+        updateProfit();
+    });
+    
+    function confirmDelete() {
+        if (confirm("Rostdan ham bu mahsulotni o'chirmoqchimisiz? Bu amalni bekor qilib bo'lmaydi!")) {
+            fetch(`/stock/delete/{{ stock.id }}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = '{% url "product_list" %}';
+                } else {
+                    alert('Xatolik yuz berdi!');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Xatolik yuz berdi!');
+            });
+        }
+    }
+</script>
+{% endblock %}

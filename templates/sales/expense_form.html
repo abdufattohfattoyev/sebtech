@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ title }}</h2>
+    <a href="{% url 'sales:expense_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-1"></i>Orqaga
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.shop.id_for_label }}" class="form-label">{{ form.shop.label }}</label>
+                    {{ form.shop }}
+                    {% if form.shop.errors %}
+                        <div class="text-danger mt-1">{{ form.shop.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.expense_date.id_for_label }}" class="form-label">{{ form.expense_date.label }}</label>
+                    {{ form.expense_date }}
+                    {% if form.expense_date.errors %}
+                        <div class="text-danger mt-1">{{ form.expense_date.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <div class="text-danger mt-1">{{ form.name.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
+                    {{ form.amount }}
+                    {% if form.amount.errors %}
+                        <div class="text-danger mt-1">{{ form.amount.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}
+                    <div class="text-danger mt-1">{{ form.notes.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i>Saqlash
+                </button>
+                <a href="{% url 'sales:expense_list' %}" class="btn btn-outline-secondary">
+                    Bekor qilish
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

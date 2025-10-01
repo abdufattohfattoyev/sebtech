@@ -1,0 +1,491 @@
+{% extends "base.html" %}
+
+{% block page_title %}Qarz to'lovlari ro'yxati{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-credit-card text-success me-2"></i>
+        Qarz to'lovlari ro'yxati
+    </h2>
+    <!-- TO'G'IRLANGAN: Dropdown bilan qarz tanlash -->
+    <div class="dropdown">
+        <button class="btn btn-success dropdown-toggle" type="button" id="addPaymentBtn" data-bs-toggle="dropdown">
+            <i class="fas fa-plus me-2"></i>Yangi to'lov qo'shish
+        </button>
+        <ul class="dropdown-menu">
+            {% for debt in active_debts %}
+                <li>
+                    <a class="dropdown-item" href="{% url 'sales:debt_payment_create' debt.pk %}">
+                        <div class="d-flex justify-content-between">
+                            <span>
+                                {% if debt.customer %}
+                                    {{ debt.customer.name }}
+                                {% elif debt.debtor %}
+                                    {{ debt.debtor.get_full_name|default:debt.debtor.username }}
+                                {% elif debt.master %}
+                                    {{ debt.master.full_name }}
+                                {% endif %}
+                            </span>
+                            <span class="text-muted">${{ debt.remaining_amount|floatformat:2 }}</span>
+                        </div>
+                    </a>
+                </li>
+            {% empty %}
+                <li><span class="dropdown-item-text text-muted">Faol qarzlar yo'q</span></li>
+            {% endfor %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'sales:debt_list' %}">Barcha qarzlar</a></li>
+        </ul>
+    </div>
+</div>
+
+<!-- Statistika kartochalari - View dan hisoblangan -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h4>{{ total_payments_count|default:0 }}</h4>
+                <p class="mb-0">Jami to'lovlar</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h4>${{ total_payments_sum|default:0|floatformat:2 }}</h4>
+                <p class="mb-0">Jami summa</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h4>{{ today_payments_count|default:0 }}</h4>
+                <p class="mb-0">Bugungi to'lovlar</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h4>${{ today_payments_sum|default:0|floatformat:2 }}</h4>
+                <p class="mb-0">Bugungi summa</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter va qidirish -->
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-secondary active" onclick="filterPayments('all')">
+                Barchasi
+            </button>
+            <button type="button" class="btn btn-outline-primary" onclick="filterPayments('today')">
+                Bugun
+            </button>
+            <button type="button" class="btn btn-outline-info" onclick="filterPayments('week')">
+                Bu hafta
+            </button>
+            <button type="button" class="btn btn-outline-warning" onclick="filterPayments('month')">
+                Bu oy
+            </button>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="input-group">
+            <input type="text" class="form-control" id="searchInput" placeholder="Qidirish (mijoz nomi, summa...)">
+            <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+{% if payments %}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Sana</th>
+                        <th>Qarz ma'lumotlari</th>
+                        <th>To'lov summasi</th>
+                        <th>Qabul qilgan</th>
+                        <th>Qarz holati</th>
+                        <th>Izoh</th>
+                        <th>Amallar</th>
+                    </tr>
+                </thead>
+                <tbody id="paymentsTableBody">
+                    {% for payment in payments %}
+                    <tr class="payment-row" data-date="{{ payment.payment_date|date:'Y-m-d' }}"
+                        data-search="{{ payment.debt.debtor_display_name|lower }} {{ payment.payment_amount }}">
+                        <td>
+                            <div class="fw-bold">{{ payment.payment_date|date:"d.m.Y" }}</div>
+                            <small class="text-muted">{{ payment.payment_date|time:"H:i" }}</small>
+                        </td>
+                        <td>
+                            <div class="mb-1">
+                                <span class="badge
+                                    {% if payment.debt.debt_type == 'customer_to_seller' %}bg-info
+                                    {% elif payment.debt.debt_type == 'seller_to_boss' %}bg-warning
+                                    {% else %}bg-primary{% endif %}">
+                                    {{ payment.debt.get_debt_type_display }}
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                {% if payment.debt.customer %}
+                                    <i class="fas fa-user text-muted me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ payment.debt.customer.name }}</div>
+                                        <small class="text-muted">{{ payment.debt.customer.phone_number }}</small>
+                                    </div>
+                                {% elif payment.debt.debtor %}
+                                    <i class="fas fa-user-tie text-muted me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ payment.debt.debtor.get_full_name|default:payment.debt.debtor.username }}</div>
+                                        <small class="text-muted">{{ payment.debt.debtor.username }}</small>
+                                    </div>
+                                {% elif payment.debt.master %}
+                                    <i class="fas fa-tools text-muted me-2"></i>
+                                    <div>
+                                        <div class="fw-bold">{{ payment.debt.master.full_name }}</div>
+                                        <small class="text-muted">Usta</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">
+                                Qarz: ${{ payment.debt.debt_amount|floatformat:2 }} |
+                                To'langan: ${{ payment.debt.paid_amount|floatformat:2 }}
+                            </small>
+                        </td>
+                        <td>
+                            <span class="fs-5 fw-bold text-success">${{ payment.payment_amount|floatformat:2 }}</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-user-tie text-muted me-2"></i>
+                                <div>
+                                    <div>{{ payment.received_by.get_full_name|default:payment.received_by.username }}</div>
+                                    <small class="text-muted">{{ payment.received_by.username }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge
+                                {% if payment.debt.status == 'active' %}bg-warning
+                                {% elif payment.debt.status == 'paid' %}bg-success
+                                {% else %}bg-secondary{% endif %}">
+                                {{ payment.debt.get_status_display }}
+                            </span>
+                            {% if payment.debt.status == 'paid' %}
+                                <div class="small text-success mt-1">
+                                    <i class="fas fa-check-circle me-1"></i>To'liq to'langan
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if payment.notes %}
+                                <span class="text-muted" title="{{ payment.notes }}">
+                                    {{ payment.notes|truncatewords:5 }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'sales:debt_detail' payment.debt.pk %}"
+                                   class="btn btn-outline-primary" title="Qarzni ko'rish">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if payment.debt.creditor == request.user or request.user.is_superuser %}
+                                    <a href="{% url 'sales:debt_payment_detail' payment.pk %}"
+                                       class="btn btn-outline-info" title="Tafsilotlar">
+                                        <i class="fas fa-info-circle"></i>
+                                    </a>
+                                    <a href="{% url 'sales:debt_payment_edit' payment.pk %}"
+                                       class="btn btn-outline-warning" title="Tahrirlash">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'sales:debt_payment_delete' payment.pk %}"
+                                       class="btn btn-outline-danger"
+                                       onclick="return confirm('Bu to\'lovni o\'chirishni xohlaysizmi?')"
+                                       title="O'chirish">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination (agar kerak bo'lsa) -->
+<div class="d-flex justify-content-center mt-4">
+    <nav>
+        <!-- Pagination kodlari bu yerda -->
+    </nav>
+</div>
+
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-credit-card text-muted mb-3" style="font-size: 4rem;"></i>
+    <h4 class="text-muted">Hozircha to'lovlar yo'q</h4>
+    <p class="text-muted mb-4">Birinchi to'lovni qo'shish uchun yuqoridagi tugmani bosing</p>
+
+    <!-- TO'G'IRLANGAN: Dropdown bilan qarz tanlash -->
+    <div class="dropdown">
+        <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="fas fa-plus me-2"></i>Birinchi to'lovni qo'shish
+        </button>
+        <ul class="dropdown-menu">
+            {% for debt in active_debts %}
+                <li>
+                    <a class="dropdown-item" href="{% url 'sales:debt_payment_create' debt.pk %}">
+                        <div class="d-flex justify-content-between">
+                            <span>
+                                {% if debt.customer %}
+                                    {{ debt.customer.name }}
+                                {% elif debt.debtor %}
+                                    {{ debt.debtor.get_full_name|default:debt.debtor.username }}
+                                {% elif debt.master %}
+                                    {{ debt.master.full_name }}
+                                {% endif %}
+                            </span>
+                            <span class="text-muted">${{ debt.remaining_amount|floatformat:2 }}</span>
+                        </div>
+                    </a>
+                </li>
+            {% empty %}
+                <li><span class="dropdown-item-text text-muted">Faol qarzlar yo'q</span></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{% url 'sales:debt_create' %}">Yangi qarz yaratish</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Filter funksiyasi
+function filterPayments(period) {
+    const rows = document.querySelectorAll('.payment-row');
+    const buttons = document.querySelectorAll('.btn-group button');
+    const today = new Date();
+
+    // Remove active class from all buttons
+    buttons.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    rows.forEach(row => {
+        const paymentDate = new Date(row.dataset.date);
+        let show = false;
+
+        switch(period) {
+            case 'all':
+                show = true;
+                break;
+            case 'today':
+                show = paymentDate.toDateString() === today.toDateString();
+                break;
+            case 'week':
+                const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                show = paymentDate >= weekAgo && paymentDate <= today;
+                break;
+            case 'month':
+                show = paymentDate.getMonth() === today.getMonth() &&
+                       paymentDate.getFullYear() === today.getFullYear();
+                break;
+        }
+
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+// Qidirish funksiyasi
+document.getElementById('searchInput').addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    const rows = document.querySelectorAll('.payment-row');
+
+    rows.forEach(row => {
+        const searchData = row.dataset.search;
+        const isVisible = searchData.includes(query);
+        row.style.display = isVisible ? '' : 'none';
+    });
+});
+
+// Qidirishni tozalash
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.querySelectorAll('.payment-row').forEach(row => {
+        row.style.display = '';
+    });
+}
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    window.location.reload();
+}, 30000);
+
+// Export to Excel funksiyasi (ixtiyoriy)
+function exportToExcel() {
+    alert('Excel eksport funksiyasi hali ishlab chiqilmoqda');
+}
+
+// Print funksiyasi
+function printPayments() {
+    window.print();
+}
+</script>
+
+<style>
+.payment-row:hover {
+    background-color: #f8f9fa;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.4rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.fs-5 {
+    font-size: 1.25rem !important;
+}
+
+.spinner-border {
+    width: 2rem;
+    height: 2rem;
+}
+
+/* Dropdown styling */
+.dropdown-menu {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-item .d-flex {
+    width: 100%;
+}
+
+@media print {
+    .btn, .btn-group, .input-group, .dropdown {
+        display: none !important;
+    }
+
+    .card {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+    }
+
+    .table {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-group .btn {
+        border-radius: 0.375rem !important;
+        margin-bottom: 0.25rem;
+    }
+
+    .input-group {
+        margin-top: 1rem;
+    }
+
+    .card-body h4 {
+        font-size: 1.5rem;
+    }
+
+    .fs-5 {
+        font-size: 1.1rem !important;
+    }
+
+    .dropdown-menu {
+        max-height: 200px;
+    }
+}
+
+/* Tablo hover effektlari */
+.payment-row {
+    transition: background-color 0.2s ease;
+}
+
+.payment-row:hover {
+    background-color: #f8f9fa !important;
+    cursor: pointer;
+}
+
+/* Badge animatsiyalari */
+.badge {
+    transition: all 0.2s ease;
+}
+
+.badge:hover {
+    transform: scale(1.05);
+}
+
+/* Search input styling */
+#searchInput {
+    border-radius: 0.375rem 0 0 0.375rem;
+}
+
+#searchInput:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Filter buttons styling */
+.btn-group .btn {
+    transition: all 0.2s ease;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn-group .btn.active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Statistika kartochalari hover */
+.row .card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.row .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+</style>
+
+{% endblock %}

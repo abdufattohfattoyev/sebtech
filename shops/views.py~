@@ -1,0 +1,224 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q, Sum
+from .models import Shop, Customer
+from .forms import ShopForm, CustomerForm
+from users.models import UserProfile
+
+
+def is_boss(user):
+    """Foydalanuvchining boss ekanligini tekshiradi."""
+    return hasattr(user, 'userprofile') and user.userprofile.role == 'boss'
+
+
+@login_required
+def dashboard(request):
+    """Umumiy dashboard: foydalanuvchilar, do‘konlar, mijozlar"""
+    total_users = UserProfile.objects.count()
+    active_users = UserProfile.objects.filter(user__is_active=True).count()
+    inactive_users = total_users - active_users
+    activity_percentage = round((active_users / total_users) * 100, 2) if total_users > 0 else 0
+
+    # Foydalanuvchilar pagination
+    user_search_query = request.GET.get('user_search', '')
+    user_role_filter = request.GET.get('user_role', '')
+    user_profiles = UserProfile.objects.select_related('user').all()
+
+    if user_search_query:
+        user_profiles = user_profiles.filter(
+            Q(user__username__icontains=user_search_query) |
+            Q(user__first_name__icontains=user_search_query) |
+            Q(user__last_name__icontains=user_search_query) |
+            Q(phone_number__icontains=user_search_query)
+        ).distinct()
+    if user_role_filter:
+        user_profiles = user_profiles.filter(role=user_role_filter)
+
+    user_paginator = Paginator(user_profiles, 10)
+    user_page_number = request.GET.get('user_page', 1)
+    user_page_obj = user_paginator.get_page(user_page_number)
+
+    # Do‘konlar pagination
+    shops = Shop.objects.select_related('owner').all()
+    shop_paginator = Paginator(shops, 10)
+    shop_page_number = request.GET.get('shop_page', 1)
+    shop_page_obj = shop_paginator.get_page(shop_page_number)
+    total_shops = shops.count()
+
+    # Mijozlar pagination
+    customers = Customer.objects.select_related('created_by').prefetch_related(
+        'phone_sales', 'accessory_sales', 'phone_exchanges', 'debts'
+    ).all()
+    customer_paginator = Paginator(customers, 10)
+    customer_page_number = request.GET.get('customer_page', 1)
+    customer_page_obj = customer_paginator.get_page(customer_page_number)
+    total_customers = customers.count()
+
+    context = {
+        'total_users': total_users,
+        'active_users': active_users,
+        'inactive_users': inactive_users,
+        'activity_percentage': activity_percentage,
+        'user_page_obj': user_page_obj,
+        'shop_page_obj': shop_page_obj,
+        'customer_page_obj': customer_page_obj,
+        'is_boss': is_boss(request.user),
+        'user_search_query': user_search_query,
+        'user_role_filter': user_role_filter,
+        'role_choices': UserProfile.ROLE_CHOICES,
+        'total_shops': total_shops,
+        'total_customers': total_customers,
+    }
+    return render(request, 'shop/dashboard.html', context)
+
+
+@login_required
+def customer_list(request):
+    """Alohida mijozlar ro'yxati sahifasi"""
+    customers = Customer.objects.select_related('created_by').prefetch_related(
+        'phone_sales', 'accessory_sales', 'phone_exchanges', 'debts'
+    ).all()
+    customer_paginator = Paginator(customers, 10)
+    customer_page_number = request.GET.get('page', 1)
+    try:
+        customer_page_obj = customer_paginator.get_page(customer_page_number)
+    except (Paginator.PageNotAnInteger, Paginator.EmptyPage):
+        customer_page_obj = customer_paginator.get_page(1)
+    total_customers = customers.count()
+
+    context = {
+        'customer_page_obj': customer_page_obj,
+        'is_boss': is_boss(request.user),
+        'total_customers': total_customers,
+    }
+    return render(request, 'shop/customer_list.html', context)
+
+
+@login_required
+def customer_detail(request, pk):
+    """Mijoz tafsilotlari"""
+    if not (is_boss(request.user) or request.user.userprofile.role == 'seller'):
+        messages.error(request, "Sizda mijoz tafsilotlarini ko‘rish uchun ruxsat yo‘q!")
+        return redirect('shop:dashboard')
+    customer = get_object_or_404(
+        Customer.objects.prefetch_related('phone_sales', 'accessory_sales', 'phone_exchanges', 'debts'),
+        pk=pk
+    )
+    context = {
+        'customer': customer,
+        'is_boss': is_boss(request.user),
+        'has_phone_debt': customer.phone_sales.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or 0 > 0,
+        'has_accessory_debt': customer.accessory_sales.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or 0 > 0,
+        'has_exchange_debt': customer.phone_exchanges.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or 0 > 0,
+    }
+    return render(request, 'shop/customer_detail.html', context)
+
+
+@login_required
+def shop_create(request):
+    """Yangi do'kon qo'shish (faqat boss uchun)"""
+    if not is_boss(request.user):
+        messages.error(request, "Sizda do‘kon qo‘shish uchun ruxsat yo‘q!")
+        return redirect('shop:dashboard')
+
+    if request.method == 'POST':
+        form = ShopForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Do‘kon muvaffaqiyatli qo‘shildi!")
+            return redirect('shop:dashboard')
+    else:
+        form = ShopForm()
+    return render(request, 'shop/form.html', {'form': form, 'form_title': "Yangi Do‘kon", 'is_create': True})
+
+
+@login_required
+def shop_edit(request, pk):
+    """Do'konni tahrirlash (faqat boss uchun)"""
+    if not is_boss(request.user):
+        messages.error(request, "Sizda do‘kon tahrirlash uchun ruxsat yo‘q!")
+        return redirect('shop:dashboard')
+
+    shop = get_object_or_404(Shop, pk=pk)
+    if request.method == 'POST':
+        form = ShopForm(request.POST, instance=shop)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Do‘kon {shop.name} yangilandi!")
+            return redirect('shop:dashboard')
+    else:
+        form = ShopForm(instance=shop)
+    return render(request, 'shop/form.html', {'form': form, 'form_title': f"Do‘kon: {shop.name}", 'is_edit': True})
+
+
+@login_required
+def shop_delete(request, pk):
+    """Do'konni o'chirish (faqat boss uchun)"""
+    if not is_boss(request.user):
+        messages.error(request, "Sizda do‘kon o‘chirish uchun ruxsat yo‘q!")
+        return redirect('shop:dashboard')
+
+    shop = get_object_or_404(Shop, pk=pk)
+    if request.method == 'POST':
+        shop_name = shop.name
+        shop.delete()
+        messages.success(request, f"Do‘kon {shop_name} o‘chirildi!")
+        return redirect('shop:dashboard')
+    return render(request, 'shop/form.html', {'form_title': f"Do‘kon {shop.name} ni O‘chirish", 'is_delete': True, 'object': shop})
+
+
+@login_required
+def customer_create(request):
+    """Yangi mijoz qo'shish (boss yoki sotuvchi uchun)"""
+    if not (is_boss(request.user) or request.user.userprofile.role == 'seller'):
+        messages.error(request, "Sizda mijoz qo‘shish uchun ruxsat yo‘q!")
+        return redirect('shop:dashboard')
+
+    if request.method == 'POST':
+        form = CustomerForm(request.POST, request.FILES)
+        if form.is_valid():
+            customer = form.save(commit=False)
+            customer.created_by = request.user
+            customer.save()
+            messages.success(request, f"Mijoz {customer.name} muvaffaqiyatli qo‘shildi!")
+            return redirect('shop:customer_list')
+    else:
+        form = CustomerForm()
+    return render(request, 'shop/form.html', {'form': form, 'form_title': "Yangi Mijoz", 'is_create': True})
+
+
+@login_required
+def customer_edit(request, pk):
+    """Mijozni tahrirlash (boss yoki sotuvchi uchun)"""
+    if not (is_boss(request.user) or request.user.userprofile.role == 'seller'):
+        messages.error(request, "Sizda mijoz tahrirlash uchun ruxsat yo‘q!")
+        return redirect('shop:dashboard')
+
+    customer = get_object_or_404(Customer, pk=pk)
+    if request.method == 'POST':
+        form = CustomerForm(request.POST, request.FILES, instance=customer)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Mijoz {customer.name} yangilandi!")
+            return redirect('shop:customer_list')
+    else:
+        form = CustomerForm(instance=customer)
+    return render(request, 'shop/form.html', {'form': form, 'form_title': f"Mijoz: {customer.name}", 'is_edit': True})
+
+
+@login_required
+def customer_delete(request, pk):
+    """Mijozni o'chirish (boss yoki sotuvchi uchun)"""
+    if not (is_boss(request.user) or request.user.userprofile.role == 'seller'):
+        messages.error(request, "Sizda mijoz o‘chirish uchun ruxsat yo‘q!")
+        return redirect('shop:dashboard')
+
+    customer = get_object_or_404(Customer, pk=pk)
+    if request.method == 'POST':
+        customer_name = customer.name
+        customer.delete()
+        messages.success(request, f"Mijoz {customer_name} o‘chirildi!")
+        return redirect('shop:customer_list')
+    return render(request, 'shop/form.html', {'form_title': f"Mijoz {customer.name} ni O‘chirish", 'is_delete': True, 'object': customer})

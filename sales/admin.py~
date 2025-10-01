@@ -1,0 +1,594 @@
+from _decimal import Decimal
+
+from django.contrib import admin, messages
+from django.contrib.auth.models import User
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.html import format_html
+from django import forms
+from django.db import models
+from .models import PhoneSale, AccessorySale, PhoneExchange, Debt, DebtPayment, Expense, PhoneReturn
+
+
+# Date widget for date fields
+class DateInput(forms.DateInput):
+    input_type = 'date'
+
+
+@admin.register(PhoneSale)
+class PhoneSaleAdmin(admin.ModelAdmin):
+    list_display = (
+        "phone_display",
+        "customer_display",
+        "sale_price",
+        "payment_summary",
+        "profit_display",
+        "salesman",
+        "sale_date",
+    )
+    list_filter = ("salesman", "sale_date", "phone__shop")
+    search_fields = ("phone__imei", "customer__name", "customer__phone_number")
+    readonly_fields = ("sale_date",)
+    date_hierarchy = 'sale_date'  # ✅ TO'G'RI — PhoneSale.sale_date mavjud
+
+    fieldsets = (
+        ('Asosiy ma’lumotlar', {
+            'fields': ('phone', 'sale_price', 'salesman', 'customer', 'sale_date')
+        }),
+        ('To’lov turlari', {
+            'fields': ('cash_amount', 'card_amount', 'credit_amount', 'debt_amount'),
+            'classes': ('collapse',),  # Yopiladigan bo'lim
+        }),
+        ('Qo’shimcha', {
+            'fields': ('notes',),
+            'classes': ('collapse',),
+        }),
+    )
+
+    formfield_overrides = {
+        models.DateField: {'widget': DateInput(attrs={'type': 'date'})},
+    }
+
+    # =============================================
+    # DELETE PERMISSIONS & CUSTOM DELETE LOGIC
+    # =============================================
+
+    def has_delete_permission(self, request, obj=None):
+        """Faqat superuser o'chira oladi"""
+        return request.user.is_superuser
+
+    def delete_model(self, request, obj):
+        """Bitta obyektni o'chirish — PhoneSale.delete() metodini chaqiradi"""
+        phone_info = str(obj.phone)
+        customer_info = obj.customer.name if obj.customer else "Noma'lum mijoz"
+        debt_info = f" (Qarz: ${obj.debt_amount})" if obj.debt_amount > 0 else ""
+
+        try:
+            # PhoneSale.delete() metodini chaqirish — u barcha bog'liq qarz va telefon holatini tozalaydi
+            obj.delete()
+            messages.success(
+                request,
+                f"✅ Telefon sotish muvaffaqiyatli o'chirildi:\n"
+                f"📱 Telefon: {phone_info} - do'konga qaytarildi\n"
+                f"👤 Mijoz: {customer_info}{debt_info}\n"
+                f"🗑️ Barcha bog'liq qarzlar va ma'lumotlar tozalandi"
+            )
+        except Exception as e:
+            messages.error(request, f"❌ O'chirishda xatolik: {str(e)}")
+
+    def delete_queryset(self, request, queryset):
+        """Bir nechta obyektni o'chirish — har biri uchun delete_model chaqiriladi"""
+        count = queryset.count()
+        phone_list = []
+        debt_total = Decimal('0.00')
+
+        # Oldindan ma'lumotlarni yig'amiz
+        for obj in queryset:
+            phone_list.append(str(obj.phone))
+            debt_total += obj.debt_amount
+
+        success_count = 0
+        errors = []
+
+        # Har birini alohida o'chiramiz — chunki custom delete() logikasi bor
+        for obj in queryset:
+            try:
+                obj.delete()
+                success_count += 1
+            except Exception as e:
+                errors.append(f"{obj.phone}: {str(e)}")
+
+        # Xabarlar
+        if errors:
+            messages.error(request, f"Xatoliklar:\n" + "\n".join(errors))
+        else:
+            message = f"✅ {success_count} ta telefon sotish muvaffaqiyatli o'chirildi"
+            if debt_total > 0:
+                message += f"\n💰 Tozalangan qarzlar: ${debt_total}"
+            message += f"\n📱 Barcha telefonlar do'konga qaytarildi"
+            messages.success(request, message)
+
+    # =============================================
+    # DISPLAY METHODS
+    # =============================================
+
+    def phone_display(self, obj):
+        if obj.phone:
+            return format_html(
+                '<strong>{}</strong><br><small style="color: #666;">IMEI: {}</small>',
+                obj.phone,
+                obj.phone.imei or "—"
+            )
+        return "Telefon yo'q"
+
+    phone_display.short_description = "Telefon"
+    phone_display.admin_order_field = 'phone__phone_model'
+
+    def customer_display(self, obj):
+        if obj.customer:
+            return format_html(
+                '<strong>{}</strong><br><small style="color: #666;">{}</small>',
+                obj.customer.name,
+                obj.customer.phone_number or "—"
+            )
+        return "Mijoz yo'q"
+
+    customer_display.short_description = "Mijoz"
+    customer_display.admin_order_field = 'customer__name'
+
+    def payment_summary(self, obj):
+        payments = []
+        if obj.cash_amount > 0:
+            payments.append(format_html(
+                '<span style="color: green; font-weight: bold;">Naqd: ${}</span>',
+                f"{obj.cash_amount:.2f}"
+            ))
+        if obj.card_amount > 0:
+            payments.append(format_html(
+                '<span style="color: blue; font-weight: bold;">Karta: ${}</span>',
+                f"{obj.card_amount:.2f}"
+            ))
+        if obj.credit_amount > 0:
+            payments.append(format_html(
+                '<span style="color: purple; font-weight: bold;">Nasiya: ${}</span>',
+                f"{obj.credit_amount:.2f}"
+            ))
+        if obj.debt_amount > 0:
+            payments.append(format_html(
+                '<span style="color: red; font-weight: bold;">Qarz: ${}</span>',
+                f"{obj.debt_amount:.2f}"
+            ))
+        return format_html(" | ".join(payments)) if payments else "—"
+
+    payment_summary.short_description = "To'lovlar"
+
+    def profit_display(self, obj):
+        """Haqiqiy foyda hisoblash - sotish narxi minus tan narx"""
+        try:
+            if obj.phone and obj.phone.cost_price is not None and obj.sale_price is not None:
+                profit = obj.sale_price - obj.phone.cost_price
+                color = "green" if profit >= 0 else "red"
+                sign = "+" if profit >= 0 else ""
+
+                # Avval float qiymatlarni formatlab stringga aylantiramiz
+                profit_str = f"{profit:.2f}"
+                sale_price_str = f"{obj.sale_price:.2f}"
+                cost_price_str = f"{obj.phone.cost_price:.2f}"
+
+                return format_html(
+                    '<span style="color: {}; font-weight: bold;">{}{}</span><br>'
+                    '<small style="color: #666;">({} - {})</small>',
+                    color, sign, profit_str, sale_price_str, cost_price_str
+                )
+            else:
+                return format_html('<span style="color: #999;">Ma\'lumot yetarli emas</span>')
+        except Exception as e:
+            return format_html('<span style="color: red;">Xatolik: {}</span>', str(e)[:50])
+
+    profit_display.short_description = "Foyda"
+    profit_display.admin_order_field = 'sale_price'
+
+    # =============================================
+    # QUERYSET OPTIMIZATION
+    # =============================================
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'phone',
+            'phone__shop',
+            'phone__phone_model',
+            'phone__memory_size',
+            'salesman',
+            'customer'
+        )
+
+    # =============================================
+    # ADDITIONAL UX IMPROVEMENTS
+    # =============================================
+
+    def get_readonly_fields(self, request, obj=None):
+        # Agar obyekt allaqachon saqlangan bo'lsa, ba'zi maydonlarni o'qish rejimiga qo'yish
+        if obj:
+            return self.readonly_fields + ('phone', 'salesman', 'customer', 'sale_date')
+        return self.readonly_fields
+
+    class Media:
+        css = {
+            'all': ('admin/css/custom_admin.css',)  # Agar CSS fayl qo'shmoqchi bo'lsangiz
+        }
+
+
+@admin.register(AccessorySale)
+class AccessorySaleAdmin(admin.ModelAdmin):
+    list_display = (
+        "accessory",
+        "customer_display",
+        "quantity",
+        "total_price",
+        "payment_summary",
+        "profit_display",
+        "salesman",
+        "sale_date",
+    )
+    list_filter = ("salesman", "sale_date", "accessory__shop")
+    search_fields = ("accessory__name", "customer__name", "customer__phone_number")
+    readonly_fields = ("sale_date", "total_price")
+
+    fields = (
+        'accessory',
+        'quantity',
+        'unit_price',
+        'total_price',
+        'cash_amount',
+        'card_amount',
+        'credit_amount',
+        'debt_amount',
+        'salesman',
+        'customer',
+        'sale_date',
+        'notes',
+    )
+
+    formfield_overrides = {
+        models.DateField: {'widget': DateInput},
+    }
+
+    def has_delete_permission(self, request, obj=None):
+        """Faqat superuser o'chira oladi"""
+        return request.user.is_superuser
+
+    def delete_model(self, request, obj):
+        """Bitta obyektni o'chirish"""
+        accessory_info = f"{obj.accessory.name} x {obj.quantity}"
+        customer_info = obj.customer.name
+        debt_info = f" (Qarz: ${obj.debt_amount})" if obj.debt_amount > 0 else ""
+
+        try:
+            super().delete_model(request, obj)
+            messages.success(
+                request,
+                f"Aksessuar sotish muvaffaqiyatli o'chirildi:\n"
+                f"🔧 Aksessuar: {accessory_info} - zahiraga qaytarildi\n"
+                f"👤 Mijoz: {customer_info}{debt_info}\n"
+                f"🗑️ Barcha bog'liq ma'lumotlar tozalandi"
+            )
+        except Exception as e:
+            messages.error(request, f"O'chirishda xatolik: {str(e)}")
+
+    def delete_queryset(self, request, queryset):
+        """Bir nechta obyektni o'chirish"""
+        count = queryset.count()
+        accessory_list = []
+        debt_total = 0
+        quantity_total = 0
+
+        for obj in queryset:
+            accessory_list.append(f"{obj.accessory.name} x{obj.quantity}")
+            debt_total += obj.debt_amount
+            quantity_total += obj.quantity
+
+        try:
+            for obj in queryset:
+                obj.delete()  # Custom delete metodini ishlatish
+
+            message = f"{count} ta aksessuar sotish muvaffaqiyatli o'chirildi"
+            message += f"\n📦 Jami {quantity_total} dona aksessuar zahiraga qaytarildi"
+            if debt_total > 0:
+                message += f"\n💰 Tozalangan qarzlar: ${debt_total}"
+
+            messages.success(request, message)
+        except Exception as e:
+            messages.error(request, f"O'chirishda xatolik: {str(e)}")
+
+    def customer_display(self, obj):
+        if obj.customer:
+            return f"{obj.customer.name} ({obj.customer.phone_number})"
+        return "Mijoz yo'q"
+
+    customer_display.short_description = "Mijoz"
+
+    def payment_summary(self, obj):
+        payments = []
+        if obj.cash_amount > 0:
+            payments.append(format_html('<span style="color: green;">Naqd: ${}</span>', obj.cash_amount))
+        if obj.card_amount > 0:
+            payments.append(format_html('<span style="color: blue;">Karta: ${}</span>', obj.card_amount))
+        if obj.credit_amount > 0:
+            payments.append(format_html('<span style="color: purple;">Nasiya: ${}</span>', obj.credit_amount))
+        if obj.debt_amount > 0:
+            payments.append(format_html('<span style="color: red;">Qarz: ${}</span>', obj.debt_amount))
+        return " | ".join(payments) if payments else "To'lov yo'q"
+
+    payment_summary.short_description = "To'lovlar"
+
+    def profit_display(self, obj):
+        try:
+            total_cost = obj.accessory.purchase_price * obj.quantity
+            profit = obj.total_price - total_cost
+            color = "green" if profit >= 0 else "red"
+            return format_html('<span style="color: {};">${}</span>', color, profit)
+        except:
+            return "N/A"
+
+    profit_display.short_description = "Foyda"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'accessory__shop', 'salesman', 'customer'
+        )
+
+
+@admin.register(PhoneExchange)
+class PhoneExchangeAdmin(admin.ModelAdmin):
+    list_display = (
+        'customer_name',
+        'old_phone_display',
+        'new_phone_display',
+        'exchange_type',
+        'price_difference',
+        'salesman',
+        'exchange_date',
+    )
+    list_filter = ('exchange_type', 'exchange_date', 'salesman', 'new_phone__shop')
+    search_fields = (
+        'customer_name',
+        'customer_phone_number',
+        'old_phone_model__model_name',
+        'new_phone__imei',
+    )
+    readonly_fields = ('price_difference',)
+    fieldsets = (
+        ("Asosiy ma'lumotlar", {
+            'fields': (
+                'salesman',
+                'customer_name',
+                'customer_phone_number',
+                'exchange_date',
+                'exchange_type',
+                'notes',
+                # ✅ 'created_by' — OLIB TASHLANDI — modelda yo'q
+            )
+        }),
+        ("Yangi Telefon", {
+            'fields': ('new_phone', 'new_phone_price')
+        }),
+        ("Eski Telefon — Batafsil Ma'lumotlar", {
+            'fields': (
+                'old_phone_model',
+                'old_phone_memory',
+                'old_phone_imei',
+                'old_phone_condition_percentage',
+                'old_phone_purchase_price',
+                'old_phone_imei_cost',
+                'old_phone_repair_cost',
+                'old_phone_evaluated_price',
+                'old_phone_image',
+            ),
+            'classes': ('collapse',),
+        }),
+        ("To'lovlar (faqat 'Mijoz to'laydi' tanlanganida)", {
+            'fields': ('cash_amount', 'card_amount', 'credit_amount', 'debt_amount'),
+            'classes': ('collapse',),
+        }),
+    )
+
+    def old_phone_display(self, obj):
+        return f"{obj.old_phone_model} {obj.old_phone_memory} — {obj.old_phone_evaluated_price}$"
+
+    old_phone_display.short_description = "Eski Telefon"
+
+    def new_phone_display(self, obj):
+        if obj.new_phone:
+            return f"{obj.new_phone.phone_model} {obj.new_phone.memory_size} — {obj.new_phone.sale_price}$"
+        return "Telefon tanlanmagan"
+
+    new_phone_display.short_description = "Yangi Telefon"
+
+    def save_model(self, request, obj, form, change):
+        # Agar kerak bo'lsa, created_by ni o'rnatish
+        # Lekin modelda bu maydon yo'q — shu sababli o'chirildi
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(Debt)
+class DebtAdmin(admin.ModelAdmin):
+    list_display = (
+        "debtor_display",
+        "creditor_display",
+        "debt_type",
+        "debt_amount",
+        "paid_amount",
+        "remaining_display",
+        "due_date",
+        "status",
+        "created_at",
+    )
+    list_filter = ("debt_type", "status", "due_date", "created_at")
+    search_fields = ("customer__name", "customer__phone_number", "debtor__username", "creditor__username")
+    readonly_fields = ("created_at", "updated_at")
+
+    def debtor_display(self, obj):
+        if obj.customer:
+            return f"{obj.customer.name} (Mijoz)"
+        elif obj.debtor:
+            return f"{obj.debtor.get_full_name() or obj.debtor.username} (Foydalanuvchi)"
+        return "Noma'lum"
+
+    debtor_display.short_description = "Qarzdor"
+
+    def creditor_display(self, obj):
+        return obj.creditor.get_full_name() or obj.creditor.username
+
+    creditor_display.short_description = "Kreditor"
+
+    def remaining_display(self, obj):
+        remaining = obj.remaining_amount
+        if remaining > 0:
+            return format_html('<span style="color: red; font-weight: bold;">${}</span>', remaining)
+        return "$0"
+
+    remaining_display.short_description = "Qolgan"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'creditor', 'debtor', 'customer'
+        )
+
+    class DebtPaymentInline(admin.TabularInline):
+        model = DebtPayment
+        extra = 0
+        fields = ('payment_amount', 'payment_date', 'received_by', 'notes')
+        readonly_fields = ('payment_date',)
+
+    inlines = [DebtPaymentInline]
+
+
+@admin.register(DebtPayment)
+class DebtPaymentAdmin(admin.ModelAdmin):
+    list_display = ("debtor_display", "creditor_display", "payment_amount", "payment_date", "received_by")
+    list_filter = ("payment_date", "received_by", "debt__debt_type")
+    search_fields = ("debt__customer__name", "debt__debtor__username", "debt__creditor__username")
+    readonly_fields = ("payment_date",)
+
+    def debtor_display(self, obj):
+        if obj.debt.customer:
+            return f"{obj.debt.customer.name} (Mijoz)"
+        elif obj.debt.debtor:
+            return f"{obj.debt.debtor.get_full_name() or obj.debt.debtor.username} (Foydalanuvchi)"
+        return "Noma'lum"
+
+    debtor_display.short_description = "Qarzdor"
+
+    def creditor_display(self, obj):
+        return obj.debt.creditor.get_full_name() or obj.debt.creditor.username
+
+    creditor_display.short_description = "Kreditor"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'debt__customer', 'debt__debtor', 'debt__creditor', 'received_by'
+        )
+
+
+@admin.register(Expense)
+class ExpenseAdmin(admin.ModelAdmin):
+    list_display = ("name", "amount", "expense_date", "shop", "created_by")
+    list_filter = ("shop", "expense_date", "created_by")
+    search_fields = ("name", "notes")
+    readonly_fields = ("expense_date",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('shop', 'created_by')
+
+
+@admin.register(PhoneReturn)
+class PhoneReturnAdmin(admin.ModelAdmin):
+    list_display = (
+        "phone_display",
+        "customer_display",
+        "return_amount",
+        "profit_display",
+        "reason",
+        "created_by",
+        "return_date",
+    )
+    list_filter = ("return_date", "created_by", "phone_sale__phone__shop")
+    search_fields = (
+        "phone_sale__customer__name",
+        "phone_sale__customer__phone_number",
+        "phone_sale__phone__imei",
+        "reason"
+    )
+    readonly_fields = ("return_date",)
+    raw_id_fields = ("phone_sale",)  # Katta ma'lumotlar uchun yaxshi
+
+    def phone_display(self, obj):
+        """Telefon ma'lumotlarini ko'rsatish"""
+        if obj.phone_sale and obj.phone_sale.phone:
+            phone = obj.phone_sale.phone
+            return f"{phone.phone_model} {phone.memory_size} — IMEI: {phone.imei or 'N/A'}"
+        return "Telefon yo'q"
+
+    phone_display.short_description = "Telefon"
+    phone_display.admin_order_field = "phone_sale__phone__phone_model"
+
+    def customer_display(self, obj):
+        """Mijoz ma'lumotlarini ko'rsatish"""
+        if obj.phone_sale and obj.phone_sale.customer:
+            customer = obj.phone_sale.customer
+            return f"{customer.name} ({customer.phone_number})"
+        return "Mijoz yo'q"
+
+    customer_display.short_description = "Mijoz"
+    customer_display.admin_order_field = "phone_sale__customer__name"
+
+    def profit_display(self, obj):
+        """Qaytarishdan keyingi foydani ko'rsatish"""
+        try:
+            # Asl sotuvdagi foyda - qaytarilgan summa
+            original_profit = obj.phone_sale.sale_price - obj.phone_sale.phone.cost_price
+            adjusted_profit = original_profit - obj.return_amount
+            color = "green" if adjusted_profit >= 0 else "red"
+            return format_html(
+                '<span style="color: {};">{:+.2f}$</span>',
+                color,
+                adjusted_profit
+            )
+        except (AttributeError, TypeError):
+            return "N/A"
+
+    profit_display.short_description = "Foyda (qaytarishdan keyin)"
+
+    def get_queryset(self, request):
+        """Optimallashtirilgan query"""
+        qs = super().get_queryset(request)
+        return qs.select_related(
+            'phone_sale__phone__shop',
+            'phone_sale__customer',
+            'phone_sale__phone__phone_model',
+            'phone_sale__phone__memory_size',
+            'phone_sale__salesman',
+            'created_by'
+        )
+
+    def get_readonly_fields(self, request, obj=None):
+        """Tahrirlash vaqtida qo'shimcha readonly maydonlar"""
+        readonly_fields = list(super().get_readonly_fields(request, obj))
+        if obj:  # Tahrirlash vaqtida
+            readonly_fields.extend(['phone_sale'])
+        return readonly_fields
+
+    def has_delete_permission(self, request, obj=None):
+        """Qaytarishni o'chirishni cheklash"""
+        # Faqat superuser o'chira oladi
+        return request.user.is_superuser
+
+    fieldsets = (
+        ('Asosiy ma\'lumotlar', {
+            'fields': ('phone_sale', 'return_amount', 'reason')
+        }),
+        ('Qo\'shimcha ma\'lumotlar', {
+            'fields': ('return_date', 'created_by', 'notes'),
+            'classes': ('collapse',)
+        }),
+    )

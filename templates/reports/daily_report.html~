@@ -1,0 +1,504 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block page_title %}Kunlik Hisobot{% endblock %}
+
+{% block extra_css %}
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: #fafafa; line-height: 1.5; }
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+/* Header - Minimalist */
+.header {
+  background: #111;
+  color: white;
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.header h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.header-date { font-size: 13px; opacity: 0.7; }
+.nav { display: flex; gap: 8px; margin-top: 12px; }
+.nav a {
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  color: white;
+  text-decoration: none;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+.nav a:hover { background: rgba(255,255,255,0.2); }
+.nav a.active { background: white; color: #111; }
+
+/* Filter - Clean */
+.filter {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #e0e0e0;
+}
+.filter-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto auto;
+  gap: 12px;
+  align-items: end;
+}
+.form-group label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 4px; color: #666; }
+.form-control, .form-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.form-control:focus, .form-select:focus { outline: none; border-color: #111; }
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-primary { background: #111; color: white; }
+.btn-primary:hover { background: #333; }
+.btn-secondary { background: #666; color: white; }
+.btn-secondary:hover { background: #888; }
+
+/* Stats - Compact Grid */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 12px; }
+.stat-box {
+  background: white;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  text-align: center;
+}
+.stat-box:hover { border-color: #111; }
+.stat-label { font-size: 11px; color: #999; text-transform: uppercase; margin-bottom: 6px; }
+.stat-value { font-size: 20px; font-weight: 600; color: #111; }
+.stat-value.green { color: #059669; }
+.stat-value.blue { color: #2563eb; }
+.stat-value.red { color: #dc2626; }
+.stat-value.orange { color: #f59e0b; }
+.stat-sub { font-size: 10px; color: #999; margin-top: 4px; }
+
+/* Section Headers */
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 24px 0 12px;
+  color: #111;
+  border-left: 3px solid #111;
+  padding-left: 8px;
+}
+
+/* Cash Flow - Minimal Cards */
+.cashflow-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.cf-card {
+  background: white;
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+.cf-title { font-size: 12px; font-weight: 600; margin-bottom: 12px; color: #666; }
+.cf-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+.cf-row:last-child { border-bottom: none; }
+.cf-label { font-size: 12px; color: #666; }
+.cf-value { font-size: 13px; font-weight: 600; }
+
+/* Kassa - Highlight Box */
+.kassa-box {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  padding: 20px;
+  border-radius: 6px;
+  border: 2px solid #059669;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  text-align: center;
+}
+.kassa-item { }
+.kassa-label { font-size: 11px; color: #065f46; font-weight: 600; margin-bottom: 4px; }
+.kassa-value { font-size: 22px; font-weight: 700; color: #059669; }
+
+/* Sales List - Ultra Compact */
+.sales-section {
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 16px;
+}
+.sales-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.tabs { display: flex; border-bottom: 1px solid #e0e0e0; }
+.tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: none;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab.active { border-bottom-color: #111; font-weight: 600; }
+.tab-content { display: none; padding: 12px; max-height: 400px; overflow-y: auto; }
+.tab-content.active { display: block; }
+
+.sale-row {
+  padding: 12px;
+  border-bottom: 1px solid #f5f5f5;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  font-size: 12px;
+}
+.sale-row:hover { background: #fafafa; }
+.sale-main { }
+.sale-title { font-weight: 600; margin-bottom: 2px; }
+.sale-info { color: #666; font-size: 11px; }
+.sale-amounts { text-align: right; }
+.sale-price { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+.sale-price.usd { color: #059669; }
+.sale-price.uzs { color: #2563eb; }
+.sale-payment { font-size: 10px; color: #999; }
+
+/* Sellers - Compact List */
+.sellers-list {
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 16px;
+}
+.seller-row {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f5f5f5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+.seller-row:hover { background: #fafafa; }
+.seller-info { display: flex; align-items: center; gap: 10px; }
+.seller-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.seller-rank.gold { background: #fbbf24; color: white; }
+.seller-rank.silver { background: #94a3b8; color: white; }
+.seller-rank.bronze { background: #f59e0b; color: white; }
+.seller-name { font-size: 13px; font-weight: 600; }
+.seller-stats { font-size: 10px; color: #999; }
+.seller-amounts { text-align: right; font-size: 12px; font-weight: 600; }
+
+.empty { text-align: center; padding: 40px; color: #999; font-size: 13px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .filter-row { grid-template-columns: 1fr; }
+  .cashflow-cards { grid-template-columns: 1fr; }
+  .kassa-box { grid-template-columns: 1fr; }
+}
+
+@media print {
+  .filter, .nav, .btn { display: none !important; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="header">
+    <h1>{{ selected_shop.name }}</h1>
+    <div class="header-date">{{ selected_date|date:"d F Y" }}</div>
+    <div class="nav">
+      <a href="{% url 'reports:daily' %}?shop={{ selected_shop.id }}" class="active">Kunlik</a>
+      <a href="{% url 'reports:monthly' %}?shop={{ selected_shop.id }}">Oylik</a>
+      <a href="{% url 'reports:yearly' %}?shop={{ selected_shop.id }}">Yillik</a>
+    </div>
+  </div>
+
+  <div class="filter">
+    <form method="get">
+      <div class="filter-row">
+        <div class="form-group">
+          <label>Do'kon</label>
+          <select name="shop" class="form-select">
+            {% for shop in shops %}
+            <option value="{{ shop.id }}" {% if shop == selected_shop %}selected{% endif %}>{{ shop.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Sana</label>
+          <input type="date" name="date" class="form-control" value="{{ selected_date|date:'Y-m-d' }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Ko'rsat</button>
+        <button type="button" class="btn btn-secondary" onclick="window.print()">Chop</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="section-title">Telefon (Dollar)</div>
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-label">Savdo</div>
+      <div class="stat-value green">${{ daily_stats.sales.phone_total_usd|floatformat:0|intcomma }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Naqd</div>
+      <div class="stat-value green">${{ daily_stats.sales.phone_cash_usd|floatformat:0|intcomma }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Karta</div>
+      <div class="stat-value blue">${{ daily_stats.sales.phone_card_usd|floatformat:0|intcomma }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Nasiya</div>
+      <div class="stat-value orange">${{ daily_stats.sales.phone_credit_usd|floatformat:0|intcomma }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Qarz</div>
+      <div class="stat-value red">${{ daily_stats.sales.phone_debt_usd|floatformat:0|intcomma }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Soni</div>
+      <div class="stat-value">{{ daily_stats.counts.phone|default:0 }}</div>
+      <div class="stat-sub">dona</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Almashtirish</div>
+      <div class="stat-value">{{ daily_stats.counts.exchange|default:0 }}</div>
+      <div class="stat-sub">dona</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Foyda</div>
+      <div class="stat-value green">${{ daily_stats.profits.phone_profit_usd|floatformat:0|intcomma }}</div>
+    </div>
+  </div>
+
+  <div class="section-title">Aksessuar (So'm)</div>
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-label">Savdo</div>
+      <div class="stat-value blue">{{ daily_stats.sales.accessory_total_uzs|floatformat:0 }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Naqd</div>
+      <div class="stat-value blue">{{ daily_stats.sales.accessory_cash_uzs|floatformat:0 }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Karta</div>
+      <div class="stat-value blue">{{ daily_stats.sales.accessory_card_uzs|floatformat:0 }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Nasiya</div>
+      <div class="stat-value orange">{{ daily_stats.sales.accessory_credit_uzs|floatformat:0 }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Qarz</div>
+      <div class="stat-value red">{{ daily_stats.sales.accessory_debt_uzs|floatformat:0 }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Soni</div>
+      <div class="stat-value">{{ daily_stats.counts.accessory|default:0 }}</div>
+      <div class="stat-sub">dona</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Xarajat</div>
+      <div class="stat-value red">{{ daily_stats.expenses|floatformat:0 }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Foyda</div>
+      <div class="stat-value blue">{{ daily_stats.profits.accessory_profit_uzs|floatformat:0 }}</div>
+    </div>
+  </div>
+
+  <div class="section-title">Cash Flow</div>
+  <div class="cashflow-cards">
+    <div class="cf-card">
+      <div class="cf-title">Dollar</div>
+      <div class="cf-row">
+        <span class="cf-label">Kirim</span>
+        <span class="cf-value" style="color: #059669;">${{ daily_stats.cashflow.usd.income|floatformat:0|intcomma }}</span>
+      </div>
+      <div class="cf-row">
+        <span class="cf-label">Chiqim</span>
+        <span class="cf-value" style="color: #dc2626;">${{ daily_stats.cashflow.usd.expense|floatformat:0|intcomma }}</span>
+      </div>
+      <div class="cf-row">
+        <span class="cf-label">Balans</span>
+        <span class="cf-value" style="color: #8b5cf6; font-size: 15px;">${{ daily_stats.cashflow.usd.net|floatformat:0|intcomma }}</span>
+      </div>
+    </div>
+    <div class="cf-card">
+      <div class="cf-title">So'm</div>
+      <div class="cf-row">
+        <span class="cf-label">Kirim</span>
+        <span class="cf-value" style="color: #059669;">{{ daily_stats.cashflow.uzs.income|floatformat:0 }}</span>
+      </div>
+      <div class="cf-row">
+        <span class="cf-label">Chiqim</span>
+        <span class="cf-value" style="color: #dc2626;">{{ daily_stats.cashflow.uzs.expense|floatformat:0 }}</span>
+      </div>
+      <div class="cf-row">
+        <span class="cf-label">Balans</span>
+        <span class="cf-value" style="color: #8b5cf6; font-size: 15px;">{{ daily_stats.cashflow.uzs.net|floatformat:0 }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Kassada Naqd</div>
+  <div class="kassa-box">
+    <div class="kassa-item">
+      <div class="kassa-label">Dollar</div>
+      <div class="kassa-value">${{ daily_stats.sales.phone_cash_usd|floatformat:0|intcomma }}</div>
+    </div>
+    <div class="kassa-item">
+      <div class="kassa-label">So'm (Naqd - Xarajat)</div>
+      <div class="kassa-value">{{ daily_stats.net_cash_uzs|floatformat:0 }}</div>
+    </div>
+    <div class="kassa-item">
+      <div class="kassa-label">Teng Almashtirish</div>
+      <div class="kassa-value">{{ daily_stats.cashflow.details.exchange_equal|default:0 }}</div>
+    </div>
+  </div>
+
+  <div class="section-title">Sotuvlar</div>
+  <div class="sales-section">
+    <div class="tabs">
+      <button class="tab active" onclick="showTab(0, this)">Telefon ({{ daily_stats.counts.phone }})</button>
+      <button class="tab" onclick="showTab(1, this)">Aksessuar ({{ daily_stats.counts.accessory }})</button>
+      <button class="tab" onclick="showTab(2, this)">Almashtirish ({{ daily_stats.counts.exchange }})</button>
+    </div>
+
+    <div class="tab-content active">
+      {% if daily_stats.sales_data.phone_sales %}
+        {% for sale in daily_stats.sales_data.phone_sales %}
+        <div class="sale-row">
+          <div class="sale-main">
+            <div class="sale-title">{{ sale.phone.phone_model }} {{ sale.phone.memory_size }}</div>
+            <div class="sale-info">{{ sale.customer.name }} • {{ sale.salesman.username }} • {{ sale.created_at|date:"H:i" }}</div>
+          </div>
+          <div class="sale-amounts">
+            <div class="sale-price usd">${{ sale.sale_price|floatformat:0|intcomma }}</div>
+            <div class="sale-payment">Naqd ${{ sale.cash_amount|floatformat:0 }} • Foyda ${{ sale.calculated_profit|floatformat:0 }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">Telefon sotilmagan</div>
+      {% endif %}
+    </div>
+
+    <div class="tab-content">
+      {% if daily_stats.sales_data.accessory_sales %}
+        {% for sale in daily_stats.sales_data.accessory_sales %}
+        <div class="sale-row">
+          <div class="sale-main">
+            <div class="sale-title">{{ sale.accessory.name }} × {{ sale.quantity }}</div>
+            <div class="sale-info">{{ sale.customer.name }} • {{ sale.salesman.username }} • {{ sale.created_at|date:"H:i" }}</div>
+          </div>
+          <div class="sale-amounts">
+            <div class="sale-price uzs">{{ sale.total_price|floatformat:0 }}</div>
+            <div class="sale-payment">Naqd {{ sale.cash_amount|floatformat:0 }} • Foyda {{ sale.profit|floatformat:0 }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">Aksessuar sotilmagan</div>
+      {% endif %}
+    </div>
+
+    <div class="tab-content">
+      {% if daily_stats.sales_data.exchanges %}
+        {% for ex in daily_stats.sales_data.exchanges %}
+        <div class="sale-row">
+          <div class="sale-main">
+            <div class="sale-title">{{ ex.old_phone_model }} → {{ ex.new_phone.phone_model }}</div>
+            <div class="sale-info">{{ ex.customer_name }} • {{ ex.salesman.username }} • {{ ex.created_at|date:"H:i" }}</div>
+          </div>
+          <div class="sale-amounts">
+            <div class="sale-price usd">${{ ex.additional_payment|floatformat:0|intcomma }}</div>
+            <div class="sale-payment">Naqd ${{ ex.cash_amount|floatformat:0 }} • Foyda ${{ ex.calculated_profit|floatformat:0 }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">Almashtirish bo'lmagan</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="section-title">Sotuvchilar ({{ seller_stats|length }})</div>
+  <div class="sellers-list">
+    {% if seller_stats %}
+      {% for seller in seller_stats %}
+      <div class="seller-row" onclick="goToSeller({{ seller.seller.id }})">
+        <div class="seller-info">
+          <div class="seller-rank {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% elif forloop.counter == 3 %}bronze{% endif %}">{{ forloop.counter }}</div>
+          <div>
+            <div class="seller-name">{{ seller.seller.get_full_name|default:seller.seller.username }}</div>
+            <div class="seller-stats">{{ seller.counts.phone }}T • {{ seller.counts.accessory }}A • {{ seller.counts.exchange }}E</div>
+          </div>
+        </div>
+        <div class="seller-amounts">
+          <div style="color: #059669;">${{ seller.sales.phone_total_usd|floatformat:0|intcomma }}</div>
+          <div style="color: #2563eb; font-size: 11px;">{{ seller.sales.accessory_total_uzs|floatformat:0 }} so'm</div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">Sotuvchilar yo'q</div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function showTab(index, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-content')[index].classList.add('active');
+}
+
+function goToSeller(id) {
+  const params = new URLSearchParams(window.location.search);
+  location.href = "{% url 'reports:seller_detail_page' 999 %}".replace('999', id) + '?' + params;
+}
+
+// So'm formatlash
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.stat-value.blue, .sale-price.uzs, .seller-amounts div, .cf-value, .kassa-value').forEach(el => {
+    let text = el.textContent.trim();
+    let num = text.replace(/[^\d]/g, '');
+    if (num && !text.includes('$')) {
+      let formatted = num.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      if (text.includes('so\'m')) {
+        el.textContent = formatted + ' so\'m';
+      } else {
+        el.textContent = formatted;
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

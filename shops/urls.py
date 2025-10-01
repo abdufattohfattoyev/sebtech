@@ -1,0 +1,17 @@
+# shops/urls.py
+from django.urls import path
+from . import views
+
+app_name = 'shop'
+
+urlpatterns = [
+    path('', views.dashboard, name='dashboard'),
+    path('shop/create/', views.shop_create, name='shop_create'),
+    path('shop/edit/<int:pk>/', views.shop_edit, name='shop_edit'),
+    path('shop/delete/<int:pk>/', views.shop_delete, name='shop_delete'),
+    path('customer/create/', views.customer_create, name='customer_create'),
+    path('customer/edit/<int:pk>/', views.customer_edit, name='customer_edit'),
+    path('customer/delete/<int:pk>/', views.customer_delete, name='customer_delete'),
+    path('customer/detail/<int:pk>/', views.customer_detail, name='customer_detail'),
+    path('customers/', views.customer_list, name='customer_list'),
+]

@@ -1,0 +1,407 @@
+# reports/signals.py - TO'LIQ UPDATE QOBILIYATI
+
+from django.db.models.signals import post_save, pre_delete
+from django.dispatch import receiver
+from decimal import Decimal
+from .models import CashFlowTransaction
+
+
+# ==================== TELEFON SOTISH ====================
+
+@receiver(post_save, sender='sales.PhoneSale')
+def handle_phone_sale_cashflow(sender, instance, created, **kwargs):
+    """Telefon sotish - CREATE va UPDATE"""
+    if instance.cash_amount <= 0:
+        # Agar cash yo'q bo'lsa, mavjud cashflow ni o'chirish
+        CashFlowTransaction.objects.filter(related_phone_sale=instance).delete()
+        return
+
+    try:
+        if created:
+            # Yangi sotish
+            CashFlowTransaction.objects.create(
+                shop=instance.phone.shop,
+                transaction_date=instance.sale_date,
+                transaction_type='phone_sale',
+                amount_usd=instance.cash_amount,
+                amount_uzs=Decimal('0'),
+                related_phone=instance.phone,
+                related_phone_sale=instance,
+                description=f"Telefon: {instance.phone.phone_model} {instance.phone.memory_size}",
+                notes=f"Mijoz: {instance.customer.name}",
+                created_by=instance.salesman
+            )
+            print(f"✅ Phone sale created: ${instance.cash_amount}")
+        else:
+            # Yangilanish
+            cashflow = CashFlowTransaction.objects.filter(related_phone_sale=instance).first()
+            if cashflow:
+                cashflow.transaction_date = instance.sale_date
+                cashflow.amount_usd = instance.cash_amount
+                cashflow.description = f"Telefon: {instance.phone.phone_model} {instance.phone.memory_size}"
+                cashflow.notes = f"Mijoz: {instance.customer.name}"
+                cashflow.save()
+                print(f"✅ Phone sale updated: ${instance.cash_amount}")
+            else:
+                # Agar cashflow topilmasa, yaratish
+                CashFlowTransaction.objects.create(
+                    shop=instance.phone.shop,
+                    transaction_date=instance.sale_date,
+                    transaction_type='phone_sale',
+                    amount_usd=instance.cash_amount,
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance.phone,
+                    related_phone_sale=instance,
+                    description=f"Telefon: {instance.phone.phone_model} {instance.phone.memory_size}",
+                    notes=f"Mijoz: {instance.customer.name}",
+                    created_by=instance.salesman
+                )
+                print(f"✅ Phone sale recreated: ${instance.cash_amount}")
+    except Exception as e:
+        print(f"❌ PhoneSale cashflow error: {e}")
+
+
+@receiver(pre_delete, sender='sales.PhoneSale')
+def delete_phone_sale_cashflow(sender, instance, **kwargs):
+    try:
+        count = CashFlowTransaction.objects.filter(related_phone_sale=instance).count()
+        CashFlowTransaction.objects.filter(related_phone_sale=instance).delete()
+        print(f"✅ Phone sale deleted: {count} transactions")
+    except Exception as e:
+        print(f"❌ PhoneSale delete error: {e}")
+
+
+# ==================== AKSESSUAR SOTISH ====================
+
+@receiver(post_save, sender='sales.AccessorySale')
+def handle_accessory_sale_cashflow(sender, instance, created, **kwargs):
+    """Aksessuar sotish - CREATE va UPDATE"""
+    if instance.cash_amount <= 0:
+        CashFlowTransaction.objects.filter(related_accessory_sale=instance).delete()
+        return
+
+    try:
+        if created:
+            CashFlowTransaction.objects.create(
+                shop=instance.accessory.shop,
+                transaction_date=instance.sale_date,
+                transaction_type='accessory_sale',
+                amount_uzs=instance.cash_amount,
+                amount_usd=Decimal('0'),
+                related_accessory_sale=instance,
+                description=f"Aksessuar: {instance.accessory.name} x{instance.quantity}",
+                notes=f"Mijoz: {instance.customer.name}",
+                created_by=instance.salesman
+            )
+            print(f"✅ Accessory sale created: {instance.cash_amount} so'm")
+        else:
+            cashflow = CashFlowTransaction.objects.filter(related_accessory_sale=instance).first()
+            if cashflow:
+                cashflow.transaction_date = instance.sale_date
+                cashflow.amount_uzs = instance.cash_amount
+                cashflow.description = f"Aksessuar: {instance.accessory.name} x{instance.quantity}"
+                cashflow.notes = f"Mijoz: {instance.customer.name}"
+                cashflow.save()
+                print(f"✅ Accessory sale updated: {instance.cash_amount} so'm")
+            else:
+                CashFlowTransaction.objects.create(
+                    shop=instance.accessory.shop,
+                    transaction_date=instance.sale_date,
+                    transaction_type='accessory_sale',
+                    amount_uzs=instance.cash_amount,
+                    amount_usd=Decimal('0'),
+                    related_accessory_sale=instance,
+                    description=f"Aksessuar: {instance.accessory.name} x{instance.quantity}",
+                    notes=f"Mijoz: {instance.customer.name}",
+                    created_by=instance.salesman
+                )
+                print(f"✅ Accessory sale recreated: {instance.cash_amount} so'm")
+    except Exception as e:
+        print(f"❌ AccessorySale cashflow error: {e}")
+
+
+@receiver(pre_delete, sender='sales.AccessorySale')
+def delete_accessory_sale_cashflow(sender, instance, **kwargs):
+    try:
+        count = CashFlowTransaction.objects.filter(related_accessory_sale=instance).count()
+        CashFlowTransaction.objects.filter(related_accessory_sale=instance).delete()
+        print(f"✅ Accessory sale deleted: {count} transactions")
+    except Exception as e:
+        print(f"❌ AccessorySale delete error: {e}")
+
+
+# ==================== ALMASHTIRISH ====================
+
+@receiver(post_save, sender='sales.PhoneExchange')
+def handle_exchange_cashflow(sender, instance, created, **kwargs):
+    """Almashtirish - CREATE va UPDATE"""
+    try:
+        if created:
+            # Yangi almashtirish
+            if instance.exchange_type == 'customer_pays' and instance.cash_amount > 0:
+                CashFlowTransaction.objects.create(
+                    shop=instance.new_phone.shop,
+                    transaction_date=instance.exchange_date,
+                    transaction_type='exchange_income',
+                    amount_usd=instance.cash_amount,
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance.new_phone,
+                    related_exchange=instance,
+                    description=f"Almashtirish: {instance.old_phone_model} → {instance.new_phone.phone_model}",
+                    notes=f"Mijoz: {instance.customer_name}",
+                    created_by=instance.salesman
+                )
+                print(f"✅ Exchange income created: ${instance.cash_amount}")
+            elif instance.exchange_type == 'seller_pays' and instance.cash_amount > 0:
+                CashFlowTransaction.objects.create(
+                    shop=instance.new_phone.shop,
+                    transaction_date=instance.exchange_date,
+                    transaction_type='exchange_expense',
+                    amount_usd=-instance.cash_amount,
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance.new_phone,
+                    related_exchange=instance,
+                    description=f"Almashtirish: {instance.old_phone_model} → {instance.new_phone.phone_model}",
+                    notes=f"Mijoz: {instance.customer_name}",
+                    created_by=instance.salesman
+                )
+                print(f"✅ Exchange expense created: -${instance.cash_amount}")
+            elif instance.exchange_type == 'equal':
+                CashFlowTransaction.objects.create(
+                    shop=instance.new_phone.shop,
+                    transaction_date=instance.exchange_date,
+                    transaction_type='exchange_equal',
+                    amount_usd=Decimal('0'),
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance.new_phone,
+                    related_exchange=instance,
+                    description=f"Teng: {instance.old_phone_model} = {instance.new_phone.phone_model}",
+                    notes=f"Mijoz: {instance.customer_name}",
+                    created_by=instance.salesman
+                )
+                print(f"✅ Exchange equal created")
+        else:
+            # Yangilanish - avval eski cashflow ni o'chirish
+            CashFlowTransaction.objects.filter(related_exchange=instance).delete()
+
+            # Yangi cashflow yaratish
+            if instance.exchange_type == 'customer_pays' and instance.cash_amount > 0:
+                CashFlowTransaction.objects.create(
+                    shop=instance.new_phone.shop,
+                    transaction_date=instance.exchange_date,
+                    transaction_type='exchange_income',
+                    amount_usd=instance.cash_amount,
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance.new_phone,
+                    related_exchange=instance,
+                    description=f"Almashtirish: {instance.old_phone_model} → {instance.new_phone.phone_model}",
+                    notes=f"Mijoz: {instance.customer_name}",
+                    created_by=instance.salesman
+                )
+                print(f"✅ Exchange updated: income ${instance.cash_amount}")
+            elif instance.exchange_type == 'seller_pays' and instance.cash_amount > 0:
+                CashFlowTransaction.objects.create(
+                    shop=instance.new_phone.shop,
+                    transaction_date=instance.exchange_date,
+                    transaction_type='exchange_expense',
+                    amount_usd=-instance.cash_amount,
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance.new_phone,
+                    related_exchange=instance,
+                    description=f"Almashtirish: {instance.old_phone_model} → {instance.new_phone.phone_model}",
+                    notes=f"Mijoz: {instance.customer_name}",
+                    created_by=instance.salesman
+                )
+                print(f"✅ Exchange updated: expense -${instance.cash_amount}")
+            elif instance.exchange_type == 'equal':
+                CashFlowTransaction.objects.create(
+                    shop=instance.new_phone.shop,
+                    transaction_date=instance.exchange_date,
+                    transaction_type='exchange_equal',
+                    amount_usd=Decimal('0'),
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance.new_phone,
+                    related_exchange=instance,
+                    description=f"Teng: {instance.old_phone_model} = {instance.new_phone.phone_model}",
+                    notes=f"Mijoz: {instance.customer_name}",
+                    created_by=instance.salesman
+                )
+                print(f"✅ Exchange updated: equal")
+    except Exception as e:
+        print(f"❌ Exchange cashflow error: {e}")
+
+
+@receiver(pre_delete, sender='sales.PhoneExchange')
+def delete_exchange_cashflow(sender, instance, **kwargs):
+    try:
+        count = CashFlowTransaction.objects.filter(related_exchange=instance).count()
+        CashFlowTransaction.objects.filter(related_exchange=instance).delete()
+        print(f"✅ Exchange deleted: {count} transactions")
+    except Exception as e:
+        print(f"❌ Exchange delete error: {e}")
+
+
+# ==================== TELEFON QAYTARISH ====================
+
+@receiver(post_save, sender='sales.PhoneReturn')
+def handle_phone_return_cashflow(sender, instance, created, **kwargs):
+    """Telefon qaytarish - CREATE va UPDATE"""
+    if instance.return_amount <= 0:
+        CashFlowTransaction.objects.filter(related_return=instance).delete()
+        return
+
+    try:
+        if created:
+            CashFlowTransaction.objects.create(
+                shop=instance.phone_sale.phone.shop,
+                transaction_date=instance.return_date,
+                transaction_type='phone_return',
+                amount_usd=-instance.return_amount,
+                amount_uzs=Decimal('0'),
+                related_phone=instance.phone_sale.phone,
+                related_phone_sale=instance.phone_sale,
+                related_return=instance,
+                description=f"Qaytarish: {instance.phone_sale.phone.phone_model}",
+                notes=f"Mijoz: {instance.phone_sale.customer.name}\n{instance.reason}",
+                created_by=instance.created_by
+            )
+            print(f"✅ Phone return created: -${instance.return_amount}")
+        else:
+            cashflow = CashFlowTransaction.objects.filter(related_return=instance).first()
+            if cashflow:
+                cashflow.transaction_date = instance.return_date
+                cashflow.amount_usd = -instance.return_amount
+                cashflow.description = f"Qaytarish: {instance.phone_sale.phone.phone_model}"
+                cashflow.notes = f"Mijoz: {instance.phone_sale.customer.name}\n{instance.reason}"
+                cashflow.save()
+                print(f"✅ Phone return updated: -${instance.return_amount}")
+            else:
+                CashFlowTransaction.objects.create(
+                    shop=instance.phone_sale.phone.shop,
+                    transaction_date=instance.return_date,
+                    transaction_type='phone_return',
+                    amount_usd=-instance.return_amount,
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance.phone_sale.phone,
+                    related_phone_sale=instance.phone_sale,
+                    related_return=instance,
+                    description=f"Qaytarish: {instance.phone_sale.phone.phone_model}",
+                    notes=f"Mijoz: {instance.phone_sale.customer.name}\n{instance.reason}",
+                    created_by=instance.created_by
+                )
+                print(f"✅ Phone return recreated: -${instance.return_amount}")
+    except Exception as e:
+        print(f"❌ PhoneReturn cashflow error: {e}")
+
+
+@receiver(pre_delete, sender='sales.PhoneReturn')
+def delete_phone_return_cashflow(sender, instance, **kwargs):
+    try:
+        count = CashFlowTransaction.objects.filter(related_return=instance).count()
+        CashFlowTransaction.objects.filter(related_return=instance).delete()
+        print(f"✅ Phone return deleted: {count} transactions")
+    except Exception as e:
+        print(f"❌ PhoneReturn delete error: {e}")
+
+
+# ==================== KUNLIK SOTUVCHI ====================
+
+@receiver(post_save, sender='inventory.Phone')
+def create_daily_seller_cashflow(sender, instance, created, **kwargs):
+    """Kunlik sotuvchi - faqat CREATE (UPDATE kerak emas)"""
+    if not created:
+        return
+
+    if (instance.source_type == 'daily_seller' and
+            instance.daily_payment_amount and
+            instance.daily_payment_amount > 0):
+        try:
+            from django.utils import timezone
+            trans_date = instance.created_at.date() if hasattr(instance.created_at, 'date') else timezone.now().date()
+
+            CashFlowTransaction.objects.create(
+                shop=instance.shop,
+                transaction_date=trans_date,
+                transaction_type='daily_seller_payment',
+                amount_usd=-instance.daily_payment_amount,
+                amount_uzs=Decimal('0'),
+                related_phone=instance,
+                description=f"Kunlik: {instance.daily_seller.name if instance.daily_seller else 'N/A'}",
+                notes=f"{instance.phone_model} {instance.memory_size}",
+                created_by=instance.created_by
+            )
+            print(f"✅ Daily seller payment: -${instance.daily_payment_amount}")
+        except Exception as e:
+            print(f"❌ DailySeller cashflow error: {e}")
+
+
+@receiver(pre_delete, sender='inventory.Phone')
+def delete_daily_seller_cashflow(sender, instance, **kwargs):
+    if instance.source_type == 'daily_seller':
+        try:
+            count = CashFlowTransaction.objects.filter(
+                related_phone=instance,
+                transaction_type='daily_seller_payment'
+            ).count()
+            CashFlowTransaction.objects.filter(
+                related_phone=instance,
+                transaction_type='daily_seller_payment'
+            ).delete()
+            print(f"✅ Daily seller deleted: {count} transactions")
+        except Exception as e:
+            print(f"❌ DailySeller delete error: {e}")
+
+
+# ==================== XARAJATLAR ====================
+
+@receiver(post_save, sender='sales.Expense')
+def handle_expense_cashflow(sender, instance, created, **kwargs):
+    """Xarajat - CREATE va UPDATE"""
+    try:
+        if created:
+            CashFlowTransaction.objects.create(
+                shop=instance.shop,
+                transaction_date=instance.expense_date,
+                transaction_type='daily_expense',
+                amount_uzs=-instance.amount,
+                amount_usd=Decimal('0'),
+                related_expense=instance,
+                description=f"Xarajat: {instance.name}",
+                notes=instance.notes or '',
+                created_by=instance.created_by
+            )
+            print(f"✅ Expense created: {instance.name} - {instance.amount} so'm")
+        else:
+            cashflow = CashFlowTransaction.objects.filter(related_expense=instance).first()
+            if cashflow:
+                cashflow.transaction_date = instance.expense_date
+                cashflow.amount_uzs = -instance.amount
+                cashflow.description = f"Xarajat: {instance.name}"
+                cashflow.notes = instance.notes or ''
+                cashflow.save()
+                print(f"✅ Expense updated: {instance.name} - {instance.amount} so'm")
+            else:
+                CashFlowTransaction.objects.create(
+                    shop=instance.shop,
+                    transaction_date=instance.expense_date,
+                    transaction_type='daily_expense',
+                    amount_uzs=-instance.amount,
+                    amount_usd=Decimal('0'),
+                    related_expense=instance,
+                    description=f"Xarajat: {instance.name}",
+                    notes=instance.notes or '',
+                    created_by=instance.created_by
+                )
+                print(f"✅ Expense recreated: {instance.name} - {instance.amount} so'm")
+    except Exception as e:
+        print(f"❌ Expense cashflow error: {e}")
+
+
+@receiver(pre_delete, sender='sales.Expense')
+def delete_expense_cashflow(sender, instance, **kwargs):
+    try:
+        count = CashFlowTransaction.objects.filter(related_expense=instance).count()
+        CashFlowTransaction.objects.filter(related_expense=instance).delete()
+        print(f"✅ Expense deleted: {count} transactions")
+    except Exception as e:
+        print(f"❌ Expense delete error: {e}")

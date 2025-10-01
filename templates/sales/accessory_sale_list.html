@@ -1,0 +1,80 @@
+<!-- sales/templates/sales/accessory_sale_list.html -->
+{% extends "base.html" %}
+
+{% block page_title %}Aksessuar sotuvlari{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Aksessuar sotuvlari</h2>
+    <a href="{% url 'sales:accessory_sale_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>Yangi sotish
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if accessory_sales %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Aksessuar</th>
+                            <th>Mijoz</th>
+                            <th>Soni</th>
+                            <th>Birlik narxi</th>
+                            <th>Jami</th>
+                            <th>Naqd</th>
+                            <th>Karta</th>
+                            <th>Nasiya</th>
+                            <th>Qarz</th>
+                            <th>Sana</th>
+                            <th>Amallar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sale in accessory_sales %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ sale.accessory.name }}</div>
+                                <small class="text-muted">{{ sale.accessory.brand.name }}</small>
+                            </td>
+                            <td>{{ sale.customer.name }}</td>
+                            <td>{{ sale.quantity }}</td>
+                            <td>${{ sale.unit_price }}</td>
+                            <td class="fw-bold text-primary">${{ sale.total_price }}</td>
+                            <td class="text-success">${{ sale.cash_amount }}</td>
+                            <td class="text-info">${{ sale.card_amount }}</td>
+                            <td class="text-warning">${{ sale.credit_amount }}</td>
+                            <td class="text-danger">${{ sale.debt_amount }}</td>
+                            <td>{{ sale.sale_date|date:"d.m.Y" }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'sales:accessory_sale_detail' sale.pk %}" class="btn btn-outline-primary" title="Ko'rish">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'sales:accessory_sale_edit' sale.pk %}" class="btn btn-outline-secondary" title="Tahrirlash">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'sales:accessory_sale_delete' sale.pk %}" class="btn btn-outline-danger" title="O'chirish">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-headphones text-muted" style="font-size: 3rem;"></i>
+                <h4 class="text-muted mt-3">Hali aksessuar sotuvlari yo'q</h4>
+                <p class="text-muted">Birinchi aksessuar sotishini qo'shing!</p>
+                <a href="{% url 'sales:accessory_sale_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Aksessuar sotish
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

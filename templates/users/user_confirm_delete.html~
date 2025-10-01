@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Foydalanuvchini O'chirish{% endblock %}
+{% block page_title %}Foydalanuvchini O'chirish{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card p-4 mb-4">
+                <h2 class="h4 mb-4">Foydalanuvchini O'chirish</h2>
+                
+                <div class="alert alert-warning mb-4">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>{{ user_profile.user.username }}</strong> foydalanuvchisini o'chirishni xohlaysizmi? Bu amal qaytarib bo'lmaydi!
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="mb-3">Foydalanuvchi Ma'lumotlari</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <strong>Ism:</strong> {{ user_profile.user.first_name|default:"Kiritilmagan" }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Familiya:</strong> {{ user_profile.user.last_name|default:"Kiritilmagan" }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Telefon:</strong> {{ user_profile.phone_number|default:"Kiritilmagan" }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Rol:</strong> {{ user_profile.get_role_display }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Faollik holati:</strong>
+                            {% if user_profile.user.is_active %}
+                                <span class="badge bg-success">Faol</span>
+                            {% else %}
+                                <span class="badge bg-danger">Faol emas</span>
+                            {% endif %}
+                        </li>
+                    </ul>
+                </div>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt me-2"></i>O'chirish
+                        </button>
+                        <a href="{% url 'users:user_list' user_profile.pk %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Bekor qilish
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

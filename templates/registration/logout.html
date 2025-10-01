@@ -1,0 +1,28 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Chiqish{% endblock %}
+{% block page_title %}Tizimdan Chiqish{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card p-4">
+                <h2 class="h4 mb-3">Tizimdan Chiqish</h2>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Tizimdan chiqmoqchimisiz?
+                </div>
+                <form method="POST" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-sign-out-alt me-1"></i>Ha, Chiqish</button>
+                        <a href="{% url 'users:dashboard' %}" class="btn btn-secondary"><i class="fas fa-arrow-left me-1"></i>Bekor qilish</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

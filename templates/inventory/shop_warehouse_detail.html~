@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ shop.name }} Ombor{% endblock %}
+{% block page_title %}{{ shop.name }} Ombor{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <h5 class="card-title fw-bold mb-3">{{ shop.name }} Ombor Ma'lumotlari</h5>
+        </div>
+    </div>
+
+    <!-- Telefonlar qismi -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <h6 class="card-title fw-bold mb-3">Telefonlar <span class="badge bg-info">{{ phone_page_obj.paginator.count }}</span></h6>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Model</th>
+                            <th>Xotira</th>
+                            <th>Holati</th>
+                            <th>Qo‘shgan foydalanuvchi</th>
+                            <th>Amallar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for phone in phone_page_obj %}
+                        <tr>
+                            <td>{{ phone.phone_model }}</td>
+                            <td>{{ phone.memory_size }}</td>
+                            <td>{{ phone.get_status_display }}</td>
+                            <td>{{ phone.created_by.username|default:'Noma'lum' }}</td>
+                            <td class="text-center">
+                                {% if is_boss %}
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="phone_id" value="{{ phone.id }}">
+                                    <button type="submit" name="edit_phone" class="btn btn-sm btn-warning me-1" title="Tahrirlash">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </form>
+                                <form method="post" style="display:inline;" onsubmit="return confirm('Rostan ham o\'chirishni xohlaysizmi?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="phone_id" value="{{ phone.id }}">
+                                    <button type="submit" name="delete_phone" class="btn btn-sm btn-danger" title="O'chirish">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted">Telefon topilmadi.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% include 'pagination.html' with page_obj=phone_page_obj url_param='phone_page' %}
+            {% if is_boss %}
+            <form method="post" enctype="multipart/form-data" class="mt-3">
+                {% csrf_token %}
+                <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                {{ phone_form.as_p }}
+                <button type="submit" name="add_phone" class="btn btn-success btn-sm">Telefon Qo'shish</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Aksessuarlar qismi -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <h6 class="card-title fw-bold mb-3">Aksessuarlar <span class="badge bg-info">{{ accessory_page_obj.paginator.count }}</span></h6>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nomi</th>
+                            <th>Kod</th>
+                            <th>Soni</th>
+                            <th>Qo‘shgan foydalanuvchi</th>
+                            <th>Amallar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for accessory in accessory_page_obj %}
+                        <tr>
+                            <td>{{ accessory.name }}</td>
+                            <td>{{ accessory.code }}</td>
+                            <td>{{ accessory.quantity }}</td>
+                            <td>{{ accessory.created_by.username|default:'Noma'lum' }}</td>
+                            <td class="text-center">
+                                {% if is_boss %}
+                                <form method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accessory_id" value="{{ accessory.id }}">
+                                    <button type="submit" name="edit_accessory" class="btn btn-sm btn-warning me-1" title="Tahrirlash">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </form>
+                                <form method="post" style="display:inline;" onsubmit="return confirm('Rostan ham o\'chirishni xohlaysizmi?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accessory_id" value="{{ accessory.id }}">
+                                    <button type="submit" name="delete_accessory" class="btn btn-sm btn-danger" title="O'chirish">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted">Aksessuar topilmadi.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% include 'pagination.html' with page_obj=accessory_page_obj url_param='accessory_page' %}
+            {% if is_boss %}
+            <form method="post" enctype="multipart/form-data" class="mt-3">
+                {% csrf_token %}
+                <input type="hidden" name="shop_id" value="{{ shop.id }}">
+                {{ accessory_form.as_p }}
+                <button type="submit" name="add_accessory" class="btn btn-success btn-sm">Aksessuar Qo'shish</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

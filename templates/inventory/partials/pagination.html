@@ -1,0 +1,21 @@
+<!--{% if phones.has_other_pages %}-->
+<!--<nav aria-label="Phone pagination">-->
+<!--    <ul class="pagination justify-content-center mt-3">-->
+<!--        {% if phones.has_previous %}-->
+<!--        <li class="page-item">-->
+<!--            <a class="page-link" href="?page={{ phones.previous_page_number }}&status={{ status_filter }}&imei={{ imei_query|urlencode }}&shop_id={{ selected_shop.id|default_if_none:'' }}&model={{ model_query|default_if_none:'' }}">&laquo;</a>-->
+<!--        </li>-->
+<!--        {% endif %}-->
+<!--        {% for num in phones.paginator.page_range %}-->
+<!--        <li class="page-item {% if phones.number == num %}active{% endif %}">-->
+<!--            <a class="page-link" href="?page={{ num }}&status={{ status_filter }}&imei={{ imei_query|urlencode }}&shop_id={{ selected_shop.id|default_if_none:'' }}&model={{ model_query|default_if_none:'' }}">{{ num }}</a>-->
+<!--        </li>-->
+<!--        {% endfor %}-->
+<!--        {% if phones.has_next %}-->
+<!--        <li class="page-item">-->
+<!--            <a class="page-link" href="?page={{ phones.next_page_number }}&status={{ status_filter }}&imei={{ imei_query|urlencode }}&shop_id={{ selected_shop.id|default_if_none:'' }}&model={{ model_query|default_if_none:'' }}">&raquo;</a>-->
+<!--        </li>-->
+<!--        {% endif %}-->
+<!--    </ul>-->
+<!--</nav>-->
+<!--{% endif %}-->

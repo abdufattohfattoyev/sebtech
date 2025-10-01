@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-box { max-width: 900px; margin: 0 auto; }
+.section { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.section-title { color: #667eea; font-size: 1.1rem; font-weight: 600; margin-bottom: 15px; }
+.debt-due-field {
+    background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px;
+    padding: 12px; margin-top: 12px; display: none; animation: fadeIn 0.3s;
+}
+.debt-due-field.show { display: block; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="form-box">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>{{ title }}</h2>
+            <a href="{% url 'sales:accessory_sale_list' %}" class="btn btn-outline-secondary">Orqaga</a>
+        </div>
+
+        <form method="post" id="accessoryForm">
+            {% csrf_token %}
+
+            <!-- Aksessuar -->
+            <div class="section">
+                <h3 class="section-title">Aksessuar</h3>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.accessory_code.label_tag }}
+                        {{ form.accessory_code }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.accessory.label_tag }}
+                        {{ form.accessory }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.quantity.label_tag }}
+                        {{ form.quantity }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.unit_price.label_tag }}
+                        {{ form.unit_price }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mijoz -->
+            <div class="section">
+                <h3 class="section-title">Mijoz</h3>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.customer_name.label_tag }}
+                        {{ form.customer_name }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.customer_phone.label_tag }}
+                        {{ form.customer_phone }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- To'lovlar -->
+            <div class="section">
+                <h3 class="section-title">To'lovlar</h3>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        {{ form.cash_amount.label_tag }}
+                        {{ form.cash_amount }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.card_amount.label_tag }}
+                        {{ form.card_amount }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.credit_amount.label_tag }}
+                        {{ form.credit_amount }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        {{ form.debt_amount.label_tag }}
+                        {{ form.debt_amount }}
+                    </div>
+                </div>
+
+                <!-- Qarz muddati -->
+                <div class="debt-due-field" id="debtDueField">
+                    <label><i class="fas fa-calendar-alt"></i> Qarz qaytarish muddati <span class="text-danger">*</span></label>
+                    {{ form.debt_due_date }}
+                    <small class="text-muted d-block mt-1">Qarz bo'lganda muddat kiritilishi shart</small>
+                </div>
+
+                <div class="alert alert-info mt-3" id="paymentSummary" style="display:none;">
+                    <strong>Jami:</strong> <span id="totalPrice">0</span> so'm |
+                    <strong>To'langan:</strong> <span id="totalPaid">0</span> so'm |
+                    <strong>Qoldiq:</strong> <span id="remaining">0</span> so'm
+                </div>
+            </div>
+
+            <!-- Qo'shimcha -->
+            <div class="section">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.sale_date.label_tag }}
+                        {{ form.sale_date }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.notes.label_tag }}
+                        {{ form.notes }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-end">
+                <a href="{% url 'sales:accessory_sale_list' %}" class="btn btn-secondary me-2">Bekor qilish</a>
+                <button type="submit" class="btn btn-primary">Saqlash</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const $ = id => document.getElementById(id);
+    const qty = $('qty');
+    const price = $('price');
+    const cash = $('cash');
+    const card = $('card');
+    const credit = $('credit');
+    const debt = $('debt');
+    const debtDueDate = $('id_accessory_debt_due_date');
+    const debtDueField = $('debtDueField');
+    const summary = $('paymentSummary');
+    const accessoryCode = $('accessory_code_search');
+    const accessorySelect = $('id_accessory');
+    let searchTimeout;
+
+    // Qarz muddati ko'rsatish
+    function checkDebtDueField() {
+        const debtAmount = parseFloat(debt.value) || 0;
+        if (debtAmount > 0) {
+            debtDueField.classList.add('show');
+            debtDueDate.required = true;
+        } else {
+            debtDueField.classList.remove('show');
+            debtDueDate.required = false;
+        }
+    }
+
+    debt.addEventListener('input', checkDebtDueField);
+
+    // To'lov hisob
+    function updateSummary() {
+        const quantity = parseFloat(qty.value) || 0;
+        const unitPrice = parseFloat(price.value) || 0;
+        const totalPrice = quantity * unitPrice;
+        const totalPaid = (parseFloat(cash.value) || 0) + (parseFloat(card.value) || 0) +
+                         (parseFloat(credit.value) || 0) + (parseFloat(debt.value) || 0);
+        const remaining = totalPrice - totalPaid;
+
+        $('totalPrice').textContent = totalPrice.toLocaleString();
+        $('totalPaid').textContent = totalPaid.toLocaleString();
+        $('remaining').textContent = remaining.toLocaleString();
+
+        summary.style.display = totalPrice > 0 ? 'block' : 'none';
+    }
+
+    [qty, price, cash, card, credit, debt].forEach(el => {
+        el.addEventListener('input', updateSummary);
+    });
+
+    // Aksessuar qidirish
+    if (accessoryCode && accessorySelect) {
+        accessoryCode.addEventListener('input', function() {
+            const code = this.value.trim();
+            clearTimeout(searchTimeout);
+            if (code.length >= 1) {
+                searchTimeout = setTimeout(() => {
+                    fetch(`/sales/api/search-accessory-by-code/?code=${encodeURIComponent(code)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.length > 0) {
+                                accessorySelect.innerHTML = '<option value="">Tanlang...</option>';
+                                data.forEach(item => {
+                                    const opt = document.createElement('option');
+                                    opt.value = item.id;
+                                    opt.textContent = item.display_text;
+                                    opt.dataset.price = item.sale_price;
+                                    accessorySelect.appendChild(opt);
+                                });
+                                if (data.length === 1) {
+                                    accessorySelect.value = data[0].id;
+                                    price.value = data[0].sale_price;
+                                    updateSummary();
+                                }
+                                accessorySelect.style.display = 'block';
+                            }
+                        });
+                }, 500);
+            }
+        });
+
+        accessorySelect.addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            if (opt && opt.dataset.price) {
+                price.value = opt.dataset.price;
+                updateSummary();
+            }
+        });
+    }
+
+    // Form validatsiya
+    $('accessoryForm').addEventListener('submit', function(e) {
+        if (!accessorySelect.value) {
+            e.preventDefault();
+            alert('Aksessuar tanlang!');
+            return;
+        }
+        if (!$('cust_name').value.trim()) {
+            e.preventDefault();
+            alert('Mijoz ismi kiriting!');
+            return;
+        }
+        if (!$('cust_phone').value.trim()) {
+            e.preventDefault();
+            alert('Telefon raqami kiriting!');
+            return;
+        }
+
+        // Qarz muddati validatsiyasi
+        const debtAmount = parseFloat(debt.value) || 0;
+        if (debtAmount > 0 && !debtDueDate.value) {
+            e.preventDefault();
+            alert('Qarz uchun qaytarish muddati kiriting!');
+            debtDueDate.focus();
+            return;
+        }
+
+        const totalPrice = (parseFloat(qty.value) || 0) * (parseFloat(price.value) || 0);
+        const totalPaid = (parseFloat(cash.value) || 0) + (parseFloat(card.value) || 0) +
+                         (parseFloat(credit.value) || 0) + (parseFloat(debt.value) || 0);
+        if (Math.abs(totalPaid - totalPrice) > 1000) {
+            e.preventDefault();
+            alert('To\'lovlar yig\'indisi jami narxga teng bo\'lishi kerak!');
+            return;
+        }
+    });
+
+    // Telefon formatlash
+    const phoneInput = $('cust_phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            let val = this.value.replace(/\D/g, '');
+            if (val.startsWith('998')) val = '+' + val;
+            else if (val.length && !val.startsWith('+')) val = '+998' + val;
+            this.value = val;
+        });
+    }
+
+    updateSummary();
+    checkDebtDueField();
+});
+</script>
+{% endblock %}

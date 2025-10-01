@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block page_title %}Taqqoslash Hisoboti{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+.header, .filter-card, .card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.comparison-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.comparison-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.comparison-change {
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+.positive { color: #10b981; }
+.negative { color: #ef4444; }
+.neutral { color: #6b7280; }
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 2fr auto;
+    gap: 15px;
+    align-items: end;
+}
+
+.form-control, .form-select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    width: 100%;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary { background: #3b82f6; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h4>{{ selected_shop.name }} - Taqqoslash Hisoboti</h4>
+</div>
+
+<div class="filter-card">
+    <form method="get">
+        <div class="form-grid">
+            <select name="shop" class="form-select">
+                {% for shop in shops %}
+                    <option value="{{ shop.id }}" {% if shop == selected_shop %}selected{% endif %}>
+                        {{ shop.name }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">Ko'rsat</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div style="font-weight: 600; margin-bottom: 15px;">Bugun vs Kecha</div>
+    <div class="comparison-grid">
+        <div class="comparison-card">
+            <div style="color: #6b7280; font-size: 12px; text-transform: uppercase;">SAVDO</div>
+            <div class="comparison-value" style="color: #10b981;">${{ daily_comparison.today.sales.total }}</div>
+            <div class="comparison-change {% if daily_comparison.sales_change > 0 %}positive{% elif daily_comparison.sales_change < 0 %}negative{% else %}neutral{% endif %}">
+                {% if daily_comparison.sales_change > 0 %}+{% endif %}{{ daily_comparison.sales_change|floatformat:1 }}%
+            </div>
+        </div>
+        <div class="comparison-card">
+            <div style="color: #6b7280; font-size: 12px; text-transform: uppercase;">NAQD</div>
+            <div class="comparison-value" style="color: #3b82f6;">${{ daily_comparison.today.sales.cash }}</div>
+            <div class="comparison-change {% if daily_comparison.cash_change > 0 %}positive{% elif daily_comparison.cash_change < 0 %}negative{% else %}neutral{% endif %}">
+                {% if daily_comparison.cash_change > 0 %}+{% endif %}{{ daily_comparison.cash_change|floatformat:1 }}%
+            </div>
+        </div>
+        <div class="comparison-card">
+            <div style="color: #6b7280; font-size: 12px; text-transform: uppercase;">FOYDA</div>
+            <div class="comparison-value" style="color: #10b981;">${{ daily_comparison.today.profits.total_profit }}</div>
+            <div class="comparison-change {% if daily_comparison.profit_change > 0 %}positive{% elif daily_comparison.profit_change < 0 %}negative{% else %}neutral{% endif %}">
+                {% if daily_comparison.profit_change > 0 %}+{% endif %}{{ daily_comparison.profit_change|floatformat:1 }}%
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div style="font-weight: 600; margin-bottom: 15px;">Bu Oy vs O'tgan Oy</div>
+    <div class="comparison-grid">
+        <div class="comparison-card">
+            <div style="color: #6b7280; font-size: 12px; text-transform: uppercase;">SAVDO</div>
+            <div class="comparison-value" style="color: #10b981;">${{ monthly_comparison.current.totals.sales }}</div>
+            <div class="comparison-change {% if monthly_comparison.sales_change > 0 %}positive{% elif monthly_comparison.sales_change < 0 %}negative{% else %}neutral{% endif %}">
+                {% if monthly_comparison.sales_change > 0 %}+{% endif %}{{ monthly_comparison.sales_change|floatformat:1 }}%
+            </div>
+        </div>
+        <div class="comparison-card">
+            <div style="color: #6b7280; font-size: 12px; text-transform: uppercase;">FOYDA</div>
+            <div class="comparison-value" style="color: #10b981;">${{ monthly_comparison.current.profits.total_profit }}</div>
+            <div class="comparison-change {% if monthly_comparison.profit_change > 0 %}positive{% elif monthly_comparison.profit_change < 0 %}negative{% else %}neutral{% endif %}">
+                {% if monthly_comparison.profit_change > 0 %}+{% endif %}{{ monthly_comparison.profit_change|floatformat:1 }}%
+            </div>
+        </div>
+    </div>
+    <canvas id="comparisonChart" height="300" style="margin-top: 20px;"></canvas>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+new Chart(document.getElementById('comparisonChart'), {
+    type: 'bar',
+    data: {
+        labels: ['Savdo', 'Naqd', 'Xarajat', 'Sof Naqd'],
+        datasets: [
+            {
+                label: 'Bu Oy',
+                data: [
+                    {{ monthly_comparison.current.totals.sales }},
+                    {{ monthly_comparison.current.totals.cash }},
+                    {{ monthly_comparison.current.totals.expenses }},
+                    {{ monthly_comparison.current.totals.net_cash }}
+                ],
+                backgroundColor: 'rgba(16, 185, 129, 0.7)'
+            },
+            {
+                label: 'O\'tgan Oy',
+                data: [
+                    {{ monthly_comparison.previous.totals.sales }},
+                    {{ monthly_comparison.previous.totals.cash }},
+                    {{ monthly_comparison.previous.totals.expenses }},
+                    {{ monthly_comparison.previous.totals.net_cash }}
+                ],
+                backgroundColor: 'rgba(156, 163, 175, 0.5)'
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block page_title %}Telefon sotish tafsilotlari{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Telefon sotish tafsilotlari</h2>
+    <div class="btn-group">
+        <a href="{% url 'sales:phone_sale_edit' phone_sale.pk %}" class="btn btn-outline-primary">
+            <i class="fas fa-edit me-1"></i>Tahrirlash
+        </a>
+        <a href="{% url 'sales:phone_sale_delete' phone_sale.pk %}" class="btn btn-outline-danger">
+            <i class="fas fa-trash me-1"></i>O'chirish
+        </a>
+        <a href="{% url 'sales:phone_sale_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Orqaga
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Sotish ma'lumotlari</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td class="fw-bold">Telefon:</td>
+                                <td>{{ phone_sale.phone.phone_model.name }} ({{ phone_sale.phone.memory_size.size }})</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">IMEI:</td>
+                                <td>{{ phone_sale.phone.imei|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Mijoz:</td>
+                                <td>{{ phone_sale.customer.name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Mijoz telefon:</td>
+                                <td>{{ phone_sale.customer.phone_number }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Sotuvchi:</td>
+                                <td>{{ phone_sale.salesman.get_full_name|default:phone_sale.salesman.username }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Sana:</td>
+                                <td>{{ phone_sale.sale_date|date:"d.m.Y" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                {% if phone_sale.notes %}
+                <div class="mt-3">
+                    <strong>Izohlar:</strong>
+                    <p class="mt-2">{{ phone_sale.notes|linebreaksbr }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Narx ma'lumotlari</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Umumiy narx:</span>
+                    <span class="fw-bold text-primary">${{ phone_sale.sale_price }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-success">Naqd:</span>
+                    <span>${{ phone_sale.cash_amount }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-info">Karta:</span>
+                    <span>${{ phone_sale.card_amount }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-warning">Nasiya:</span>
+                    <span>${{ phone_sale.credit_amount }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-danger">Qarz:</span>
+                    <span>${{ phone_sale.debt_amount }}</span>
+                </div>
+            </div>
+        </div>
+        
+        {% if phone_sale.phone_return %}
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">Qaytarilgan</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>Qaytarilgan summa:</strong> ${{ phone_sale.phone_return.return_amount }}</p>
+                <p><strong>Sana:</strong> {{ phone_sale.phone_return.return_date|date:"d.m.Y" }}</p>
+                <p><strong>Sabab:</strong> {{ phone_sale.phone_return.reason }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block after_field_sets %}
+<div style="padding: 20px; background: #f9f9f9; margin-top: 30px; border-radius: 8px;">
+    <h3 style="margin-bottom: 20px;">📊 Hisobot diagrammalari</h3>
+
+    <!-- Daromad va Foyda -->
+    <div style="width: 100%; max-width: 600px; margin-bottom: 40px;">
+        <canvas id="revenueProfitChart" height="200"></canvas>
+    </div>
+
+    <!-- To'lov turlari -->
+    <div style="display: inline-block; width: 45%; margin-right: 5%;">
+        <h4>To'lov turlari</h4>
+        <canvas id="paymentChart" height="200"></canvas>
+    </div>
+
+    <!-- Xarajatlar -->
+    <div style="display: inline-block; width: 45%;">
+        <h4>Xarajatlar taqsimoti</h4>
+        <canvas id="expenseChart" height="200"></canvas>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Ma'lumotlarni olish
+    const totalRevenue = {{ original.total_revenue|floatformat:0 }};
+    const totalProfit = {{ original.total_profit|floatformat:0 }};
+    const cashReceived = {{ original.cash_received|floatformat:0 }};
+    const cardReceived = {{ original.card_received|floatformat:0 }};
+    const creditAmount = {{ original.credit_amount|floatformat:0 }};
+    const debtAmount = {{ original.debt_amount|floatformat:0 }};
+    const imeiCosts = {{ original.imei_costs|floatformat:0 }};
+    const otherExpenses = {{ original.other_expenses|floatformat:0 }};
+
+    // 1. Daromad va Foyda — Bar Chart
+    new Chart(document.getElementById('revenueProfitChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Daromad', 'Foyda'],
+            datasets: [{
+                label: 'AQSH dollari ($)',
+                data: [totalRevenue, totalProfit],
+                backgroundColor: ['#36a2eb', '#4bc0c0']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Daromad va Sof Foyda' }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 2. To'lov turlari — Pie Chart
+    new Chart(document.getElementById('paymentChart'), {
+        type: 'pie',
+        data: {
+            labels: ['Naqd', 'Karta', 'Nasiya', 'Qarz'],
+            datasets: [{
+                data: [cashReceived, cardReceived, creditAmount, debtAmount],
+                backgroundColor: ['#4CAF50', '#2196F3', '#FF9800', '#F44336']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                title: { display: true, text: 'To\'lov turlari' }
+            }
+        }
+    });
+
+    // 3. Xarajatlar — Doughnut Chart
+    new Chart(document.getElementById('expenseChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['IMEI xarajatlari', 'Boshqa xarajatlar'],
+            datasets: [{
+                data: [imeiCosts, otherExpenses],
+                backgroundColor: ['#FF6384', '#36A2EB']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                title: { display: true, text: 'Xarajatlar taqsimoti' }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

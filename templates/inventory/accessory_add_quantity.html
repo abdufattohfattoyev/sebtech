@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Soni Qo'shish{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4>{{ accessory.name }} ga soni qo'shish</h4>
+                    <small class="text-muted">Kod: {{ accessory.code }} | Hozirgi soni: {{ accessory.quantity }}</small>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {{ form.as_p }}
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success flex-fill">
+                                <i class="fas fa-plus"></i> Qo'shish
+                            </button>
+                            <a href="{% url 'inventory:accessory_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Bekor qilish
+                            </a>
+                        </div>
+                    </form>
+                    
+                    <!-- Qo'shimcha ma'lumot -->
+                    <div class="alert alert-info mt-3">
+                        <strong>Joriy tannarx:</strong> {{ accessory.purchase_price|floatformat:0 }} so'm<br>
+                        <strong>Joriy sotish narxi:</strong> {{ accessory.sale_price|floatformat:0 }} so'm
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

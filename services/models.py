@@ -1,0 +1,430 @@
+# services/models.py - TO'G'IRLANGAN qarz mantiqiy
+
+from django.db import models
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
+from django.db.models import Sum, Q
+from django.utils import timezone
+from django.contrib.auth.models import User
+from decimal import Decimal
+from inventory.models import Phone
+
+
+class Master(models.Model):
+    first_name = models.CharField(max_length=50, verbose_name="Ism")
+    last_name = models.CharField(max_length=50, verbose_name="Familiya")
+    phone_number = models.CharField(max_length=15, verbose_name="Telefon raqami")
+    created_at = models.DateField(default=timezone.now, verbose_name="Yaratilgan sana")
+
+    class Meta:
+        verbose_name = "Usta"
+        verbose_name_plural = "Ustalar"
+        ordering = ['first_name', 'last_name']
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
+    @property
+    def total_unpaid_amount(self):
+        """Ustaning BARCHA to'lanmagan qarzlari yig'indisi"""
+        if hasattr(self, '_total_unpaid_amount'):
+            return self._total_unpaid_amount
+
+        total_unpaid = Decimal('0.00')
+        all_services = self.master_services.all()
+
+        for service in all_services:
+            unpaid = service.service_fee - service.paid_amount
+            if unpaid > 0:
+                total_unpaid += unpaid
+
+        return total_unpaid
+
+    @total_unpaid_amount.setter
+    def total_unpaid_amount(self, value):
+        self._total_unpaid_amount = value
+
+    @property
+    def active_services_count(self):
+        if hasattr(self, '_active_services_count'):
+            return self._active_services_count
+        return self.master_services.filter(status='in_progress').count()
+
+    @active_services_count.setter
+    def active_services_count(self, value):
+        self._active_services_count = value
+
+    @property
+    def completed_services_count(self):
+        if hasattr(self, '_completed_services_count'):
+            return self._completed_services_count
+        return self.master_services.filter(status='completed').count()
+
+    @completed_services_count.setter
+    def completed_services_count(self, value):
+        self._completed_services_count = value
+
+    @property
+    def total_earned(self):
+        return self.master_services.aggregate(
+            total=Sum('service_fee')
+        )['total'] or Decimal('0.00')
+
+    @property
+    def total_paid(self):
+        return self.master_services.aggregate(
+            total=Sum('paid_amount')
+        )['total'] or Decimal('0.00')
+
+
+class MasterService(models.Model):
+    STATUS_CHOICES = [
+        ('in_progress', 'Jarayonda'),
+        ('completed', 'Tugallangan'),
+    ]
+
+    phone = models.ForeignKey(
+        Phone,
+        on_delete=models.CASCADE,
+        related_name="master_services",
+        verbose_name="Telefon"
+    )
+    master = models.ForeignKey(
+        Master,
+        on_delete=models.CASCADE,
+        related_name="master_services",
+        verbose_name="Usta"
+    )
+    service_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        verbose_name="Xizmat haqi"
+    )
+    paid_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        validators=[MinValueValidator(0)],
+        verbose_name="To'langan summa"
+    )
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_CHOICES,
+        default='in_progress',
+        verbose_name="Holati"
+    )
+    repair_reasons = models.TextField(verbose_name="Ta'mirlash sabablari")
+    given_date = models.DateField(default=timezone.now, verbose_name="Ustaga berilgan sana")
+    expected_return_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Qaytarish rejalashtirilgan sana"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqt")
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Yaratgan foydalanuvchi"
+    )
+
+    class Meta:
+        verbose_name = "Usta xizmati"
+        verbose_name_plural = "Usta xizmatlari"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'master']),
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['phone', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.master} - {self.phone} - ${self.service_fee}"
+
+    @property
+    def remaining_amount(self):
+        """Qolgan to'lov summasi"""
+        remaining = self.service_fee - self.paid_amount
+        return max(Decimal('0.00'), remaining)
+
+    @property
+    def unpaid_amount(self):
+        return self.remaining_amount
+
+    @property
+    def is_fully_paid(self):
+        return self.paid_amount >= self.service_fee
+
+    @property
+    def payment_percentage(self):
+        if self.service_fee > 0:
+            return (self.paid_amount / self.service_fee) * 100
+        return 0
+
+    @property
+    def is_overdue(self):
+        if self.expected_return_date and self.status == 'in_progress':
+            return timezone.now().date() > self.expected_return_date
+        return False
+
+    def clean(self):
+        errors = {}
+
+        if not self.repair_reasons or not self.repair_reasons.strip():
+            errors['repair_reasons'] = "Ta'mirlash sabablari kiritilishi shart!"
+
+        if self.service_fee is not None and self.service_fee <= 0:
+            errors['service_fee'] = "Xizmat haqi 0 dan katta bo'lishi kerak!"
+
+        if self.paid_amount is not None and self.paid_amount < 0:
+            errors['paid_amount'] = "To'langan summa manfiy bo'lishi mumkin emas!"
+
+        if self.service_fee is not None and self.paid_amount is not None:
+            if self.paid_amount > self.service_fee:
+                errors['paid_amount'] = "To'langan summa xizmat haqidan katta bo'lishi mumkin emas!"
+
+        if self.expected_return_date and self.given_date:
+            given_date = self.given_date
+            expected_date = self.expected_return_date
+
+            if hasattr(given_date, 'date'):
+                given_date = given_date.date()
+            if hasattr(expected_date, 'date'):
+                expected_date = expected_date.date()
+
+            if expected_date < given_date:
+                errors['expected_return_date'] = "Qaytarish sanasi berilgan sanadan oldin bo'lishi mumkin emas!"
+
+        if self.phone_id and self.status == 'in_progress':
+            existing_services = MasterService.objects.filter(
+                phone=self.phone,
+                status='in_progress'
+            ).exclude(pk=self.pk)
+
+            if existing_services.exists():
+                errors['phone'] = "Bu telefon allaqachon boshqa ustada ta'mirlanmoqda!"
+
+        if errors:
+            raise ValidationError(errors)
+
+    def update_phone_status(self):
+        if not self.phone:
+            return
+
+        if self.status == 'in_progress':
+            self.phone.status = 'master'
+        elif self.status == 'completed':
+            self.phone.status = 'shop'
+
+        self.phone.save(update_fields=['status'])
+
+    def create_or_update_debt(self):
+        """
+        ✅ TO'G'RILANGAN QARZ MANTIQIY:
+        - boss_to_master: Boshliq → Usta (boshliq to'lashi kerak)
+        """
+        remaining = self.remaining_amount
+        shop_owner = getattr(self.phone, 'shop', None) and self.phone.shop.owner
+
+        if not shop_owner:
+            print("❌ Shop owner topilmadi")
+            return
+
+        try:
+            from sales.models import Debt
+
+            # Ushbu xizmat uchun qarz borligini tekshirish
+            existing_debt = Debt.objects.filter(
+                debt_type='boss_to_master',
+                creditor=shop_owner,
+                master=self.master,
+                status='active',
+                notes__contains=f"Xizmat ID: {self.id}"
+            ).first()
+
+            if remaining > 0:
+                if existing_debt:
+                    # Mavjud qarzni yangilash
+                    existing_debt.debt_amount = remaining
+                    existing_debt.currency = 'USD'  # ✅ Valyuta qo'shildi
+                    existing_debt.notes = f"Usta xizmati: {self.master.full_name}, Telefon: {self.phone}, Xizmat ID: {self.id}"
+                    existing_debt.save(update_fields=['debt_amount', 'currency', 'notes'])
+                    print(f"✅ Qarz yangilandi: {shop_owner.username} → {self.master.full_name}, ${remaining}")
+                else:
+                    # Yangi qarz yaratish
+                    Debt.objects.create(
+                        debt_type='boss_to_master',
+                        creditor=shop_owner,  # Boshliq to'lashi kerak
+                        master=self.master,  # Usta pul olishi kerak
+                        currency='USD',  # ✅ Valyuta qo'shildi
+                        debt_amount=remaining,
+                        paid_amount=Decimal('0'),  # ✅ Qo'shildi
+                        status='active',
+                        notes=f"Usta xizmati: {self.master.full_name}, Telefon: {self.phone}, Xizmat ID: {self.id}"
+                    )
+                    print(f"✅ Yangi qarz yaratildi: {shop_owner.username} → {self.master.full_name}, ${remaining}")
+            else:
+                # To'liq to'langanda qarzni o'chirish
+                if existing_debt:
+                    existing_debt.delete()
+                    print(f"✅ Qarz to'liq to'landi va o'chirildi: ${existing_debt.debt_amount}")
+
+        except Exception as e:
+            print(f"❌ Qarz yaratishda xatolik: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+
+    def update_paid_amount(self):
+        total_paid = self.payments.aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+
+        if total_paid != self.paid_amount:
+            old_paid = self.paid_amount
+            self.paid_amount = total_paid
+            self.save(update_fields=['paid_amount'])
+            self.create_or_update_debt()
+            print(f"To'lov yangilandi: {self.master.full_name}, ${old_paid} → ${total_paid}")
+
+        return total_paid
+
+    def save(self, *args, **kwargs):
+        """✅ TO'G'RILANGAN save metodi"""
+        is_new = not self.pk
+
+        if not kwargs.get('skip_validation', False):
+            self.full_clean()
+
+        # Telefon statusini yangilash
+        if is_new and self.phone:
+            self.phone.status = 'master'
+            self.phone.save(update_fields=['status'])
+
+        super().save(*args, **kwargs)
+
+        # ✅ Qarzni yaratish yoki yangilash (har doim)
+        if 'update_fields' not in kwargs or kwargs.get('update_fields') is None or 'paid_amount' in kwargs.get(
+                'update_fields', []):
+            self.create_or_update_debt()
+
+    def delete(self, *args, **kwargs):
+        """Xizmatni o'chirishda telefon holatini qaytarish"""
+        # Qarzni o'chirish
+        try:
+            from sales.models import Debt
+
+            shop_owner = getattr(self.phone, 'shop', None) and self.phone.shop.owner
+
+            if shop_owner:
+                debt = Debt.objects.filter(
+                    debt_type='boss_to_master',
+                    creditor=shop_owner,
+                    master=self.master,
+                    status='active',
+                    notes__contains=f"Xizmat ID: {self.id}"
+                ).first()
+
+                if debt:
+                    debt.delete()
+                    print(f"Xizmat o'chirildi, qarz ham o'chirildi: {self.master.full_name}")
+
+        except Exception as e:
+            print(f"Qarz o'chirishda xatolik: {e}")
+
+        # MUHIM: Telefon holatini va repair_cost ni yangilash
+        # Bu views.py da bajariladi, bu yerda emas
+        # Chunki views.py transaction ichida buni boshqaradi
+
+        super().delete(*args, **kwargs)
+
+
+class MasterPayment(models.Model):
+    master_service = models.ForeignKey(
+        MasterService,
+        on_delete=models.CASCADE,
+        related_name="payments",
+        verbose_name="Usta xizmati"
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        verbose_name="To'lov summasi"
+    )
+    payment_date = models.DateField(default=timezone.now, verbose_name="To'lov sanasi")
+    paid_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="To'lovchi"
+    )
+    notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqt")
+
+    class Meta:
+        verbose_name = "Usta to'lovi"
+        verbose_name_plural = "Usta to'lovlari"
+        ordering = ['-payment_date', '-created_at']
+        indexes = [
+            models.Index(fields=['master_service', 'payment_date']),
+            models.Index(fields=['payment_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.master_service.master} - ${self.amount} ({self.payment_date})"
+
+    def clean(self):
+        if not self.master_service_id:
+            return
+
+        errors = {}
+
+        if self.amount <= 0:
+            errors['amount'] = "To'lov summasi 0 dan katta bo'lishi kerak!"
+
+        other_payments_total = self.master_service.payments.exclude(
+            pk=self.pk
+        ).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+
+        max_allowed = self.master_service.service_fee - other_payments_total
+
+        if self.amount > max_allowed:
+            errors['amount'] = (
+                f"To'lov miqdori juda katta! "
+                f"Maksimal: ${max_allowed:.2f}. "
+                f"Siz: ${self.amount:.2f} kiritdingiz."
+            )
+
+        if self.payment_date:
+            if self.payment_date > timezone.now().date():
+                errors['payment_date'] = "To'lov sanasi kelajakda bo'lishi mumkin emas!"
+
+            if self.payment_date < self.master_service.given_date:
+                errors['payment_date'] = "To'lov sanasi xizmat berilgan sanadan oldin bo'lishi mumkin emas!"
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        if not kwargs.get('skip_validation', False):
+            self.full_clean()
+
+        super().save(*args, **kwargs)
+        self.master_service.update_paid_amount()
+
+    def delete(self, *args, **kwargs):
+        service = self.master_service
+        super().delete(*args, **kwargs)
+        service.update_paid_amount()

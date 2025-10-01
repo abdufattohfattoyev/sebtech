@@ -1,0 +1,621 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+                <button type="button" class="alert-close" onclick="this.parentElement.remove()">×</button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Umumiy Statistika - YANGILANGAN -->
+    <div class="summary-cards">
+        <div class="summary-card primary">
+            <div class="summary-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                    <line x1="12" y1="18" x2="12.01" y2="18"/>
+                </svg>
+            </div>
+            <div class="summary-content">
+                <div class="summary-value">{{ total_phones }}</div>
+                <div class="summary-label">Do'kondagi Telefonlar</div>
+                <div class="summary-sublabel">${{ total_phone_value|floatformat:0|intcomma }}</div>
+            </div>
+        </div>
+
+        <div class="summary-card success">
+            <div class="summary-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+                </svg>
+            </div>
+            <div class="summary-content">
+                <div class="summary-value">{{ total_accessories }}</div>
+                <div class="summary-label">Aksessuarlar Soni</div>
+                <div class="summary-sublabel">{{ total_accessory_value|floatformat:0|intcomma }} so'm</div>
+            </div>
+        </div>
+
+        <div class="summary-card warning">
+            <div class="summary-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"/>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+            </div>
+            <div class="summary-content">
+                <div class="summary-value">{{ total_shops }}</div>
+                <div class="summary-label">Jami Do'konlar</div>
+                <div class="summary-breakdown">
+                    <span class="breakdown-item">📱 ${{ total_phone_value|floatformat:0|intcomma }}</span>
+                    <span class="breakdown-item">🎧 {{ total_accessory_value|floatformat:0|intcomma }} so'm</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Do'konlar Bo'yicha Batafsil -->
+    <div class="shops-section">
+        <div class="section-header">
+            <h3>Do'konlar</h3>
+        </div>
+
+        {% for stat in shop_stats %}
+        <div class="shop-card">
+            <div class="shop-header">
+                <div class="shop-name">
+                    <h4>{{ stat.shop.name }}</h4>
+                    <span class="shop-date">{{ stat.shop.created_at|date:"d.m.Y" }}</span>
+                </div>
+                <a href="{% url 'inventory:shop_detail' stat.shop.id %}" class="btn-detail">
+                    Batafsil →
+                </a>
+            </div>
+
+            <div class="shop-stats">
+                <!-- Telefonlar -->
+                <div class="stat-group">
+                    <div class="stat-header">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                            <line x1="12" y1="18" x2="12.01" y2="18"/>
+                        </svg>
+                        Telefonlar (Do'konda)
+                    </div>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <span class="stat-count">{{ stat.phone_count }}</span>
+                            <span class="stat-text">Dona</span>
+                        </div>
+                        <div class="stat-item highlight">
+                            <span class="stat-count">${{ stat.phone_cost_value|floatformat:0|intcomma }}</span>
+                            <span class="stat-text">Qiymat</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aksessuarlar -->
+                <div class="stat-group">
+                    <div class="stat-header">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+                        </svg>
+                        Aksessuarlar
+                    </div>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <span class="stat-count">{{ stat.accessory_count }}</span>
+                            <span class="stat-text">Dona</span>
+                        </div>
+                        <div class="stat-item highlight">
+                            <span class="stat-count">{{ stat.accessory_cost_value|floatformat:0|intcomma }}</span>
+                            <span class="stat-text stat-currency">so'm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jami -->
+                <div class="stat-group total">
+                    <div class="stat-header">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        Do'kon Qiymati
+                    </div>
+                    <div class="total-values">
+                        <div class="total-item">
+                            <span class="total-label">📱 Telefon:</span>
+                            <span class="total-amount">${{ stat.phone_cost_value|floatformat:0|intcomma }}</span>
+                        </div>
+                        <div class="total-item">
+                            <span class="total-label">🎧 Aksessuar:</span>
+                            <span class="total-amount">{{ stat.accessory_cost_value|floatformat:0|intcomma }} so'm</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <p>Hozircha do'konlar yo'q</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Holatlar Kesimi -->
+    <div class="status-section">
+        <div class="section-header">
+            <h3>Telefonlar Holati</h3>
+        </div>
+
+        <div class="status-grid">
+            <a href="{% url 'inventory:phone_list' %}?status=shop" class="status-card blue">
+                <div class="status-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                </div>
+                <div class="status-value">{{ phones_in_shop }}</div>
+                <div class="status-label">Do'konda</div>
+            </a>
+
+            <a href="{% url 'inventory:phone_list' %}?status=master" class="status-card orange">
+                <div class="status-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                    </svg>
+                </div>
+                <div class="status-value">{{ phones_in_repair }}</div>
+                <div class="status-label">Ustada</div>
+            </a>
+
+            <a href="{% url 'inventory:phone_list' %}?status=sold" class="status-card green">
+                <div class="status-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="status-value">{{ phones_sold }}</div>
+                <div class="status-label">Sotilgan</div>
+            </a>
+
+            <a href="{% url 'inventory:phone_list' %}?status=returned" class="status-card red">
+                <div class="status-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="1 4 1 10 7 10"/>
+                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                    </svg>
+                </div>
+                <div class="status-value">{{ phones_returned }}</div>
+                <div class="status-label">Qaytarilgan</div>
+            </a>
+
+            <a href="{% url 'inventory:phone_list' %}?status=exchanged_in" class="status-card purple">
+                <div class="status-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="17 1 21 5 17 9"/>
+                        <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                        <polyline points="7 23 3 19 7 15"/>
+                        <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                    </svg>
+                </div>
+                <div class="status-value">{{ phones_exchanged }}</div>
+                <div class="status-label">Almashtirish</div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+.dashboard {
+    padding: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Alerts */
+.alert {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.alert-success { background: #d1fae5; color: #065f46; }
+.alert-error { background: #fee2e2; color: #991b1b; }
+.alert-warning { background: #fef3c7; color: #92400e; }
+
+.alert-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    opacity: 0.6;
+    padding: 0;
+    line-height: 1;
+}
+
+.alert-close:hover { opacity: 1; }
+
+/* Summary Cards - YANGILANGAN */
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.summary-icon {
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.summary-card.primary .summary-icon { color: #6366f1; }
+.summary-card.success .summary-icon { color: #10b981; }
+.summary-card.warning .summary-icon { color: #f59e0b; }
+
+.summary-content {
+    flex: 1;
+}
+
+.summary-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.375rem;
+}
+
+.summary-sublabel {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #10b981;
+}
+
+.summary-card.success .summary-sublabel {
+    color: #059669;
+}
+
+.summary-card.warning .summary-sublabel {
+    color: #d97706;
+}
+
+.summary-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+}
+
+.breakdown-item {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    background: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+/* Section */
+.section-header {
+    margin-bottom: 1rem;
+}
+
+.section-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+/* Shops Section */
+.shops-section {
+    margin-bottom: 2rem;
+}
+
+.shop-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.shop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.shop-name h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 0.25rem 0;
+}
+
+.shop-date {
+    font-size: 0.813rem;
+    color: #9ca3af;
+}
+
+.btn-detail {
+    padding: 0.5rem 1rem;
+    background: #6366f1;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-detail:hover {
+    background: #4f46e5;
+    color: white;
+}
+
+.shop-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+}
+
+.stat-group {
+    background: #f9fafb;
+    padding: 1rem;
+    border-radius: 6px;
+}
+
+.stat-group.total {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.stat-header {
+    font-size: 0.813rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-header svg {
+    flex-shrink: 0;
+}
+
+.stat-group.total .stat-header {
+    color: white;
+    opacity: 0.9;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-count {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.stat-item.highlight .stat-count {
+    color: #10b981;
+}
+
+.stat-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.stat-text.stat-currency {
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.total-values {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.total-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.375rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+.total-item:last-child {
+    border-bottom: none;
+}
+
+.total-label {
+    font-size: 0.75rem;
+    opacity: 0.9;
+}
+
+.total-amount {
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+/* Status Section */
+.status-section {
+    margin-bottom: 2rem;
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+}
+
+.status-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+    text-decoration: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+    border-top: 3px solid transparent;
+}
+
+.status-card:hover {
+    transform: translateY(-2px);
+}
+
+.status-card.blue { border-top-color: #3b82f6; }
+.status-card.orange { border-top-color: #f59e0b; }
+.status-card.green { border-top-color: #10b981; }
+.status-card.red { border-top-color: #ef4444; }
+.status-card.purple { border-top-color: #8b5cf6; }
+
+.status-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-card.blue .status-icon { color: #3b82f6; }
+.status-card.orange .status-icon { color: #f59e0b; }
+.status-card.green .status-icon { color: #10b981; }
+.status-card.red .status-icon { color: #ef4444; }
+.status-card.purple .status-icon { color: #8b5cf6; }
+
+.status-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.25rem;
+}
+
+.status-label {
+    font-size: 0.813rem;
+    color: #6b7280;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #9ca3af;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .dashboard {
+        padding: 0.75rem;
+    }
+
+    .summary-cards {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .summary-card {
+        padding: 1rem;
+    }
+
+    .summary-icon {
+        font-size: 1.5rem;
+    }
+
+    .summary-value {
+        font-size: 1.5rem;
+    }
+
+    .shop-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .shop-stats {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .status-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .status-card {
+        padding: 1rem;
+    }
+
+    .status-value {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .summary-icon {
+        font-size: 1.25rem;
+    }
+
+    .summary-value {
+        font-size: 1.25rem;
+    }
+
+    .summary-label {
+        font-size: 0.75rem;
+    }
+
+    .stat-count {
+        font-size: 1rem;
+    }
+}
+</style>
+{% endblock %}

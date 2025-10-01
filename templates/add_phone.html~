@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Telefon Qo'shish{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <h2 class="text-center mb-4">Telefon Qo'shish</h2>
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            {% if form.errors %}
+                <div class="alert alert-danger" role="alert">
+                    Iltimos, shakldagi xatolarni to'g'irlang:
+                    <ul>
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+            <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                {% csrf_token %}
+                <div class="card p-4 shadow-sm">
+                    <div class="mb-3">
+                        <label for="{{ form.shop.id_for_label }}" class="form-label">{{ form.shop.label }} <span class="text-danger">*</span></label>
+                        {{ form.shop }}
+                        <small class="text-muted">Yangi do'kon nomini kiritish mumkin.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.phone_model.id_for_label }}" class="form-label">{{ form.phone_model.label }} <span class="text-danger">*</span></label>
+                        {{ form.phone_model }}
+                        <small class="text-muted">Yangi model nomini kiritish mumkin.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.memory_size.id_for_label }}" class="form-label">{{ form.memory_size.label }} <span class="text-danger">*</span></label>
+                        {{ form.memory_size }}
+                        <small class="text-muted">Yangi xotira hajmini kiritish mumkin (masalan, 1TB).</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.imei.id_for_label }}" class="form-label">{{ form.imei.label }} <span class="text-danger">*</span></label>
+                        {{ form.imei }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.condition_percentage.id_for_label }}" class="form-label">{{ form.condition_percentage.label }} (1-100%) <span class="text-danger">*</span></label>
+                        {{ form.condition_percentage }}
+                    </div>
+                    <div class="mb-3 form-check">
+                        {{ form.status }}
+                        <label for="{{ form.status.id_for_label }}" class="form-check-label">{{ form.status.label }}</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.purchase_price.id_for_label }}" class="form-label">{{ form.purchase_price.label }} (UZS) <span class="text-danger">*</span></label>
+                        {{ form.purchase_price }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.sale_price.id_for_label }}" class="form-label">{{ form.sale_price.label }} (UZS)</label>
+                        {{ form.sale_price }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.image.id_for_label }}" class="form-label">{{ form.image.label }}</label>
+                        {{ form.image }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.source_type.id_for_label }}" class="form-label">{{ form.source_type.label }} <span class="text-danger">*</span></label>
+                        {{ form.source_type }}
+                    </div>
+                    <div class="mb-3" id="source-fields">
+                        <label for="{{ form.source.id_for_label }}" class="form-label">{{ form.source.label }}</label>
+                        {{ form.source }}
+                        <div id="new-source-form" style="display: none;">
+                            <h5>Yangi {{ form.source_type.value|default:"Manba" }} qo'shish</h5>
+                            <div class="mb-3">
+                                <label for="id_new_first_name" class="form-label">Ism <span class="text-danger">*</span></label>
+                                <input type="text" name="new_first_name" id="id_new_first_name" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="id_new_last_name" class="form-label">Familiya <span class="text-danger">*</span></label>
+                                <input type="text" name="new_last_name" id="id_new_last_name" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="id_new_phone_number" class="form-label">Telefon raqami <span class="text-danger">*</span></label>
+                                <input type="text" name="new_phone_number" id="id_new_phone_number" class="form-control" required>
+                            </div>
+                            <button type="button" class="btn btn-secondary" id="save-new-source">Saqlash</button>
+                        </div>
+                        <button type="button" class="btn btn-link" id="add-new-source">Yangi manba qo'shish</button>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Saqlash</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Bootstrap validation
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+
+    // Dynamic new source form
+    document.getElementById('add-new-source').addEventListener('click', function() {
+        document.getElementById('new-source-form').style.display = 'block';
+        this.style.display = 'none';
+    });
+
+    document.getElementById('save-new-source').addEventListener('click', function() {
+        var firstName = document.getElementById('id_new_first_name').value;
+        var lastName = document.getElementById('id_new_last_name').value;
+        var phoneNumber = document.getElementById('id_new_phone_number').value;
+        var sourceType = document.querySelector('#id_source_type').value;
+
+        if (firstName && lastName && phoneNumber) {
+            // This is a placeholder - you would typically use AJAX to save to the database
+            alert('Yangi ' + (sourceType === 'supplier' ? 'Taminotchi' : 'Mijoz') + ' saqlandi: ' + firstName + ' ' + lastName);
+            document.getElementById('new-source-form').style.display = 'none';
+            document.getElementById('add-new-source').style.display = 'inline';
+            // Reset fields
+            document.getElementById('id_new_first_name').value = '';
+            document.getElementById('id_new_last_name').value = '';
+            document.getElementById('id_new_phone_number').value = '';
+        } else {
+            alert('Iltimos, barcha maydonlarni to\'ldiring!');
+        }
+    });
+</script>
+{% endblock %}

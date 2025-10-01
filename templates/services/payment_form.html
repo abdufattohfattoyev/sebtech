@@ -1,0 +1,424 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+
+.btn-outline-primary.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.form-control:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.alert {
+    border: 1px solid transparent;
+    border-radius: 0.375rem;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+.fw-semibold {
+    font-weight: 600 !important;
+}
+
+.fs-5 {
+    font-size: 1.25rem !important;
+}
+
+@media (max-width: 768px) {
+    .d-md-flex {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Xizmat ma'lumotlari -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Xizmat ma'lumotlari
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Telefon</label>
+                                <div class="fw-semibold">{{ service.phone.phone_model }} {{ service.phone.memory_size }}</div>
+                                {% if service.phone.imei %}
+                                <small class="text-muted">IMEI: {{ service.phone.imei }}</small>
+                                {% endif %}
+                                {% if service.phone.shop %}
+                                <br><small class="text-muted">Do'kon: {{ service.phone.shop.name }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Usta</label>
+                                <div class="fw-semibold">{{ service.master.first_name }} {{ service.master.last_name }}</div>
+                                {% if service.master.phone_number %}
+                                <small class="text-muted">{{ service.master.phone_number }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Holati</label>
+                                <div>
+                                    {% if service.status == 'in_progress' %}
+                                    <span class="badge bg-warning">Jarayonda</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Tugallangan</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Jami xizmat haqi</label>
+                                <div class="fw-semibold text-primary fs-5">${{ service.service_fee|floatformat:2 }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-muted">To'langan summa</label>
+                                <div class="fw-semibold text-success">${{ service.paid_amount|floatformat:2 }}</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Qolgan summa</label>
+                                <div class="fw-semibold text-danger fs-5">${{ service.remaining_amount|floatformat:2 }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress bar -->
+                    {% if service.service_fee > 0 %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted">To'lov holati</label>
+                        <div class="progress mb-2" style="height: 12px;">
+                            <div class="progress-bar bg-success" style="width: {% widthratio service.paid_amount service.service_fee 100 %}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">To'langan: {% widthratio service.paid_amount service.service_fee 100 %}%</small>
+                            <small class="text-muted">Qolgan: {% widthratio service.remaining_amount service.service_fee 100 %}%</small>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Xizmat tafsilotlari -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Berilgan sana</label>
+                                <div>{{ service.given_date|date:"d.m.Y" }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            {% if service.expected_return_date %}
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Qaytarish sanasi</label>
+                                <div>{{ service.expected_return_date|date:"d.m.Y" }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if service.repair_reasons %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Ta'mirlash sabablari</label>
+                        <div class="p-2 bg-light rounded">{{ service.repair_reasons }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- To'lov formasi -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-dollar-sign me-2"></i>
+                        {% if payment %}To'lovni tahrirlash{% else %}Yangi to'lov qo'shish{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="paymentForm" novalidate>
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <!-- To'lov summasi -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.amount.id_for_label }}" class="form-label">
+                                    {{ form.amount.label }}
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.amount }}
+                                    <button type="button" class="btn btn-outline-secondary" id="maxAmountBtn" title="Maksimal summa">
+                                        Max
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    Maksimal: ${{ service.remaining_amount|floatformat:2 }}
+                                </div>
+                                {% if form.amount.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.amount.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- To'lov sanasi -->
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.payment_date.id_for_label }}" class="form-label">
+                                    {{ form.payment_date.label }}
+                                    <span class="text-danger">*</span>
+                                </label>
+                                {{ form.payment_date }}
+                                {% if form.payment_date.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.payment_date.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Izoh -->
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                {{ form.notes.label }}
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.notes.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                To'lov haqida qo'shimcha ma'lumot (ixtiyoriy)
+                            </div>
+                        </div>
+
+                        <!-- To'lov haqida ogohlantirish -->
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Eslatma:</strong> To'lov qo'shilgandan so'ng, usta qarzlar ro'yxati avtomatik yangilanadi.
+                        </div>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'services:service_detail' service.pk %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Orqaga
+                            </a>
+                            {% if payment %}
+                            <button type="button" class="btn btn-outline-danger" onclick="confirmDelete()">
+                                <i class="fas fa-trash me-2"></i>O'chirish
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Yangilash
+                            </button>
+                            {% else %}
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-2"></i>To'lovni saqlash
+                            </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentAmountInput = document.getElementById('{{ form.amount.id_for_label }}');
+    const maxAmountBtn = document.getElementById('maxAmountBtn');
+    const maxAmount = {{ service.remaining_amount|default:0 }};
+
+    // Maksimal summa tugmasi
+    if (maxAmountBtn && paymentAmountInput) {
+        maxAmountBtn.addEventListener('click', function() {
+            paymentAmountInput.value = maxAmount.toFixed(2);
+            paymentAmountInput.focus();
+        });
+    }
+
+    // To'lov summasi validatsiyasi
+    if (paymentAmountInput) {
+        paymentAmountInput.addEventListener('input', function() {
+            const value = parseFloat(this.value) || 0;
+
+            // Maksimal qiymatdan oshib ketganini tekshirish
+            if (value > maxAmount) {
+                this.value = maxAmount.toFixed(2);
+            }
+
+            // Manfiy qiymatni oldini olish
+            if (value < 0) {
+                this.value = '';
+            }
+        });
+    }
+
+    // Form validatsiyasi
+    const form = document.getElementById('paymentForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            let isValid = true;
+
+            // Clear previous errors
+            document.querySelectorAll('.is-invalid').forEach(el => {
+                el.classList.remove('is-invalid');
+            });
+
+            // Validate payment amount
+            const paymentAmount = parseFloat(paymentAmountInput.value) || 0;
+            if (paymentAmount <= 0) {
+                paymentAmountInput.classList.add('is-invalid');
+                isValid = false;
+            } else if (paymentAmount > maxAmount) {
+                paymentAmountInput.classList.add('is-invalid');
+                isValid = false;
+            }
+
+            // Validate payment date
+            const paymentDate = document.getElementById('{{ form.payment_date.id_for_label }}');
+            if (paymentDate && !paymentDate.value) {
+                paymentDate.classList.add('is-invalid');
+                isValid = false;
+            }
+
+            if (!isValid) {
+                e.preventDefault();
+                const firstInvalid = document.querySelector('.is-invalid');
+                if (firstInvalid) {
+                    firstInvalid.focus();
+                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            } else {
+                // Loading animation
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saqlanmoqda...';
+                    submitBtn.disabled = true;
+                }
+            }
+        });
+    }
+
+    // Bugüngi sanani o'rnatish
+    const paymentDate = document.getElementById('{{ form.payment_date.id_for_label }}');
+    if (paymentDate && !paymentDate.value) {
+        const today = new Date().toISOString().split('T')[0];
+        paymentDate.value = today;
+    }
+
+    // Auto-focus payment amount input
+    if (paymentAmountInput) {
+        paymentAmountInput.focus();
+    }
+
+    // Delete confirmation function
+    {% if payment %}
+    window.confirmDelete = function() {
+        if (confirm('Bu to\'lovni o\'chirishni tasdiqlaysizmi?\nBu amalni bekor qilish mumkin emas!')) {
+            // Form yaratish va yuborish
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "services:payment_delete" service_id=service.pk payment_id=payment.pk %}';
+
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            form.appendChild(csrfInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    };
+    {% endif %}
+
+    // Quick amount buttons
+    const quickAmountsContainer = document.createElement('div');
+    quickAmountsContainer.className = 'mt-2';
+
+    // Common payment amounts based on remaining amount
+    const quickAmounts = [];
+    if (maxAmount >= 10) {
+        if (maxAmount >= 100) quickAmounts.push(100);
+        if (maxAmount >= 50) quickAmounts.push(50);
+        if (maxAmount >= 20) quickAmounts.push(20);
+        if (maxAmount >= 10) quickAmounts.push(10);
+    }
+
+    // Add half amount and full amount
+    const halfAmount = Math.floor(maxAmount / 2);
+    if (halfAmount > 0 && halfAmount >= 5) {
+        quickAmounts.push(halfAmount);
+    }
+    quickAmounts.push(Math.floor(maxAmount)); // Full amount
+
+    // Remove duplicates and sort
+    const uniqueAmounts = [...new Set(quickAmounts)].sort((a, b) => a - b);
+
+    uniqueAmounts.forEach(amount => {
+        if (amount <= maxAmount && amount > 0) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-outline-primary btn-sm me-1 mb-1';
+            btn.textContent = `$${amount}`;
+            btn.addEventListener('click', function() {
+                paymentAmountInput.value = amount.toFixed(2);
+                paymentAmountInput.focus();
+            });
+            quickAmountsContainer.appendChild(btn);
+        }
+    });
+
+    if (quickAmountsContainer.children.length > 0) {
+        const label = document.createElement('small');
+        label.className = 'text-muted d-block mb-1';
+        label.textContent = 'Tez tanlash: ';
+        quickAmountsContainer.insertBefore(label, quickAmountsContainer.firstChild);
+
+        if (paymentAmountInput && paymentAmountInput.parentNode && paymentAmountInput.parentNode.parentNode) {
+            paymentAmountInput.parentNode.parentNode.appendChild(quickAmountsContainer);
+        }
+    }
+});
+</script>
+{% endblock %}

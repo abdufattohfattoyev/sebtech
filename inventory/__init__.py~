@@ -1,0 +1,21 @@
+def parol_mustahkammi(s: str):
+    # 1) Uzunligi kamida 8 bo‘lsin
+    if len(s) < 8:
+        return False
+
+    # 2) Kamida 1 ta raqam bo‘lsin
+    if not any(c.isdigit() for c in s):
+        return False
+
+    # 3) Kamida 1 ta katta harf bo‘lsin
+    if not any(c.isupper() for c in s):
+        return False
+
+    return True
+
+
+# Test
+print(parol_mustahkammi("Abcd1234"))  # True
+print(parol_mustahkammi("abcd1234"))  # False (katta harf yo‘q)
+print(parol_mustahkammi("Abcdefgh"))  # False (raqam yo‘q)
+print(parol_mustahkammi("Ab12"))      # False (uzunligi < 8)

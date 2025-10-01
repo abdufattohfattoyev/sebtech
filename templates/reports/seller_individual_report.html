@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block page_title %}{{ seller.get_full_name|default:seller.username }} - Shaxsiy Hisobot{% endblock %}
+
+{% block extra_css %}
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, sans-serif; background: #fafafa; }
+
+.header { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.25rem; }
+.header-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
+.header-subtitle { font-size: 0.875rem; opacity: 0.9; }
+
+.filter-card { background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.filter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+.stat-box { background: white; padding: 1.25rem; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.stat-box.highlight { background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; }
+.stat-label { font-size: 0.75rem; margin-bottom: 0.5rem; text-transform: uppercase; opacity: 0.8; }
+.stat-value { font-size: 1.75rem; font-weight: 700; }
+.stat-currency { font-size: 0.75rem; opacity: 0.7; margin-top: 0.25rem; }
+
+.section { background: white; border-radius: 8px; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.section-header { padding: 1rem; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 0.938rem; }
+
+.daily-list { max-height: 600px; overflow-y: auto; }
+.day-row { padding: 1rem; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; align-items: center; }
+.day-row:hover { background: #f9fafb; }
+.day-left { display: flex; gap: 1rem; align-items: center; }
+.day-date { font-weight: 600; min-width: 100px; }
+.day-badges { display: flex; gap: 0.5rem; }
+.badge { padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500; }
+.badge.phone { background: #dcfce7; color: #166534; }
+.badge.accessory { background: #dbeafe; color: #1e40af; }
+.badge.exchange { background: #fef3c7; color: #92400e; }
+
+.day-right { display: flex; gap: 1rem; }
+.day-stat { text-align: right; }
+.day-stat-label { font-size: 0.688rem; color: #6b7280; }
+.day-stat-value { font-size: 0.938rem; font-weight: 600; color: #111827; }
+
+.commission-section { background: white; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.commission-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
+.commission-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.commission-card { padding: 1rem; background: #f9fafb; border-radius: 6px; border-left: 4px solid; }
+.commission-card.phone { border-left-color: #10b981; }
+.commission-card.accessory { border-left-color: #3b82f6; }
+.commission-card.exchange { border-left-color: #f59e0b; }
+.commission-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+.commission-label { font-weight: 600; font-size: 0.875rem; }
+.commission-amount { font-weight: 700; font-size: 1.125rem; }
+.commission-calc { font-size: 0.75rem; color: #6b7280; }
+
+.total-salary { background: linear-gradient(135deg, #6366f1, #4f46e5); border-radius: 8px; padding: 1.5rem; text-align: center; color: white; }
+.total-label { font-size: 0.875rem; opacity: 0.9; margin-bottom: 0.5rem; letter-spacing: 1px; }
+.total-value { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+.total-breakdown { font-size: 0.813rem; opacity: 0.9; line-height: 1.6; }
+
+.empty { text-align: center; padding: 2rem; color: #9ca3af; }
+
+@media (max-width: 1024px) {
+    .commission-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+    .stats-grid, .filter-grid { grid-template-columns: repeat(2, 1fr); }
+    .day-row { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+    <div class="header">
+        <div class="header-title">{{ seller.get_full_name|default:seller.username }} - Shaxsiy Hisobot</div>
+        <div class="header-subtitle">{{ month_names|get_item:month }} {{ year }} | {{ selected_shop.name }}</div>
+    </div>
+
+    <div class="filter-card">
+        <form method="get" class="filter-grid">
+            <select name="shop" class="form-select">
+                {% for shop in shops %}
+                <option value="{{ shop.id }}" {% if shop == selected_shop %}selected{% endif %}>{{ shop.name }}</option>
+                {% endfor %}
+            </select>
+            <select name="year" class="form-select">
+                {% for y in years %}
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+            <select name="month" class="form-select">
+                {% for m in months %}
+                <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}-oy</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">Ko'rsat</button>
+        </form>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div class="stat-label">Asosiy Maosh</div>
+            <div class="stat-value">{{ salary_data.commission.base_salary|floatformat:0|intcomma }}</div>
+            <div class="stat-currency">so'm</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Komissiya</div>
+            <div class="stat-value">{{ salary_data.commission.total_commission|floatformat:0|intcomma }}</div>
+            <div class="stat-currency">so'm</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Jami Foyda</div>
+            <div class="stat-value">{{ salary_data.profits.total_profit|floatformat:0|intcomma }}</div>
+            <div class="stat-currency">so'm</div>
+        </div>
+        <div class="stat-box highlight">
+            <div class="stat-label">Jami Maosh</div>
+            <div class="stat-value">{{ salary_data.commission.total_salary|floatformat:0|intcomma }}</div>
+            <div class="stat-currency">so'm</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">Kunlik Savdolar ({{ daily_data|length }} kun)</div>
+        <div class="daily-list">
+            {% for day in daily_data %}
+            <div class="day-row">
+                <div class="day-left">
+                    <div class="day-date">{{ day.date|date:"d M, D" }}</div>
+                    <div class="day-badges">
+                        <span class="badge phone">📱 {{ day.counts.phone|default:0 }}</span>
+                        <span class="badge accessory">🎧 {{ day.counts.accessory|default:0 }}</span>
+                        <span class="badge exchange">🔄 {{ day.counts.exchange|default:0 }}</span>
+                    </div>
+                </div>
+                <div class="day-right">
+                    <div class="day-stat">
+                        <div class="day-stat-label">Tel. Savdo</div>
+                        <div class="day-stat-value">${{ day.sales.phone_total_usd|floatformat:2|intcomma }}</div>
+                    </div>
+                    <div class="day-stat">
+                        <div class="day-stat-label">Aks. Savdo</div>
+                        <div class="day-stat-value">{{ day.sales.accessory_total_uzs|floatformat:0|intcomma }}</div>
+                    </div>
+                    <div class="day-stat">
+                        <div class="day-stat-label">Foyda</div>
+                        <div class="day-stat-value" style="color: #6366f1;">{{ day.profits.total_profit|floatformat:0|intcomma }}</div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty">Bu oyda savdo yo'q</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="commission-section">
+        <div class="commission-title">Komissiya Tafsilotlari</div>
+        <div class="commission-grid">
+            <div class="commission-card phone">
+                <div class="commission-header">
+                    <div class="commission-label">Telefon</div>
+                    <div class="commission-amount" style="color: #10b981;">${{ salary_data.commission.phone_commission|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="commission-calc">
+                    Foyda: ${{ salary_data.profits.phone_profit|floatformat:2|intcomma }}<br>
+                    Foiz: {{ salary_data.commission_rates.phone_rate }}%
+                </div>
+            </div>
+
+            <div class="commission-card accessory">
+                <div class="commission-header">
+                    <div class="commission-label">Aksessuar</div>
+                    <div class="commission-amount" style="color: #3b82f6;">{{ salary_data.commission.accessory_commission|floatformat:0|intcomma }}</div>
+                </div>
+                <div class="commission-calc">
+                    Foyda: {{ salary_data.profits.accessory_profit|floatformat:0|intcomma }} so'm<br>
+                    Foiz: {{ salary_data.commission_rates.accessory_rate }}%
+                </div>
+            </div>
+
+            <div class="commission-card exchange">
+                <div class="commission-header">
+                    <div class="commission-label">Almashtirish</div>
+                    <div class="commission-amount" style="color: #f59e0b;">${{ salary_data.commission.exchange_commission|floatformat:2|intcomma }}</div>
+                </div>
+                <div class="commission-calc">
+                    Foyda: ${{ salary_data.profits.exchange_profit|floatformat:2|intcomma }}<br>
+                    Foiz: {{ salary_data.commission_rates.exchange_rate }}%
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="total-salary">
+        <div class="total-label">TO'LANISHI KERAK</div>
+        <div class="total-value">{{ salary_data.commission.total_salary|floatformat:0|intcomma }} so'm</div>
+        <div class="total-breakdown">
+            Asosiy: {{ salary_data.commission.base_salary|floatformat:0|intcomma }} so'm +<br>
+            Komissiya: {{ salary_data.commission.total_commission|floatformat:0|intcomma }} so'm
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_title %}
+    Tez qo'shish
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Aksessuar tez qo'shish</h2>
+    <div class="quick-add active">
+        <form id="quick-add-form" method="POST" class="quick-add-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="shop" class="form-label">Do'kon</label>
+                <select name="shop" id="shop" class="form-select" required>
+                    {% for shop in shops %}
+                        <option value="{{ shop.id }}">{{ shop.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="code" class="form-label">Kod</label>
+                <input type="text" name="code" id="code" class="form-control" placeholder="Kod (0001)" required>
+            </div>
+            <div class="form-group">
+                <label for="quantity" class="form-label">Soni</label>
+                <input type="number" name="quantity" id="quantity" class="form-control" min="1" placeholder="Soni" required>
+            </div>
+            <div class="form-group">
+                <label for="purchase_price" class="form-label">Tannarx</label>
+                <input type="number" name="purchase_price" id="purchase_price" class="form-control" step="0.01" min="0" placeholder="Tannarx (ixtiyoriy)">
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Qo'shish
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('quick-add-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch("{% url 'inventory:accessory_quick_add' %}", {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            document.getElementById('quick-add-form').reset();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        alert('Xatolik yuz berdi: ' + error);
+    });
+});
+</script>
+{% endblock %}

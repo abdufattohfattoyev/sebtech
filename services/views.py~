@@ -1,0 +1,937 @@
+import decimal
+
+from django.core.exceptions import ValidationError
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Sum, Count, Q, F, Case, When, DecimalField
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.views.decorators.http import require_GET, require_POST
+from django.db import transaction
+from decimal import Decimal
+import logging
+from .models import Master, MasterService, MasterPayment
+from .forms import MasterForm, MasterServiceForm, MasterPaymentForm
+from inventory.models import Phone
+
+logger = logging.getLogger(__name__)
+
+
+def get_dashboard_stats():
+    """Dashboard statistikasini olish - BARCHA qarzlarni hisobga olish"""
+    try:
+        active_services = MasterService.objects.filter(status='in_progress').count()
+        completed_services = MasterService.objects.filter(status='completed').count()
+
+        # MUHIM: Barcha xizmatlardan (holati qanday bo'lishidan qat'i nazar)
+        # to'lanmagan qarzlarni hisoblash
+        total_unpaid = Decimal('0.00')
+        all_services_with_debt = MasterService.objects.annotate(
+            unpaid=F('service_fee') - F('paid_amount')
+        ).filter(unpaid__gt=0)
+
+        for service in all_services_with_debt:
+            total_unpaid += service.unpaid
+
+        return {
+            'active_services': active_services,
+            'completed_services': completed_services,
+            'total_unpaid': total_unpaid,
+        }
+    except Exception as e:
+        logger.error(f"Dashboard stats error: {str(e)}")
+        # Xatolik bo‘lsa, default qiymatlar qaytariladi
+        return {
+            'active_services': 0,
+            'completed_services': 0,
+            'total_unpaid': Decimal('0.00'),
+        }
+
+
+
+
+@login_required
+def services_dashboard(request):
+    """Services dashboard - BARCHA qarzlarni hisobga olish"""
+    try:
+        # Asosiy statistika
+        total_masters = Master.objects.count()
+        dashboard_stats = get_dashboard_stats()
+
+        active_services = dashboard_stats['active_services']
+        completed_services = dashboard_stats['completed_services']
+        total_unpaid = dashboard_stats['total_unpaid']
+
+        # Ustalar ro'yxati - BARCHA qarzlarni hisobga olish
+        masters = Master.objects.annotate(
+            active_services_count=Count(
+                'master_services',
+                filter=Q(master_services__status='in_progress')
+            ),
+            completed_services_count=Count(
+                'master_services',
+                filter=Q(master_services__status='completed')
+            ),
+            # MUHIM: Barcha xizmatlardan qarzni hisoblash
+            total_unpaid_amount=Sum(
+                Case(
+                    When(
+                        master_services__service_fee__gt=F('master_services__paid_amount'),
+                        then=F('master_services__service_fee') - F('master_services__paid_amount')
+                    ),
+                    default=0,
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
+                )
+            )
+        ).order_by('first_name', 'last_name')
+
+        # Null qiymatlarni 0 ga o'zgartirish
+        for master in masters:
+            if master.total_unpaid_amount is None:
+                master.total_unpaid_amount = Decimal('0.00')
+
+        # So'nggi xizmatlar
+        recent_services = MasterService.objects.select_related(
+            'master', 'phone', 'phone__phone_model', 'phone__memory_size', 'phone__shop'
+        ).prefetch_related('payments').order_by('-created_at')[:10]
+
+        context = {
+            'total_masters': total_masters,
+            'active_services': active_services,
+            'completed_services': completed_services,
+            'total_unpaid': total_unpaid,
+            'masters': masters,
+            'recent_services': recent_services,
+        }
+        return render(request, 'services/dashboard.html', context)
+
+    except Exception as e:
+        logger.error(f"Dashboard error: {str(e)}")
+        messages.error(request, "Dashboard yuklashda xatolik yuz berdi!")
+        return render(request, 'services/dashboard.html', {
+            'total_masters': 0,
+            'active_services': 0,
+            'completed_services': 0,
+            'total_unpaid': Decimal('0.00'),
+            'masters': [],
+            'recent_services': [],
+        })
+
+
+@login_required
+def master_list(request):
+    """Ustalar ro'yxati - BARCHA qarzlarni hisobga olish"""
+    try:
+        masters = Master.objects.annotate(
+            active_services_count=Count(
+                'master_services',
+                filter=Q(master_services__status='in_progress')
+            ),
+            completed_services_count=Count(
+                'master_services',
+                filter=Q(master_services__status='completed')
+            ),
+            # MUHIM: Barcha xizmatlardan qarzni hisoblash
+            total_unpaid_amount=Sum(
+                Case(
+                    When(
+                        master_services__service_fee__gt=F('master_services__paid_amount'),
+                        then=F('master_services__service_fee') - F('master_services__paid_amount')
+                    ),
+                    default=0,
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
+                )
+            )
+        ).order_by('first_name', 'last_name')
+
+        # Null qiymatlarni 0 ga o'zgartirish
+        for master in masters:
+            if master.total_unpaid_amount is None:
+                master.total_unpaid_amount = Decimal('0.00')
+
+        paginator = Paginator(masters, 10)
+        page = request.GET.get('page')
+        masters = paginator.get_page(page)
+
+        return render(request, 'services/master_list.html', {'masters': masters})
+
+    except Exception as e:
+        logger.error(f"Master list error: {str(e)}")
+        messages.error(request, "Ustalar ro'yxatini yuklashda xatolik!")
+        return render(request, 'services/master_list.html', {'masters': []})
+
+
+@login_required
+def master_detail(request, pk):
+    """Usta tafsilotlari - BARCHA qarzlarni hisobga olish"""
+    try:
+        master = get_object_or_404(Master, pk=pk)
+        services = master.master_services.select_related(
+            'phone', 'phone__phone_model', 'phone__memory_size'
+        ).prefetch_related('payments').order_by('-created_at')
+
+        # Statistika hisoblash
+        total_services = services.count()
+        active_services = services.filter(status='in_progress').count()
+        completed_services = services.filter(status='completed').count()
+
+        total_earned = Decimal('0.00')
+        total_paid = Decimal('0.00')
+        total_unpaid = Decimal('0.00')
+
+        for service in services:
+            total_earned += service.service_fee
+            total_paid += service.paid_amount
+            # MUHIM: Barcha xizmatlardan qarzni hisoblash (holat qanday bo'lishidan qat'i nazar)
+            unpaid = service.service_fee - service.paid_amount
+            if unpaid > 0:
+                total_unpaid += unpaid
+
+        stats = {
+            'total_services': total_services,
+            'active_services': active_services,
+            'completed_services': completed_services,
+            'total_earned': total_earned,
+            'total_paid': total_paid,
+            'total_unpaid': total_unpaid,
+        }
+
+        context = {
+            'master': master,
+            'services': services,
+            'stats': stats,
+        }
+        return render(request, 'services/master_detail.html', context)
+
+    except Exception as e:
+        logger.error(f"Master detail error: {str(e)}")
+        messages.error(request, "Usta ma'lumotlarini yuklashda xatolik!")
+        return redirect('services:master_list')
+
+
+@login_required
+def master_create(request):
+    """Yangi usta yaratish - AJAX va Form"""
+    if request.method == 'POST':
+        form = MasterForm(request.POST)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    master = form.save()
+
+                # AJAX so'rov uchun JSON response
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Usta muvaffaqiyatli qo\'shildi!',
+                        'master_id': master.id,
+                        'master_name': f"{master.first_name} {master.last_name}"
+                    })
+
+                # Oddiy form uchun redirect
+                messages.success(request, 'Usta muvaffaqiyatli qo\'shildi!')
+                return redirect('services:master_list')
+
+            except Exception as e:
+                logger.error(f"Master create error: {str(e)}")
+
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Saqlashda xatolik yuz berdi!'
+                    })
+
+                messages.error(request, 'Saqlashda xatolik yuz berdi!')
+        else:
+            # Form validation errors
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = []
+                for field, error_list in form.errors.items():
+                    field_name = form.fields[field].label or field
+                    for error in error_list:
+                        errors.append(f"{field_name}: {error}")
+                return JsonResponse({
+                    'success': False,
+                    'message': '; '.join(errors)
+                })
+
+            messages.error(request, 'Forma to\'ldirishda xatolik!')
+    else:
+        form = MasterForm()
+
+    return render(request, 'services/master_form.html', {
+        'form': form,
+        'title': 'Yangi usta qo\'shish'
+    })
+
+
+@login_required
+def master_edit(request, pk):
+    """Usta ma'lumotlarini tahrirlash"""
+    try:
+        master = get_object_or_404(Master, pk=pk)
+
+        if request.method == 'POST':
+            form = MasterForm(request.POST, instance=master)
+            if form.is_valid():
+                try:
+                    with transaction.atomic():
+                        form.save()
+
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': True,
+                            'message': 'Usta ma\'lumotlari yangilandi!'
+                        })
+
+                    messages.success(request, 'Usta ma\'lumotlari yangilandi!')
+                    return redirect('services:master_detail', pk=master.pk)
+
+                except Exception as e:
+                    logger.error(f"Master edit error: {str(e)}")
+
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Yangilashda xatolik yuz berdi!'
+                        })
+
+                    messages.error(request, 'Yangilashda xatolik yuz berdi!')
+            else:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    errors = []
+                    for field, error_list in form.errors.items():
+                        field_name = form.fields[field].label or field
+                        for error in error_list:
+                            errors.append(f"{field_name}: {error}")
+                    return JsonResponse({
+                        'success': False,
+                        'message': '; '.join(errors)
+                    })
+        else:
+            form = MasterForm(instance=master)
+
+        return render(request, 'services/master_form.html', {
+            'form': form,
+            'title': 'Usta ma\'lumotlarini tahrirlash',
+            'master': master
+        })
+
+    except Exception as e:
+        logger.error(f"Master edit view error: {str(e)}")
+        messages.error(request, "Usta ma'lumotlarini yuklashda xatolik!")
+        return redirect('services:master_list')
+
+
+@require_POST
+@login_required
+def master_delete(request, pk):
+    """Ustani o'chirish - faqat AJAX"""
+    try:
+        master = get_object_or_404(Master, pk=pk)
+
+        # Faol xizmatlar borligini tekshirish
+        active_services = master.master_services.filter(status='in_progress').count()
+        if active_services > 0:
+            return JsonResponse({
+                'success': False,
+                'message': f'Ustada {active_services} ta faol xizmat bor. Avval ularni tugating!'
+            })
+
+        master_name = f"{master.first_name} {master.last_name}"
+
+        with transaction.atomic():
+            master.delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'{master_name} muvaffaqiyatli o\'chirildi!'
+        })
+
+    except Exception as e:
+        logger.error(f"Master delete error: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': 'O\'chirishda xatolik yuz berdi!'
+        })
+
+
+@login_required
+def service_list(request):
+    """Xizmatlar ro'yxati"""
+    try:
+        services = MasterService.objects.select_related(
+            'master', 'phone', 'phone__phone_model', 'phone__memory_size'
+        ).order_by('-created_at')
+
+        # Filterlash
+        status = request.GET.get('status')
+        master_id = request.GET.get('master')
+
+        if status:
+            services = services.filter(status=status)
+        if master_id:
+            services = services.filter(master_id=master_id)
+
+        paginator = Paginator(services, 15)
+        page = request.GET.get('page')
+        services = paginator.get_page(page)
+
+        masters = Master.objects.all().order_by('first_name', 'last_name')
+
+        context = {
+            'services': services,
+            'masters': masters,
+            'current_status': status,
+            'current_master': master_id,
+        }
+        return render(request, 'services/service_list.html', context)
+
+    except Exception as e:
+        logger.error(f"Service list error: {str(e)}")
+        messages.error(request, "Xizmatlar ro'yxatini yuklashda xatolik!")
+        return render(request, 'services/service_list.html', {
+            'services': [],
+            'masters': [],
+            'current_status': None,
+            'current_master': None,
+        })
+
+
+@login_required
+def service_create(request):
+    """Yangi xizmat yaratish"""
+    if request.method == 'POST':
+        form = MasterServiceForm(request.POST)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    service = form.save(commit=False)
+                    service.created_by = request.user
+                    service.save()
+
+                    # Telefon repair_cost yangilash
+                    if hasattr(service.phone, 'repair_cost'):
+                        service.phone.repair_cost = (service.phone.repair_cost or Decimal('0.00')) + service.service_fee
+                        service.phone.save()
+
+                messages.success(request, "Xizmat muvaffaqiyatli qo'shildi!")
+                return redirect('services:service_detail', pk=service.pk)
+
+            except Exception as e:
+                logger.error(f"Service create error: {str(e)}")
+                messages.error(request, "Xizmat yaratishda xatolik yuz berdi!")
+        else:
+            messages.error(request, "Forma to'ldirishda xatolik yuz berdi. Iltimos, ma'lumotlarni tekshiring.")
+    else:
+        form = MasterServiceForm()
+
+    return render(request, 'services/service_form.html', {
+        'form': form,
+        'title': "Yangi xizmat qo'shish"
+    })
+
+
+@login_required
+def service_create_ajax(request):
+    """AJAX orqali xizmat yaratish"""
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'message': 'Faqat POST so\'rov ruxsat etilgan!'
+        })
+
+    try:
+        # Ma'lumotlarni olish
+        phone_id = request.POST.get('phone')
+        master_id = request.POST.get('master')
+        service_fee = request.POST.get('service_fee')
+        repair_reasons = request.POST.get('repair_reasons')
+        expected_return_date = request.POST.get('expected_return_date') or None
+
+        # Asosiy validatsiya
+        if not all([phone_id, master_id, service_fee, repair_reasons]):
+            return JsonResponse({
+                'success': False,
+                'message': 'Barcha majburiy maydonlarni to\'ldiring!'
+            })
+
+        # Telefon tekshirish
+        try:
+            phone = Phone.objects.get(id=phone_id, status='shop')
+        except Phone.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Telefon topilmadi yoki allaqachon boshqa holatda!'
+            })
+
+        # Usta tekshirish
+        try:
+            master = Master.objects.get(id=master_id)
+        except Master.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Usta topilmadi!'
+            })
+
+        # Service fee validatsiya
+        try:
+            service_fee_decimal = Decimal(str(service_fee))
+            if service_fee_decimal <= 0:
+                raise ValueError("Xizmat haqi 0 dan katta bo'lishi kerak!")
+        except (ValueError, TypeError, decimal.InvalidOperation):
+            return JsonResponse({
+                'success': False,
+                'message': 'Xizmat haqi to\'g\'ri kiritilmagan!'
+            })
+
+        # Xizmat yaratish
+        with transaction.atomic():
+            service = MasterService.objects.create(
+                phone=phone,
+                master=master,
+                service_fee=service_fee_decimal,
+                repair_reasons=repair_reasons.strip(),
+                expected_return_date=expected_return_date,
+                created_by=request.user
+            )
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Telefon muvaffaqiyatli ustaga berildi!',
+            'service_id': service.id
+        })
+
+    except Exception as e:
+        logger.error(f"Service create AJAX error: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': f'Xatolik yuz berdi: {str(e)}'
+        })
+
+
+@login_required
+def service_detail(request, pk):
+    """Xizmat tafsilotlari"""
+    try:
+        service = get_object_or_404(MasterService, pk=pk)
+        payments = service.payments.all().order_by('-payment_date')
+
+        unpaid_amount = service.service_fee - service.paid_amount
+
+        context = {
+            'service': service,
+            'payments': payments,
+            'unpaid_amount': unpaid_amount,
+        }
+        return render(request, 'services/service_detail.html', context)
+
+    except Exception as e:
+        logger.error(f"Service detail error: {str(e)}")
+        messages.error(request, "Xizmat ma'lumotlarini yuklashda xatolik!")
+        return redirect('services:service_list')
+
+
+@login_required
+def service_edit(request, pk):
+    """Xizmatni tahrirlash - TELEFON O'ZGARTIRILMAYDI"""
+    try:
+        service = get_object_or_404(MasterService, pk=pk)
+        old_fee = service.service_fee
+        old_phone = service.phone  # Telefon saqlab qolish
+
+        if request.method == 'POST':
+            form = MasterServiceForm(request.POST, instance=service)
+            if form.is_valid():
+                try:
+                    with transaction.atomic():
+                        service = form.save(commit=False)
+
+                        # MUHIM: Telefonni qayta tiklash (form disabled bo'lganligi sababli)
+                        service.phone = old_phone
+                        service.save()
+
+                        # Telefon repair_cost yangilash (faqat haqi o'zgarganda)
+                        fee_difference = service.service_fee - old_fee
+                        if fee_difference != 0 and hasattr(service.phone, 'repair_cost'):
+                            service.phone.repair_cost = (service.phone.repair_cost or Decimal('0.00')) + fee_difference
+                            service.phone.save(update_fields=['repair_cost'])
+
+                        # To'langan summani qayta hisoblash
+                        service.update_paid_amount()
+
+                    messages.success(request, 'Xizmat ma\'lumotlari yangilandi!')
+                    return redirect('services:service_detail', pk=service.pk)
+
+                except Exception as e:
+                    logger.error(f"Service edit error: {str(e)}")
+                    messages.error(request, f'Yangilashda xatolik: {str(e)}')
+            else:
+                # Form xatolarini ko'rsatish
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+        else:
+            form = MasterServiceForm(instance=service)
+
+        return render(request, 'services/service_form.html', {
+            'form': form,
+            'title': 'Xizmatni tahrirlash',
+            'service': service
+        })
+
+    except Exception as e:
+        logger.error(f"Service edit view error: {str(e)}")
+        messages.error(request, "Xizmat ma'lumotlarini yuklashda xatolik!")
+        return redirect('services:service_list')
+
+
+@require_POST
+@login_required
+def service_update_status(request, pk):
+    """Xizmat holatini o'zgartirish - xatolarni to'g'ri ushlash"""
+    try:
+        service = get_object_or_404(MasterService, pk=pk)
+        new_status = request.POST.get('status', '').strip()
+
+        # Status validatsiyasi
+        if new_status not in ['in_progress', 'completed']:
+            return JsonResponse({
+                'success': False,
+                'message': 'Noto\'g\'ri holat qiymati!'
+            }, status=400)
+
+        # Bir xil holatga o'zgartirishni tekshirish
+        if service.status == new_status:
+            return JsonResponse({
+                'success': False,
+                'message': 'Holat allaqachon o\'zgartirilgan!'
+            }, status=400)
+
+        old_status = service.status
+
+        try:
+            with transaction.atomic():
+                # MUHIM: Manual validation - telefon holati tekshiruvi
+                if new_status == 'in_progress':
+                    # Telefonni ustaga qaytarishdan oldin tekshirish
+                    if service.phone.status == 'master':
+                        # Boshqa ustada borligini tekshirish
+                        other_active_service = MasterService.objects.filter(
+                            phone=service.phone,
+                            status='in_progress'
+                        ).exclude(pk=service.pk).first()
+
+                        if other_active_service:
+                            return JsonResponse({
+                                'success': False,
+                                'message': f'Bu telefon allaqachon {other_active_service.master.full_name} ustada ta\'mirlanmoqda!'
+                            })
+
+                # Status o'zgartirish
+                service.status = new_status
+
+                # Manual validation o'tkazish (ValidationError ni ushlash uchun)
+                try:
+                    service.full_clean()
+                except ValidationError as ve:
+                    # ValidationError dan foydalanuvchiga tushunarli xabar
+                    error_messages = []
+                    if hasattr(ve, 'message_dict'):
+                        for field, errors in ve.message_dict.items():
+                            for error in errors:
+                                error_messages.append(error)
+                    elif hasattr(ve, 'messages'):
+                        error_messages.extend(ve.messages)
+                    else:
+                        error_messages.append(str(ve))
+
+                    return JsonResponse({
+                        'success': False,
+                        'message': '; '.join(error_messages)
+                    })
+
+                service.save(update_fields=['status'])
+
+                # Telefon holatini yangilash
+                if new_status == 'completed':
+                    service.phone.status = 'shop'
+                    service.phone.save(update_fields=['status'])
+                elif new_status == 'in_progress':
+                    service.phone.status = 'master'
+                    service.phone.save(update_fields=['status'])
+
+                # Qarzni yangilash
+                service.create_or_update_debt()
+
+            # Master uchun yangi statistikani hisoblash
+            master = service.master
+            active_count = master.master_services.filter(status='in_progress').count()
+            completed_count = master.master_services.filter(status='completed').count()
+
+            # Qarz hisobi
+            unpaid_total = Decimal('0.00')
+            all_services = master.master_services.all()
+
+            for any_service in all_services:
+                unpaid = any_service.service_fee - any_service.paid_amount
+                if unpaid > 0:
+                    unpaid_total += unpaid
+
+            # Dashboard uchun umumiy statistika
+            dashboard_stats = get_dashboard_stats()
+
+            # Response message
+            status_text = 'tugallandi' if new_status == 'completed' else 'jarayonga qaytarildi'
+            message = f'Xizmat {status_text}!'
+
+            # Ogohlantirish - to'lanmagan qarz borligini ko'rsatish
+            unpaid_amount = service.service_fee - service.paid_amount
+            warning_message = ""
+            if unpaid_amount > 0:
+                if new_status == 'completed':
+                    warning_message = f"Diqqat: ${unpaid_amount:.2f} to'lanmagan qarz saqlanib qoldi!"
+                else:
+                    warning_message = f"${unpaid_amount:.2f} to'lanmagan qarz mavjud!"
+
+            return JsonResponse({
+                'success': True,
+                'message': message,
+                'warning': warning_message if warning_message else None,
+                'active_services': active_count,
+                'completed_services': completed_count,
+                'total_unpaid': float(unpaid_total),
+                'service_status': service.get_status_display(),
+                'service_unpaid': float(unpaid_amount),
+                # Dashboard uchun
+                'dashboard_active_services': dashboard_stats['active_services'],
+                'dashboard_completed_services': dashboard_stats['completed_services'],
+                'dashboard_total_unpaid': float(dashboard_stats['total_unpaid']),
+            })
+
+        except ValidationError as ve:
+            # Validation xatolarini ushlash
+            error_messages = []
+            if hasattr(ve, 'message_dict'):
+                for field, errors in ve.message_dict.items():
+                    for error in errors:
+                        error_messages.append(error)
+            elif hasattr(ve, 'messages'):
+                error_messages.extend(ve.messages)
+            else:
+                error_messages.append(str(ve))
+
+            return JsonResponse({
+                'success': False,
+                'message': '; '.join(error_messages)
+            })
+
+        except Exception as db_error:
+            logger.error(f"Database error in status update: {str(db_error)}")
+
+            # Agar xato ValidationError bo'lsa, uni alohida ushlash
+            if 'Bu telefon allaqachon boshqa ustada' in str(db_error):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Bu telefon allaqachon boshqa ustada ta\'mirlanmoqda!'
+                })
+
+            return JsonResponse({
+                'success': False,
+                'message': f'Ma\'lumotlar bazasida xatolik: {str(db_error)}'
+            }, status=500)
+
+    except MasterService.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Xizmat topilmadi!'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Service status update error: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': f'Xatolik yuz berdi: {str(e)}'
+        }, status=500)
+
+
+@require_GET
+@login_required
+def search_phone_api(request):
+    """IMEI bo'yicha telefon qidirish"""
+    query = request.GET.get('imei', '').strip()
+
+    if not query or len(query) < 3:
+        return JsonResponse({'results': []})
+
+    try:
+        phones = Phone.objects.filter(
+            status='shop',
+            imei__icontains=query
+        ).select_related('phone_model', 'memory_size', 'shop')[:10]
+
+        results = []
+        for phone in phones:
+            results.append({
+                'id': phone.id,
+                'text': f"{phone.phone_model} {phone.memory_size} - IMEI: {phone.imei or 'N/A'}",
+                'shop_name': phone.shop.name if phone.shop else 'N/A',
+                'shop_id': phone.shop.id if phone.shop else None,
+                'condition': f"{phone.condition_percentage}%",
+                'cost_price': float(phone.cost_price) if phone.cost_price else 0,
+            })
+
+        return JsonResponse({'results': results})
+
+    except Exception as e:
+        logger.error(f"Phone search error: {str(e)}")
+        return JsonResponse({'results': [], 'error': 'Qidirishda xatolik yuz berdi!'})
+
+
+@login_required
+def get_available_phones(request):
+    """AJAX: Do'kondagi mavjud telefonlarni olish"""
+    try:
+        imei_query = request.GET.get('imei', '').strip()
+
+        phones = Phone.objects.filter(status='shop').select_related(
+            'phone_model', 'memory_size', 'shop'
+        )
+
+        if imei_query:
+            phones = phones.filter(imei__icontains=imei_query)
+
+        phones = phones[:10]
+
+        data = []
+        for phone in phones:
+            data.append({
+                'id': phone.id,
+                'text': f"{phone.phone_model} {phone.memory_size} - IMEI: {phone.imei or 'N/A'}",
+                'shop_name': phone.shop.name if phone.shop else 'N/A',
+                'shop_id': phone.shop.id if phone.shop else None,
+                'condition': f"{phone.condition_percentage}%",
+            })
+
+        return JsonResponse({'results': data})
+
+    except Exception as e:
+        logger.error(f"Get available phones error: {str(e)}")
+        return JsonResponse({'results': []})
+
+# Payment views
+@login_required
+def payment_create(request, service_id):
+    """Yangi to'lov yaratish"""
+    try:
+        service = get_object_or_404(MasterService, pk=service_id)
+
+        if request.method == 'POST':
+            form = MasterPaymentForm(request.POST, master_service=service)
+            if form.is_valid():
+                try:
+                    with transaction.atomic():
+                        payment = form.save(commit=False)
+                        payment.master_service = service
+                        payment.paid_by = request.user
+                        payment.save()
+
+                    messages.success(request, "To'lov muvaffaqiyatli qo'shildi!")
+                    return redirect('services:service_detail', pk=service.pk)
+
+                except Exception as e:
+                    logger.error(f"Payment create error: {str(e)}")
+                    messages.error(request, "To'lov yaratishda xatolik yuz berdi!")
+            else:
+                messages.error(request, "Forma to'ldirishda xatolik yuz berdi.")
+        else:
+            form = MasterPaymentForm(master_service=service)
+
+        return render(request, 'services/payment_form.html', {
+            'form': form,
+            'service': service,
+            'unpaid_amount': service.remaining_amount,
+            'title': "Yangi to'lov qo'shish",
+        })
+
+    except Exception as e:
+        logger.error(f"Payment create view error: {str(e)}")
+        messages.error(request, "To'lov sahifasini yuklashda xatolik!")
+        return redirect('services:service_list')
+
+
+@login_required
+def payment_edit(request, service_id, payment_id):
+    """To'lovni tahrirlash"""
+    try:
+        service = get_object_or_404(MasterService, pk=service_id)
+        payment = get_object_or_404(MasterPayment, pk=payment_id, master_service=service)
+
+        if request.method == 'POST':
+            form = MasterPaymentForm(request.POST, instance=payment, master_service=service)
+            if form.is_valid():
+                try:
+                    with transaction.atomic():
+                        payment = form.save(commit=False)
+                        payment.paid_by = request.user
+                        payment.save()
+
+                    messages.success(request, "To'lov ma'lumotlari yangilandi!")
+                    return redirect('services:service_detail', pk=service.pk)
+
+                except Exception as e:
+                    logger.error(f"Payment edit error: {str(e)}")
+                    messages.error(request, "To'lov yangilashda xatolik yuz berdi!")
+            else:
+                messages.error(request, "Forma to'ldirishda xatolik yuz berdi.")
+        else:
+            form = MasterPaymentForm(instance=payment, master_service=service)
+
+        max_amount = service.service_fee - service.payments.exclude(pk=payment.pk).aggregate(
+            Sum('amount')
+        )['amount__sum'] or Decimal('0.00')
+
+        return render(request, 'services/payment_form.html', {
+            'form': form,
+            'service': service,
+            'payment': payment,
+            'max_amount': max_amount,
+            'title': "To'lovni tahrirlash",
+        })
+
+    except Exception as e:
+        logger.error(f"Payment edit view error: {str(e)}")
+        messages.error(request, "To'lov ma'lumotlarini yuklashda xatolik!")
+        return redirect('services:service_list')
+
+
+@login_required
+def payment_delete(request, service_id, payment_id):
+    """To'lovni o'chirish"""
+    try:
+        service = get_object_or_404(MasterService, pk=service_id)
+        payment = get_object_or_404(MasterPayment, pk=payment_id, master_service=service)
+
+        if request.method == 'POST':
+            try:
+                with transaction.atomic():
+                    payment.delete()
+
+                messages.success(request, "To'lov muvaffaqiyatli o'chirildi!")
+                return redirect('services:service_detail', pk=service.pk)
+
+            except Exception as e:
+                logger.error(f"Payment delete error: {str(e)}")
+                messages.error(request, "To'lov o'chirishda xatolik yuz berdi!")
+                return redirect('services:service_detail', pk=service.pk)
+
+        return render(request, 'services/payment_confirm_delete.html', {
+            'payment': payment,
+            'service': service,
+            'title': "To'lovni o'chirish",
+        })
+
+    except Exception as e:
+        logger.error(f"Payment delete view error: {str(e)}")
+        messages.error(request, "To'lov ma'lumotlarini yuklashda xatolik!")
+        return redirect('services:service_list')

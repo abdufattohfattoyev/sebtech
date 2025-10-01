@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Aksessuar O'chirish{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Aksessuar O'chirish Tasdiqi
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        {% if accessory.image %}
+                            <img src="{{ accessory.image.url }}" alt="{{ accessory.name }}" class="rounded" style="width: 100px; height: 100px; object-fit: cover;">
+                        {% else %}
+                            <div class="bg-light rounded d-flex align-items-center justify-content-center mx-auto" style="width: 100px; height: 100px;">
+                                <i class="fas fa-headphones fa-2x text-muted"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Diqqat!</strong> Bu amal qaytarib bo'lmaydi.
+                    </div>
+
+                    <h6 class="mb-3">Quyidagi aksessuarni o'chirishni tasdiqlaysizmi?</h6>
+
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>Nomi:</strong></td>
+                            <td>{{ accessory.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Kod:</strong></td>
+                            <td><code>{{ accessory.code }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Do'kon:</strong></td>
+                            <td>{{ accessory.shop.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Soni:</strong></td>
+                            <td>
+                                {% if accessory.quantity < 5 %}
+                                    <span class="badge bg-warning text-dark">{{ accessory.quantity }}</span>
+                                {% else %}
+                                    <span class="badge bg-success">{{ accessory.quantity }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tannarx:</strong></td>
+                            <td class="text-muted">{{ accessory.purchase_price|floatformat:0 }} so'm</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sotish Narxi:</strong></td>
+                            <td class="text-success">{{ accessory.sale_price|floatformat:0 }} so'm</td>
+                        </tr>
+                        {% if accessory.supplier %}
+                        <tr>
+                            <td><strong>Taminotchi:</strong></td>
+                            <td>{{ accessory.supplier.name }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+
+                    {% if accessory.quantity > 0 %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <strong>Muhim!</strong> Bu aksessuardan hali ham {{ accessory.quantity }} dona mavjud. O'chirilsa, bu ma'lumotlar yo'qoladi.
+                        </div>
+                    {% endif %}
+
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <a href="{% url 'inventory:accessory_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Bekor Qilish
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-2"></i>Ha, O'chirish
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

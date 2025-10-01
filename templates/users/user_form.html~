@@ -1,0 +1,901 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title|default:"Profilni Tahrirlash" }}{% endblock %}
+{% block page_title %}{{ title|default:"Mening Profilim" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --danger-gradient: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+    --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --card-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    --card-hover-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+
+.page-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: calc(100vh - 120px);
+    padding: 2rem 0;
+}
+
+.form-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.form-card:hover {
+    box-shadow: var(--card-hover-shadow);
+    transform: translateY(-2px);
+}
+
+.form-header {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 2rem 2rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.form-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+}
+
+.form-header h5 {
+    position: relative;
+    z-index: 1;
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.form-body {
+    padding: 2.5rem 2rem;
+}
+
+.section-divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #e9ecef 50%, transparent);
+    margin: 2rem 0;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-title i {
+    color: #667eea;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    display: block;
+}
+
+.form-control, .form-select {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    outline: none;
+    background: white;
+}
+
+.form-control:disabled {
+    background-color: #f7fafc;
+    cursor: not-allowed;
+}
+
+.input-icon-wrapper {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #a0aec0;
+    font-size: 1rem;
+}
+
+.input-icon-wrapper .form-control {
+    padding-left: 2.75rem;
+}
+
+.form-check {
+    padding: 1rem;
+    background: #f7fafc;
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.form-check:hover {
+    background: #edf2f7;
+    border-color: #cbd5e0;
+}
+
+.form-check-input {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid #cbd5e0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.form-check-input:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.form-check-label {
+    margin-left: 0.75rem;
+    font-weight: 500;
+    color: #2d3748;
+    cursor: pointer;
+}
+
+.password-section {
+    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.password-section h6 {
+    color: #2d3748;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.password-section h6 i {
+    color: #667eea;
+}
+
+.btn {
+    padding: 0.875rem 1.75rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: var(--primary-gradient);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    color: white;
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: #718096;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #4a5568;
+    color: white;
+}
+
+.btn-danger {
+    background: var(--danger-gradient);
+    color: white;
+    box-shadow: 0 4px 12px rgba(235, 51, 73, 0.3);
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(235, 51, 73, 0.4);
+    color: white;
+}
+
+.alert {
+    border: none;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: start;
+    gap: 1rem;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border-left: 4px solid #f59e0b;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+    border-left: 4px solid #ef4444;
+}
+
+.alert i {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+}
+
+.delete-confirm {
+    text-align: center;
+    padding: 3rem 2rem;
+}
+
+.delete-icon {
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 2rem;
+    color: #dc2626;
+    font-size: 2.5rem;
+    box-shadow: 0 8px 20px rgba(220, 38, 38, 0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.delete-confirm h4 {
+    color: #dc2626;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.delete-confirm p {
+    color: #4a5568;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+}
+
+.error-message {
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    display: none;
+    font-weight: 500;
+}
+
+.form-control.is-invalid {
+    border-color: #f87171;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc2626'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc2626' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1rem;
+    padding-right: 3rem;
+}
+
+.required {
+    color: #ef4444;
+    margin-left: 0.25rem;
+}
+
+.btn-group {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.password-strength {
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.password-strength-bar {
+    height: 100%;
+    width: 0;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+}
+
+.strength-weak { background: #ef4444; width: 33%; }
+.strength-medium { background: #f59e0b; width: 66%; }
+.strength-strong { background: #10b981; width: 100%; }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .page-container {
+        padding: 1rem 0;
+    }
+
+    .form-body {
+        padding: 1.5rem 1rem;
+    }
+
+    .form-header {
+        padding: 1.5rem 1rem;
+    }
+
+    .form-header h5 {
+        font-size: 1.25rem;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 0.75rem;
+    }
+
+    .btn-group {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .form-card {
+        border-radius: 16px;
+    }
+
+    .delete-confirm {
+        padding: 2rem 1rem;
+    }
+
+    .delete-icon {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .col-md-6 {
+        margin-bottom: 0;
+    }
+
+    .form-control, .form-select {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}
+
+/* Loading Animation */
+.btn.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid transparent;
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="container-fluid px-2 px-md-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-xl-7">
+                <div class="form-card">
+                    <div class="form-header">
+                        <h5>
+                            <i class="fas fa-user-edit"></i>
+                            {{ title|default:"Profil Ma'lumotlari" }}
+                        </h5>
+                    </div>
+
+                    <div class="form-body">
+                        {% if confirm_delete %}
+                            <div class="delete-confirm">
+                                <div class="delete-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <h4>O'chirishni Tasdiqlang</h4>
+                                <p>
+                                    Siz haqiqatan ham
+                                    <strong style="color: #dc2626;">{{ user_profile.user.username }}</strong>
+                                    foydalanuvchisini o'chirmoqchimisiz?
+                                </p>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-info-circle"></i>
+                                    <div>
+                                        <strong>Diqqat!</strong> Bu amal qaytarilmaydi. Barcha ma'lumotlar o'chib ketadi.
+                                    </div>
+                                </div>
+
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <div class="btn-group">
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-trash"></i>
+                                            Ha, O'chirish
+                                        </button>
+                                        <a href="{% url 'users:dashboard' %}" class="btn btn-secondary">
+                                            <i class="fas fa-times"></i>
+                                            Bekor Qilish
+                                        </a>
+                                    </div>
+                                </form>
+                            </div>
+                        {% else %}
+                            <form method="post" id="userForm" novalidate>
+                                {% csrf_token %}
+
+                                <!-- Asosiy Ma'lumotlar -->
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <i class="fas fa-user"></i>
+                                        Shaxsiy Ma'lumotlar
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label class="form-label">
+                                                    {{ user_form.first_name.label }}
+                                                    {% if user_form.first_name.field.required %}<span class="required">*</span>{% endif %}
+                                                </label>
+                                                <div class="input-icon-wrapper">
+                                                    <i class="fas fa-user input-icon"></i>
+                                                    {{ user_form.first_name }}
+                                                </div>
+                                                {% if user_form.first_name.errors %}
+                                                    <div class="error-message" style="display: block;">
+                                                        {{ user_form.first_name.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label class="form-label">
+                                                    {{ user_form.last_name.label }}
+                                                    {% if user_form.last_name.field.required %}<span class="required">*</span>{% endif %}
+                                                </label>
+                                                <div class="input-icon-wrapper">
+                                                    <i class="fas fa-user input-icon"></i>
+                                                    {{ user_form.last_name }}
+                                                </div>
+                                                {% if user_form.last_name.errors %}
+                                                    <div class="error-message" style="display: block;">
+                                                        {{ user_form.last_name.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">
+                                            {{ user_form.email.label }}
+                                            {% if user_form.email.field.required %}<span class="required">*</span>{% endif %}
+                                        </label>
+                                        <div class="input-icon-wrapper">
+                                            <i class="fas fa-envelope input-icon"></i>
+                                            {{ user_form.email }}
+                                        </div>
+                                        {% if user_form.email.errors %}
+                                            <div class="error-message" style="display: block;">
+                                                {{ user_form.email.errors.0 }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if user_form.username %}
+                                        <div class="form-group">
+                                            <label class="form-label">
+                                                {{ user_form.username.label }}
+                                                <span class="required">*</span>
+                                            </label>
+                                            <div class="input-icon-wrapper">
+                                                <i class="fas fa-at input-icon"></i>
+                                                {{ user_form.username }}
+                                            </div>
+                                            {% if user_form.username.errors %}
+                                                <div class="error-message" style="display: block;">
+                                                    {{ user_form.username.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+
+                                    {% if not is_my_profile and user_form.is_active %}
+                                        <div class="form-check">
+                                            {{ user_form.is_active }}
+                                            <label class="form-check-label" for="{{ user_form.is_active.id_for_label }}">
+                                                {{ user_form.is_active.label }}
+                                            </label>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="section-divider"></div>
+
+                                <!-- Parol -->
+                                {% if user_form.password or user_form.new_password %}
+                                    <div class="form-section">
+                                        <div class="password-section">
+                                            <h6>
+                                                <i class="fas fa-lock"></i>
+                                                {% if user_form.password %}Parol{% else %}Parolni O'zgartirish{% endif %}
+                                            </h6>
+
+                                            {% if user_form.password %}
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label class="form-label">
+                                                                {{ user_form.password.label }}
+                                                                <span class="required">*</span>
+                                                            </label>
+                                                            <div class="input-icon-wrapper">
+                                                                <i class="fas fa-key input-icon"></i>
+                                                                {{ user_form.password }}
+                                                            </div>
+                                                            <div class="password-strength" id="passwordStrength" style="display: none;">
+                                                                <div class="password-strength-bar"></div>
+                                                            </div>
+                                                            {% if user_form.password.errors %}
+                                                                <div class="error-message" style="display: block;">
+                                                                    {{ user_form.password.errors.0 }}
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label class="form-label">
+                                                                {{ user_form.password_confirm.label }}
+                                                                <span class="required">*</span>
+                                                            </label>
+                                                            <div class="input-icon-wrapper">
+                                                                <i class="fas fa-key input-icon"></i>
+                                                                {{ user_form.password_confirm }}
+                                                            </div>
+                                                            {% if user_form.password_confirm.errors %}
+                                                                <div class="error-message" style="display: block;">
+                                                                    {{ user_form.password_confirm.errors.0 }}
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% else %}
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label class="form-label">{{ user_form.new_password.label }}</label>
+                                                            <div class="input-icon-wrapper">
+                                                                <i class="fas fa-key input-icon"></i>
+                                                                {{ user_form.new_password }}
+                                                            </div>
+                                                            <div class="password-strength" id="passwordStrength" style="display: none;">
+                                                                <div class="password-strength-bar"></div>
+                                                            </div>
+                                                            {% if user_form.new_password.errors %}
+                                                                <div class="error-message" style="display: block;">
+                                                                    {{ user_form.new_password.errors.0 }}
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label class="form-label">{{ user_form.confirm_password.label }}</label>
+                                                            <div class="input-icon-wrapper">
+                                                                <i class="fas fa-key input-icon"></i>
+                                                                {{ user_form.confirm_password }}
+                                                            </div>
+                                                            {% if user_form.confirm_password.errors %}
+                                                                <div class="error-message" style="display: block;">
+                                                                    {{ user_form.confirm_password.errors.0 }}
+                                                                </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div class="section-divider"></div>
+                                {% endif %}
+
+                                <!-- Profil Ma'lumotlari -->
+                                <div class="form-section">
+                                    <div class="section-title">
+                                        <i class="fas fa-id-card"></i>
+                                        Qo'shimcha Ma'lumotlar
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label class="form-label">
+                                                    {{ profile_form.role.label }}
+                                                    <span class="required">*</span>
+                                                </label>
+                                                <div class="input-icon-wrapper">
+                                                    <i class="fas fa-user-tag input-icon"></i>
+                                                    {{ profile_form.role }}
+                                                </div>
+                                                {% if profile_form.role.errors %}
+                                                    <div class="error-message" style="display: block;">
+                                                        {{ profile_form.role.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label class="form-label">{{ profile_form.phone_number.label }}</label>
+                                                <div class="input-icon-wrapper">
+                                                    <i class="fas fa-phone input-icon"></i>
+                                                    {{ profile_form.phone_number }}
+                                                </div>
+                                                {% if profile_form.phone_number.errors %}
+                                                    <div class="error-message" style="display: block;">
+                                                        {{ profile_form.phone_number.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Form Xatolari -->
+                                {% if user_form.non_field_errors or profile_form.non_field_errors %}
+                                    <div class="alert alert-danger">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        <div>
+                                            {% for error in user_form.non_field_errors %}
+                                                <div>{{ error }}</div>
+                                            {% endfor %}
+                                            {% for error in profile_form.non_field_errors %}
+                                                <div>{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                <!-- Tugmalar -->
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i>
+                                        Saqlash
+                                    </button>
+                                    <a href="{% url 'users:dashboard' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i>
+                                        Bekor Qilish
+                                    </a>
+                                </div>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('userForm');
+    if (!form) return;
+
+    // Password strength checker
+    const passwordInput = form.querySelector('input[name="password"]') || form.querySelector('input[name="new_password"]');
+    if (passwordInput) {
+        const strengthBar = document.getElementById('passwordStrength');
+
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            const strengthBarFill = strengthBar.querySelector('.password-strength-bar');
+
+            if (password.length > 0) {
+                strengthBar.style.display = 'block';
+
+                let strength = 0;
+                if (password.length >= 8) strength++;
+                if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+                if (/\d/.test(password)) strength++;
+                if (/[^a-zA-Z0-9]/.test(password)) strength++;
+
+                strengthBarFill.className = 'password-strength-bar';
+                if (strength <= 2) {
+                    strengthBarFill.classList.add('strength-weak');
+                } else if (strength === 3) {
+                    strengthBarFill.classList.add('strength-medium');
+                } else {
+                    strengthBarFill.classList.add('strength-strong');
+                }
+            } else {
+                strengthBar.style.display = 'none';
+            }
+        });
+    }
+
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        let isValid = true;
+        const errorMessages = form.querySelectorAll('.error-message');
+        errorMessages.forEach(msg => msg.style.display = 'none');
+
+        // Required fields
+        const requiredFields = form.querySelectorAll('input[required], select[required]');
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                showError(field, 'Bu maydon majburiy');
+                isValid = false;
+            }
+        });
+
+        // Password validation
+        const password = form.querySelector('input[name="password"]') || form.querySelector('input[name="new_password"]');
+        const passwordConfirm = form.querySelector('input[name="password_confirm"]') || form.querySelector('input[name="confirm_password"]');
+
+        if (password && passwordConfirm) {
+            if (password.value || passwordConfirm.value) {
+                if (password.value !== passwordConfirm.value) {
+                    showError(passwordConfirm, 'Parollar mos kelmadi');
+                    isValid = false;
+                }
+                if (password.value.length > 0 && password.value.length < 8) {
+                    showError(password, 'Parol kamida 8 ta belgi bo\'lishi kerak');
+                    isValid = false;
+                }
+            }
+        }
+
+        // Email validation
+        const email = form.querySelector('input[name="email"]');
+        if (email && email.value) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.value)) {
+                showError(email, 'Email manzil noto\'g\'ri');
+                isValid = false;
+            }
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+            const firstError = form.querySelector('.error-message[style*="display: block"]');
+            if (firstError) {
+                firstError.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else {
+            // Add loading state to submit button
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.classList.add('loading');
+                submitBtn.disabled = true;
+            }
+        }
+    });
+
+    // Show error function
+    function showError(field, message) {
+        let errorDiv = field.closest('.form-group')?.querySelector('.error-message');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            field.closest('.input-icon-wrapper')?.parentNode.appendChild(errorDiv) || field.parentNode.appendChild(errorDiv);
+        }
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        field.classList.add('is-invalid');
+    }
+
+    // Clear error on input
+    const inputs = form.querySelectorAll('input, select');
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const errorDiv = this.closest('.form-group')?.querySelector('.error-message');
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+            }
+            this.classList.remove('is-invalid');
+        });
+    });
+
+    // Phone number formatting
+    const phoneInput = form.querySelector('input[name="phone_number"]');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            let value = this.value.replace(/\D/g, '');
+
+            if (value.startsWith('998')) {
+                if (value.length <= 3) {
+                    this.value = '+' + value;
+                } else if (value.length <= 5) {
+                    this.value = '+' + value.slice(0, 3) + ' ' + value.slice(3);
+                } else if (value.length <= 8) {
+                    this.value = '+' + value.slice(0, 3) + ' ' + value.slice(3, 5) + ' ' + value.slice(5);
+                } else if (value.length <= 10) {
+                    this.value = '+' + value.slice(0, 3) + ' ' + value.slice(3, 5) + ' ' + value.slice(5, 8) + '-' + value.slice(8);
+                } else if (value.length <= 12) {
+                    this.value = '+' + value.slice(0, 3) + ' ' + value.slice(3, 5) + ' ' + value.slice(5, 8) + '-' + value.slice(8, 10) + '-' + value.slice(10);
+                } else {
+                    this.value = '+' + value.slice(0, 3) + ' ' + value.slice(3, 5) + ' ' + value.slice(5, 8) + '-' + value.slice(8, 10) + '-' + value.slice(10, 12);
+                }
+            } else {
+                this.value = value ? '+' + value : '';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block page_title %}Xarajatlar{% endblock %}
+
+{% block extra_css %}
+<style>
+.expense-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.expense-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.expense-amount {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+.table-action-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">💰 Xarajatlar</h2>
+            <p class="text-muted mb-0">Barcha xarajatlar ro'yxati</p>
+        </div>
+        <a href="{% url 'sales:expense_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Yangi xarajat
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card expense-card">
+        <div class="card-body">
+            {% if expenses %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 15%;">Do'kon</th>
+                                <th style="width: 20%;">Xarajat nomi</th>
+                                <th style="width: 12%;" class="text-end">Summa</th>
+                                <th style="width: 12%;">Sana</th>
+                                <th style="width: 15%;">Qo'shgan</th>
+                                <th style="width: 16%;">Izoh</th>
+                                <th style="width: 10%;" class="text-center">Amallar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in expenses %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-primary">{{ expense.shop.name }}</span>
+                                </td>
+                                <td>
+                                    <strong>{{ expense.name }}</strong>
+                                </td>
+                                <td class="text-end">
+                                    <span class="expense-amount text-danger">
+                                        {{ expense.amount|floatformat:0 }} so'm
+                                    </span>
+                                </td>
+                                <td>
+                                    <i class="far fa-calendar text-muted me-1"></i>
+                                    {{ expense.expense_date|date:"d.m.Y" }}
+                                </td>
+                                <td>
+                                    <i class="far fa-user text-muted me-1"></i>
+                                    {{ expense.created_by.get_full_name|default:expense.created_by.username }}
+                                </td>
+                                <td>
+                                    {% if expense.notes %}
+                                        <span class="text-truncate d-inline-block" style="max-width: 200px;"
+                                              title="{{ expense.notes }}">
+                                            {{ expense.notes }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{% url 'sales:expense_detail' expense.pk %}"
+                                           class="btn btn-outline-info table-action-btn"
+                                           title="Ko'rish">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'sales:expense_edit' expense.pk %}"
+                                           class="btn btn-outline-warning table-action-btn"
+                                           title="Tahrirlash">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button"
+                                                class="btn btn-outline-danger table-action-btn"
+                                                title="O'chirish"
+                                                onclick="confirmDelete('{% url 'sales:expense_delete' expense.pk %}', '{{ expense.name }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <td colspan="2" class="text-end fw-bold">JAMI:</td>
+                                <td class="text-end fw-bold text-danger">
+                                    {{ total_amount|floatformat:0 }} so'm
+                                </td>
+                                <td colspan="4"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-receipt text-muted" style="font-size: 4rem; opacity: 0.3;"></i>
+                    </div>
+                    <h4 class="text-muted mb-2">Hali xarajatlar yo'q</h4>
+                    <p class="text-muted mb-4">Birinchi xarajatni qo'shib boshlang</p>
+                    <a href="{% url 'sales:expense_create' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>Xarajat qo'shish
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(url, name) {
+    if (confirm(`"${name}" xarajatini o'chirishni tasdiqlaysizmi?\n\nBu amalni qaytarib bo'lmaydi!`)) {
+        window.location.href = url;
+    }
+}
+</script>
+{% endblock %}
