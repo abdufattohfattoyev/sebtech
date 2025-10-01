@@ -20,6 +20,12 @@
     --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
 }
 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--gray-50);
@@ -33,6 +39,7 @@ body {
     padding: 1rem;
 }
 
+/* Stats Cards */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -111,9 +118,9 @@ body {
 .stat-btn:hover {
     opacity: 0.9;
     transform: scale(1.02);
-    color: white;
 }
 
+/* Table Card */
 .table-card {
     background: white;
     border-radius: 12px;
@@ -150,19 +157,6 @@ body {
     font-weight: 600;
 }
 
-.view-all-link {
-    color: var(--primary);
-    text-decoration: none;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.view-all-link:hover {
-    color: var(--primary);
-    opacity: 0.8;
-}
-
 .table-responsive {
     overflow-x: auto;
 }
@@ -197,6 +191,7 @@ body {
     border-bottom: none;
 }
 
+/* Avatar */
 .avatar {
     width: 32px;
     height: 32px;
@@ -212,6 +207,7 @@ body {
 .avatar.primary { background: var(--primary); }
 .avatar.success { background: var(--success); }
 
+/* User Info */
 .user-info {
     display: flex;
     align-items: center;
@@ -233,6 +229,31 @@ body {
     color: var(--gray-600);
 }
 
+/* Badge */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge.primary {
+    background: rgba(79, 70, 229, 0.1);
+    color: var(--primary);
+}
+
+.badge.info {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--info);
+}
+
+.badge.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+/* Action Buttons */
 .action-btns {
     display: flex;
     gap: 0.5rem;
@@ -272,6 +293,7 @@ body {
     opacity: 0.8;
 }
 
+/* Pagination */
 .pagination {
     display: flex;
     justify-content: center;
@@ -301,6 +323,7 @@ body {
     color: white;
 }
 
+/* Empty State */
 .empty-state {
     padding: 3rem;
     text-align: center;
@@ -313,6 +336,7 @@ body {
     margin-bottom: 1rem;
 }
 
+/* Responsive */
 @media (max-width: 768px) {
     .container {
         padding: 0.5rem;
@@ -382,16 +406,19 @@ body {
     }
 }
 
+/* Utilities */
 .text-center { text-align: center; }
 .text-success { color: var(--success); }
 .text-danger { color: var(--danger); }
 .text-muted { color: var(--gray-600); }
 .fw-bold { font-weight: 600; }
+.mb-0 { margin-bottom: 0; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
+    <!-- Statistikalar -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-header">
@@ -416,9 +443,11 @@ body {
             </div>
             <div class="stat-value">{{ total_customers }}</div>
             <div class="stat-label">Mijozlar</div>
-            <a href="{% url 'shop:customer_list' %}" class="stat-btn success">
-                <i class="fas fa-list"></i> Ko'rish
+            {% if is_boss or request.user.userprofile.role == 'seller' %}
+            <a href="{% url 'shop:customer_create' %}" class="stat-btn success">
+                <i class="fas fa-plus"></i> Yangi
             </a>
+            {% endif %}
         </div>
 
         <div class="stat-card">
@@ -448,6 +477,7 @@ body {
         </div>
     </div>
 
+    <!-- Do'konlar -->
     <div class="table-card">
         <div class="table-header">
             <div class="table-title">
@@ -530,18 +560,14 @@ body {
         {% endif %}
     </div>
 
+    <!-- Mijozlar -->
     <div class="table-card">
         <div class="table-header">
             <div class="table-title">
                 <i class="fas fa-users"></i>
                 Mijozlar
             </div>
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <span class="table-count">{{ total_customers }}</span>
-                <a href="{% url 'shop:customer_list' %}" class="view-all-link">
-                    Barchasini ko'rish <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
+            <span class="table-count">{{ total_customers }}</span>
         </div>
 
         <div class="table-responsive">
@@ -609,6 +635,25 @@ body {
                 </tbody>
             </table>
         </div>
+
+        {% if customer_page_obj.has_other_pages %}
+        <div class="pagination">
+            {% if customer_page_obj.has_previous %}
+            <a class="page-link" href="?customer_page={{ customer_page_obj.previous_page_number }}">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            {% endif %}
+            {% for num in customer_page_obj.paginator.page_range %}
+            <a class="page-link {% if customer_page_obj.number == num %}active{% endif %}"
+               href="?customer_page={{ num }}">{{ num }}</a>
+            {% endfor %}
+            {% if customer_page_obj.has_next %}
+            <a class="page-link" href="?customer_page={{ customer_page_obj.next_page_number }}">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
