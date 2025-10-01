@@ -2,6 +2,9 @@ server {
     listen 80;
     server_name 173.249.7.36;
 
+    # Yuklanadigan fayllarning maksimal hajmi (50 MB)
+    client_max_body_size 50M;
+
     # Statik fayllar
     location /static/ {
         alias /app/staticfiles/;
