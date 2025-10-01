@@ -20,6 +20,8 @@ CSRF_TRUSTED_ORIGINS = [
     'https://www.seb-tech.uz',
 ]
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',

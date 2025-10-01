@@ -12,7 +12,13 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-mj0z8)f^nz%z=nw^m!_my
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 # Domenlar va IP
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['seb-tech.uz', 'www.seb-tech.uz', 'localhost', '127.0.0.1']
+
+# CSRF sozlamalari
+CSRF_TRUSTED_ORIGINS = [
+    'https://seb-tech.uz',
+    'https://www.seb-tech.uz',
+]
 
 # Application definition
 INSTALLED_APPS = [
