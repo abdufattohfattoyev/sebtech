@@ -38,12 +38,8 @@ services:
       - certbot-etc:/etc/letsencrypt
       - certbot-var:/var/lib/letsencrypt
       - certbot-www:/var/www/certbot
-    entrypoint: >
-      /bin/sh -c 'trap exit TERM;
-      while :;
-      do certbot renew --webroot -w /var/www/certbot --quiet;
-      sleep 12h & wait $${!};
-      done;'
+    # Entrypoint-ni olib tashladik
+    command: certonly --webroot -w /var/www/certbot --force-renewal --email abdufattohfattoyev0@gmail.com -d seb-tech.uz -d www.seb-tech.uz --agree-tos --non-interactive
 
 networks:
   app-network:
