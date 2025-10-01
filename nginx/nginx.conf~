@@ -1,8 +1,22 @@
 server {
     listen 80;
-    server_name 173.249.7.36;
+    server_name seb-tech.uz www.seb-tech.uz;
 
-    # Yuklanadigan fayllarning maksimal hajmi (50 MB)
+    # HTTP so‘rovlarni avtomatik HTTPS ga yo‘naltirish
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name seb-tech.uz www.seb-tech.uz;
+
+    # SSL sertifikatlar
+    ssl_certificate /etc/letsencrypt/live/seb-tech.uz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/seb-tech.uz/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Fayl yuklash hajmi (50 MB)
     client_max_body_size 50M;
 
     # Statik fayllar
