@@ -236,6 +236,7 @@ def phone_list(request):
 
 
 @login_required
+@boss_or_finance_required
 def phone_create(request):
     """Yangi telefon qo'shish - FAQAT boss/finance"""
 
