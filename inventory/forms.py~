@@ -317,7 +317,9 @@ class PhoneForm(forms.ModelForm):
 
 # AccessoryForm o'zgarmaydi
 class AccessoryForm(forms.ModelForm):
-    """Aksessuar formasi - SO'M"""
+    """Aksessuar formasi - SO'M (SODDALASHTIRILGAN)"""
+
+    # Mavjud kod qidirish uchun
     existing_code = forms.CharField(
         max_length=10,
         required=False,
@@ -330,11 +332,12 @@ class AccessoryForm(forms.ModelForm):
         help_text="Mavjud aksessuar ustiga qo'shish uchun kodini kiriting"
     )
 
-    initial_purchase_price = forms.DecimalField(
+    # BIRLASHTIRILGAN MAYDONLAR
+    purchase_price = forms.DecimalField(
         max_digits=12,
         decimal_places=2,
         min_value=0,
-        required=False,  # ✅ False - tahrirlashda kerak emas
+        required=False,
         widget=forms.NumberInput(attrs={
             'class': 'form-control',
             'step': '1000',
@@ -345,9 +348,9 @@ class AccessoryForm(forms.ModelForm):
         help_text="Narx avtomatik mingga yaxlitlanadi"
     )
 
-    initial_quantity = forms.IntegerField(
+    quantity = forms.IntegerField(
         min_value=1,
-        required=False,  # ✅ False - tahrirlashda kerak emas
+        required=False,
         widget=forms.NumberInput(attrs={
             'class': 'form-control',
             'min': '1',
@@ -357,20 +360,34 @@ class AccessoryForm(forms.ModelForm):
         label="Soni"
     )
 
+    sale_price = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=0,
+        required=False,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '1000',
+            'min': '0',
+            'placeholder': "Sotish narxi (so'm)"
+        }),
+        label="Sotish narxi (so'm)"
+    )
+
     class Meta:
         model = Accessory
-        fields = ['shop', 'name', 'code', 'image', 'sale_price', 'supplier']
+        fields = ['shop', 'name', 'code', 'image', 'supplier']
         widgets = {
             'shop': forms.Select(attrs={'class': 'form-control'}),
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Aksessuar nomi'}),
-            'code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Kod (0001)'}),
-            'image': forms.FileInput(attrs={'class': 'form-control'}),
-            'sale_price': forms.NumberInput(attrs={
+            'name': forms.TextInput(attrs={
                 'class': 'form-control',
-                'step': '1000',
-                'min': '0',
-                'placeholder': "Sotish narxi (so'm)"
+                'placeholder': 'Aksessuar nomi'
             }),
+            'code': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Kod (0001)'
+            }),
+            'image': forms.FileInput(attrs={'class': 'form-control'}),
             'supplier': forms.Select(attrs={'class': 'form-control'}),
         }
 
@@ -381,22 +398,22 @@ class AccessoryForm(forms.ModelForm):
         if self.user:
             self.fields['shop'].queryset = Shop.objects.filter(owner=self.user)
 
+        # TAHRIRLASH REJIMI
         if self.instance.pk:
-            # ✅ TAHRIRLASHDA: existing_code va initial_quantity ni o'chirmaymiz
-            # Lekin ularni OPTIONAL qilamiz
             self.fields['existing_code'].widget = forms.HiddenInput()
-            self.fields['initial_quantity'].required = False
-            self.fields['initial_purchase_price'].required = False
+            self.fields['quantity'].widget = forms.HiddenInput()
+            self.fields['purchase_price'].widget = forms.HiddenInput()
 
-            # ✅ Hozirgi qiymatlarni ko'rsatish uchun
-            if hasattr(self.instance, 'purchase_price'):
-                self.fields['initial_purchase_price'].initial = self.instance.purchase_price
+            # Faqat sotish narxini ko'rsatamiz
+            self.fields['sale_price'].required = True
+            self.fields['sale_price'].initial = self.instance.sale_price
 
+        # YARATISH REJIMI
         else:
-            # Yangi yaratishda
             self.fields['code'].required = False
-            self.fields['initial_quantity'].required = True
-            self.fields['initial_purchase_price'].required = True
+            self.fields['quantity'].required = True
+            self.fields['purchase_price'].required = True
+            self.fields['sale_price'].required = True
 
     def clean_existing_code(self):
         existing_code = self.cleaned_data.get('existing_code')
@@ -418,8 +435,8 @@ class AccessoryForm(forms.ModelForm):
                 raise ValidationError("Kod 10 ta raqamdan ko'p bo'lishi mumkin emas")
         return code
 
-    def clean_initial_purchase_price(self):
-        price = self.cleaned_data.get('initial_purchase_price')
+    def clean_purchase_price(self):
+        price = self.cleaned_data.get('purchase_price')
         if price:
             rounded_price = round_to_thousands(price)
             return Decimal(str(rounded_price))
@@ -437,82 +454,87 @@ class AccessoryForm(forms.ModelForm):
         existing_code = cleaned_data.get('existing_code')
         shop = cleaned_data.get('shop')
         code = cleaned_data.get('code')
-        quantity = cleaned_data.get('initial_quantity')
-        purchase_price = cleaned_data.get('initial_purchase_price')
+        quantity = cleaned_data.get('quantity')
+        purchase_price = cleaned_data.get('purchase_price')
         sale_price = cleaned_data.get('sale_price')
 
-        # ✅ TAHRIRLASHDA
+        # TAHRIRLASH - faqat sale_price
         if self.instance.pk:
-            # Faqat sale_price validatsiyasi
-            if purchase_price and sale_price and sale_price < purchase_price:
-                raise ValidationError({'sale_price': "Sotish narxi tannarxdan kam bo'lmasligi kerak"})
+            if not sale_price or sale_price <= 0:
+                raise ValidationError({
+                    'sale_price': "Sotish narxi kiritilishi kerak."
+                })
             return cleaned_data
 
-        # ✅ YANGI YARATISHDA
+        # YANGI YARATISH
         if not quantity or quantity <= 0:
-            raise ValidationError({'initial_quantity': "Soni kiritilishi kerak va 0 dan katta bo'lishi kerak."})
+            raise ValidationError({
+                'quantity': "Soni kiritilishi kerak va 0 dan katta bo'lishi kerak."
+            })
 
         if not purchase_price or purchase_price <= 0:
-            raise ValidationError(
-                {'initial_purchase_price': "Tannarx kiritilishi kerak va 0 dan katta bo'lishi kerak."})
+            raise ValidationError({
+                'purchase_price': "Tannarx kiritilishi kerak va 0 dan katta bo'lishi kerak."
+            })
 
+        if not sale_price or sale_price <= 0:
+            raise ValidationError({
+                'sale_price': "Sotish narxi kiritilishi kerak."
+            })
+
+        # Mavjud aksessuar topish
         if existing_code and shop:
             try:
                 existing_accessory = Accessory.objects.get(shop=shop, code=existing_code)
                 self._existing_accessory = existing_accessory
                 cleaned_data['code'] = None
             except Accessory.DoesNotExist:
-                raise ValidationError({'existing_code': f"Kod '{existing_code}' topilmadi."})
+                raise ValidationError({
+                    'existing_code': f"Kod '{existing_code}' topilmadi."
+                })
 
+        # Yangi aksessuar
         elif not existing_code and shop:
             if code and Accessory.objects.filter(shop=shop, code=code).exists():
-                raise ValidationError({'code': f"Bu kod ({code}) allaqachon mavjud."})
+                raise ValidationError({
+                    'code': f"Bu kod ({code}) allaqachon mavjud."
+                })
             if not code:
                 cleaned_data['code'] = Accessory.get_next_code(shop)
 
+        # Narx tekshiruvi
         if purchase_price and sale_price and sale_price < purchase_price:
-            raise ValidationError({'sale_price': "Sotish narxi tannarxdan kam bo'lmasligi kerak"})
+            raise ValidationError({
+                'sale_price': "Sotish narxi tannarxdan kam bo'lmasligi kerak"
+            })
 
         return cleaned_data
 
     def save(self, commit=True):
-        quantity = self.cleaned_data.get('initial_quantity', 0)
-        purchase_price = self.cleaned_data.get('initial_purchase_price', Decimal('0'))
+        quantity = self.cleaned_data.get('quantity', 0)
+        purchase_price = self.cleaned_data.get('purchase_price', Decimal('0'))
+        sale_price = self.cleaned_data.get('sale_price')
 
-        # ✅ TAHRIRLASH
+        # TAHRIRLASH - faqat sale_price yangilanadi
         if self.instance.pk:
             accessory = super().save(commit=False)
+            accessory.sale_price = sale_price
 
-            # Sale price allaqachon accessory.sale_price da
-            # Agar yangi quantity va purchase_price berilgan bo'lsa
-            if quantity and quantity > 0 and purchase_price and purchase_price > 0:
-                if commit:
-                    # Avval accessory ni saqlash
-                    accessory.save()
-
-                    # Keyin purchase history yaratish
-                    AccessoryPurchaseHistory.objects.create(
-                        accessory=accessory,
-                        quantity=quantity,
-                        purchase_price=purchase_price,
-                        created_by=self.user
-                    )
-            elif commit:
-                # Faqat sale_price o'zgargan bo'lsa
+            if commit:
                 accessory.save()
-
             return accessory
 
-        # ✅ YANGI YARATISH
+        # YANGI YARATISH
         if quantity <= 0:
             raise ValidationError("Soni 0 dan katta bo'lishi kerak")
         if purchase_price <= 0:
             raise ValidationError("Tannarx 0 dan katta bo'lishi kerak")
 
+        # Mavjud aksessuarga qo'shish
         if hasattr(self, '_existing_accessory'):
             existing = self._existing_accessory
-            sale_price = self.cleaned_data.get('sale_price')
 
+            # Purchase history yaratish
             AccessoryPurchaseHistory.objects.create(
                 accessory=existing,
                 quantity=quantity,
@@ -520,19 +542,24 @@ class AccessoryForm(forms.ModelForm):
                 created_by=self.user
             )
 
-            if sale_price is not None:
+            # Faqat sale_price yangilash (agar berilgan bo'lsa)
+            if sale_price:
                 existing.sale_price = sale_price
 
             if commit:
                 existing.save()
             return existing
 
+        # Yangi aksessuar yaratish
         else:
             accessory = super().save(commit=False)
             accessory.created_by = self.user
+            accessory.sale_price = sale_price
 
             if commit:
                 accessory.save()
+
+                # Purchase history yaratish
                 AccessoryPurchaseHistory.objects.create(
                     accessory=accessory,
                     quantity=quantity,

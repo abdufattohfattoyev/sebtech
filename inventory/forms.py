@@ -152,7 +152,10 @@ class PhoneForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if self.user:
-            self.fields['shop'].queryset = Shop.objects.filter(owner=self.user)
+            # ✅ BARCHA DO'KONLARNI KO'RSATISH
+            self.fields['shop'].queryset = Shop.objects.all()
+
+            # Agar faqat bitta do'kon bo'lsa, avtomatik tanlash
             if self.fields['shop'].queryset.count() == 1:
                 self.fields['shop'].initial = self.fields['shop'].queryset.first()
 
