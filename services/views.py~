@@ -535,40 +535,53 @@ def service_detail(request, pk):
 
 @login_required
 def service_edit(request, pk):
-    """Xizmatni tahrirlash - TELEFON O'ZGARTIRILMAYDI"""
+    """Xizmatni tahrirlash - TELEFON ALMASHTIRILISHI MUMKIN"""
     try:
         service = get_object_or_404(MasterService, pk=pk)
         old_fee = service.service_fee
-        old_phone = service.phone  # Telefon saqlab qolish
+        old_phone = service.phone
 
         if request.method == 'POST':
             form = MasterServiceForm(request.POST, instance=service)
             if form.is_valid():
                 try:
                     with transaction.atomic():
-                        service = form.save(commit=False)
+                        new_service = form.save(commit=False)
+                        new_phone = new_service.phone
 
-                        # MUHIM: Telefonni qayta tiklash (form disabled bo'lganligi sababli)
-                        service.phone = old_phone
-                        service.save()
+                        # TELEFON O'ZGARGANDA
+                        if new_phone != old_phone:
+                            # Eski telefonni do'konga qaytarish va repair_cost ni kamaytirish
+                            old_phone.status = 'shop'
+                            if old_phone.repair_cost >= old_fee:
+                                old_phone.repair_cost -= old_fee
+                            else:
+                                old_phone.repair_cost = Decimal('0.00')
+                            old_phone.save()
 
-                        # Telefon repair_cost yangilash (faqat haqi o'zgarganda)
-                        fee_difference = service.service_fee - old_fee
-                        if fee_difference != 0 and hasattr(service.phone, 'repair_cost'):
-                            service.phone.repair_cost = (service.phone.repair_cost or Decimal('0.00')) + fee_difference
-                            service.phone.save(update_fields=['repair_cost'])
+                            # Yangi telefonni ustaga yuborish va repair_cost ga qo'shish
+                            new_phone.status = 'master'
+                            new_phone.repair_cost = (new_phone.repair_cost or Decimal('0.00')) + new_service.service_fee
+                            new_phone.save()
+                        else:
+                            # TELEFON O'ZGARMAGANDA - faqat fee o'zgarganda repair_cost yangilash
+                            fee_difference = new_service.service_fee - old_fee
+                            if fee_difference != 0:
+                                new_phone.repair_cost = (new_phone.repair_cost or Decimal('0.00')) + fee_difference
+                                new_phone.save(update_fields=['repair_cost'])
+
+                        new_service.save()
 
                         # To'langan summani qayta hisoblash
-                        service.update_paid_amount()
+                        new_service.update_paid_amount()
 
                     messages.success(request, 'Xizmat ma\'lumotlari yangilandi!')
-                    return redirect('services:service_detail', pk=service.pk)
+                    return redirect('services:service_detail', pk=new_service.pk)
 
                 except Exception as e:
                     logger.error(f"Service edit error: {str(e)}")
                     messages.error(request, f'Yangilashda xatolik: {str(e)}')
             else:
-                # Form xatolarini ko'rsatish
                 for field, errors in form.errors.items():
                     for error in errors:
                         messages.error(request, f"{field}: {error}")
@@ -583,6 +596,54 @@ def service_edit(request, pk):
 
     except Exception as e:
         logger.error(f"Service edit view error: {str(e)}")
+        messages.error(request, "Xizmat ma'lumotlarini yuklashda xatolik!")
+        return redirect('services:service_list')
+
+
+@login_required
+def service_delete(request, pk):
+    """Xizmatni o'chirish - TO'G'RI ISHLAYDI"""
+    try:
+        service = get_object_or_404(MasterService, pk=pk)
+
+        if request.method == 'POST':
+            try:
+                with transaction.atomic():
+                    # Telefon va usta ma'lumotlarini saqlab qolish
+                    phone = service.phone
+                    service_fee = service.service_fee
+
+                    # Telefonni do'konga qaytarish
+                    phone.status = 'shop'
+
+                    # Repair cost ni kamaytirish
+                    if phone.repair_cost >= service_fee:
+                        phone.repair_cost -= service_fee
+                    else:
+                        phone.repair_cost = Decimal('0.00')
+
+                    phone.save()
+
+                    # Qarzni o'chirish (model delete metodida bajariladi)
+                    # Xizmatni o'chirish
+                    service.delete()
+
+                messages.success(request, "Xizmat muvaffaqiyatli o'chirildi!")
+                return redirect('services:service_list')
+
+            except Exception as e:
+                logger.error(f"Service delete error: {str(e)}")
+                messages.error(request, f"O'chirishda xatolik: {str(e)}")
+                return redirect('services:service_detail', pk=pk)
+
+        # GET request - tasdiqlash sahifasi
+        return render(request, 'services/service_confirm_delete.html', {
+            'service': service,
+            'title': 'Xizmatni o\'chirish'
+        })
+
+    except Exception as e:
+        logger.error(f"Service delete view error: {str(e)}")
         messages.error(request, "Xizmat ma'lumotlarini yuklashda xatolik!")
         return redirect('services:service_list')
 

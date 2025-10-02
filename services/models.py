@@ -134,6 +134,14 @@ class MasterService(models.Model):
         blank=True,
         verbose_name="Yaratgan foydalanuvchi"
     )
+    completed_by = models.ForeignKey(  # ✅ YANGI
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='completed_services',
+        verbose_name="Tugallagan foydalanuvchi"
+    )
 
     class Meta:
         verbose_name = "Usta xizmati"

@@ -399,7 +399,9 @@ class AccessoryForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if self.user:
-            self.fields['shop'].queryset = Shop.objects.filter(owner=self.user)
+            self.fields['shop'].queryset = Shop.objects.all()
+            if self.fields['shop'].queryset.count() == 1:
+                self.fields['shop'].initial = self.fields['shop'].queryset.first()
 
         # TAHRIRLASH REJIMI
         if self.instance.pk:

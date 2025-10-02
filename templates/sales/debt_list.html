@@ -3,49 +3,25 @@
 
 {% block extra_css %}
 <style>
-/* Muddat ranglari */
-.due-soon { color: #dc3545 !important; font-weight: 600; }
-.due-warning { color: #fd7e14 !important; font-weight: 600; }
-.due-ok { color: #6c757d !important; }
+.due-soon { color: #dc3545; font-weight: 600; }
+.due-warning { color: #fd7e14; font-weight: 600; }
+.due-ok { color: #6c757d; }
 .due-overdue {
-    color: #fff !important;
-    background: #dc3545 !important;
+    color: #fff;
+    background: #dc3545;
     padding: 2px 6px;
     border-radius: 4px;
     font-weight: 700;
-    animation: blink 1.5s ease-in-out infinite;
 }
-
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-}
-
 .stats-card {
     border-radius: 8px;
     transition: transform 0.2s;
     cursor: pointer;
 }
 .stats-card:hover { transform: translateY(-3px); }
-
-.filter-btns .btn {
-    border-radius: 6px;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-.filter-btns .btn.active {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
 .table-compact td, .table-compact th {
     padding: 0.75rem 0.5rem;
     vertical-align: middle;
-}
-
-@media (max-width: 768px) {
-    .table-compact { font-size: 0.85rem; }
-    .filter-btns { flex-wrap: wrap; gap: 0.5rem; }
-    .filter-btns .btn { font-size: 0.75rem; padding: 0.4rem 0.6rem; }
 }
 </style>
 {% endblock %}
@@ -57,6 +33,9 @@
         <h2 class="mb-0">
             <i class="fas fa-hand-holding-usd text-warning me-2"></i>
             Qarzlar
+            {% if not can_view_all %}
+                <small class="text-muted">(Sizning qarzlaringiz)</small>
+            {% endif %}
         </h2>
         <a href="{% url 'sales:debt_create' %}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i>Yangi qarz
@@ -100,30 +79,17 @@
     </div>
 
     <!-- Filterlar -->
-    <div class="d-flex gap-2 mb-3 filter-btns">
-        <!-- Status filter -->
+    <div class="d-flex gap-2 mb-3 flex-wrap">
         <div class="btn-group btn-group-sm">
             <button class="btn btn-outline-secondary active" onclick="filterDebts('all')">Barchasi</button>
             <button class="btn btn-outline-warning" onclick="filterDebts('active')">Faol</button>
             <button class="btn btn-outline-success" onclick="filterDebts('paid')">To'langan</button>
         </div>
-
-        <!-- Type filter -->
         <div class="btn-group btn-group-sm">
             <button class="btn btn-outline-info active" onclick="filterDebtType('all')">Barcha turlar</button>
             <button class="btn btn-outline-info" onclick="filterDebtType('customer_to_seller')">Mijoz</button>
             <button class="btn btn-outline-warning" onclick="filterDebtType('seller_to_boss')">Sotuvchi</button>
             <button class="btn btn-outline-primary" onclick="filterDebtType('boss_to_master')">Usta</button>
-        </div>
-
-        <!-- Date sort -->
-        <div class="btn-group btn-group-sm ms-auto">
-            <button class="btn btn-outline-secondary" onclick="sortByDueDate('asc')">
-                <i class="fas fa-sort-amount-up"></i> Muddatga
-            </button>
-            <button class="btn btn-outline-secondary" onclick="sortByDueDate('desc')">
-                <i class="fas fa-sort-amount-down"></i> Muddatga
-            </button>
         </div>
     </div>
 
@@ -149,9 +115,9 @@
                     <tr class="debt-row"
                         data-status="{{ debt.status }}"
                         data-debt-type="{{ debt.debt_type }}"
-                        data-due-date="{% if debt.due_date %}{{ debt.due_date|date:'Y-m-d' }}{% endif %}">
+                        data-due-date="{% if debt.due_date %}{{ debt.due_date|date:'Y-m-d' }}{% endif %}"
+                        data-creditor-id="{{ debt.creditor.pk }}">
 
-                        <!-- Turi -->
                         <td>
                             <span class="badge {% if debt.debt_type == 'customer_to_seller' %}bg-info
                                 {% elif debt.debt_type == 'seller_to_boss' %}bg-warning
@@ -162,7 +128,6 @@
                             </span>
                         </td>
 
-                        <!-- Qarz bergan -->
                         <td>
                             <div class="fw-bold" style="font-size: 0.9rem;">
                                 {% if debt.debt_type == 'boss_to_master' %}
@@ -173,7 +138,6 @@
                             </div>
                         </td>
 
-                        <!-- Qarz olgan -->
                         <td>
                             <div class="fw-bold" style="font-size: 0.9rem;">
                                 {% if debt.debt_type == 'boss_to_master' %}
@@ -188,28 +152,24 @@
                             </div>
                         </td>
 
-                        <!-- Summa -->
                         <td>
                             <span class="fw-bold text-danger">
                                 {% if debt.currency == 'USD' %}${% endif %}{{ debt.debt_amount|floatformat:2 }}{% if debt.currency == 'UZS' %}s{% endif %}
                             </span>
                         </td>
 
-                        <!-- To'langan -->
                         <td>
                             <span class="fw-bold text-success">
                                 {% if debt.currency == 'USD' %}${% endif %}{{ debt.paid_amount|floatformat:2 }}
                             </span>
                         </td>
 
-                        <!-- Qoldiq -->
                         <td>
                             <span class="fw-bold {% if debt.remaining_amount > 0 %}text-warning{% else %}text-success{% endif %}">
                                 {% if debt.currency == 'USD' %}${% endif %}{{ debt.remaining_amount|floatformat:2 }}
                             </span>
                         </td>
 
-                        <!-- Holat -->
                         <td>
                             <span class="badge {% if debt.status == 'active' %}bg-warning
                                 {% elif debt.status == 'paid' %}bg-success
@@ -218,7 +178,6 @@
                             </span>
                         </td>
 
-                        <!-- Muddat (dinamik rang) -->
                         <td>
                             <div>
                                 <small class="text-muted">{{ debt.created_at|date:"d.m.Y" }}</small>
@@ -232,24 +191,48 @@
                             </div>
                         </td>
 
-                        <!-- Amallar -->
                         <td>
                             <div class="btn-group btn-group-sm">
+                                <!-- Ko'rish - hamma uchun -->
                                 <a href="{% url 'sales:debt_detail' debt.pk %}"
                                    class="btn btn-outline-primary" title="Ko'rish">
                                     <i class="fas fa-eye"></i>
                                 </a>
+
+                                <!-- To'lov - Permission asosida -->
                                 {% if debt.status == 'active' and debt.remaining_amount > 0 %}
-                                    <a href="{% url 'sales:debt_payment_create' debt.pk %}"
-                                       class="btn btn-outline-success" title="To'lov">
-                                        <i class="fas fa-plus"></i>
-                                    </a>
+                                    {% if user_role == 'boss' or user_role == 'finance' %}
+                                        <!-- Boss va Finance - hamma qarzga to'lov -->
+                                        <a href="{% url 'sales:debt_payment_create' debt.pk %}"
+                                           class="btn btn-outline-success" title="To'lov">
+                                            <i class="fas fa-plus"></i>
+                                        </a>
+                                    {% elif user_role == 'seller' and debt.debt_type == 'customer_to_seller' and debt.creditor.pk == request.user.pk %}
+                                        <!-- Sotuvchi - faqat mijoz qarzlariga to'lov -->
+                                        <a href="{% url 'sales:debt_payment_create' debt.pk %}"
+                                           class="btn btn-outline-success" title="To'lov">
+                                            <i class="fas fa-plus"></i>
+                                        </a>
+                                    {% endif %}
                                 {% endif %}
+
+                                <!-- O'chirish - Permission asosida -->
                                 {% if debt.status == 'active' %}
-                                    <button type="button" class="btn btn-outline-danger"
-                                            onclick="deleteDebt({{ debt.pk }}, '{{ debt.debtor_display_name|escapejs }}')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    {% if user_role == 'boss' or user_role == 'finance' %}
+                                        <!-- Boss va Finance - hamma qarzni o'chiradi -->
+                                        <button type="button" class="btn btn-outline-danger"
+                                                onclick="confirmDelete({{ debt.pk }}, '{{ debt.debtor_display_name|escapejs }}')"
+                                                title="O'chirish">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% elif user_role == 'seller' and debt.debt_type == 'customer_to_seller' and debt.creditor.pk == request.user.pk %}
+                                        <!-- Sotuvchi - faqat mijoz qarzlarini -->
+                                        <button type="button" class="btn btn-outline-danger"
+                                                onclick="confirmDelete({{ debt.pk }}, '{{ debt.debtor_display_name|escapejs }}')"
+                                                title="O'chirish">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                         </td>
@@ -284,7 +267,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor</button>
-                <form id="deleteForm" method="post" style="display: inline;">
+                <form id="deleteForm" method="post">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-danger">O'chirish</button>
                 </form>
@@ -294,11 +277,6 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    updateDueDateColors();
-    setInterval(updateDueDateColors, 60000); // Har daqiqada yangilash
-});
-
 // Muddat ranglarini yangilash
 function updateDueDateColors() {
     const today = new Date();
@@ -310,11 +288,10 @@ function updateDueDateColors() {
 
         const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
 
-        el.classList.remove('due-ok', 'due-warning', 'due-soon', 'due-overdue');
+        el.className = 'due-date-text';
 
         if (diffDays < 0) {
             el.classList.add('due-overdue');
-            el.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${el.textContent.trim()}`;
         } else if (diffDays <= 3) {
             el.classList.add('due-soon');
         } else if (diffDays <= 7) {
@@ -325,15 +302,9 @@ function updateDueDateColors() {
     });
 }
 
-// Filter by status
+// Status filter
 function filterDebts(status) {
     const rows = document.querySelectorAll('.debt-row');
-    document.querySelectorAll('.btn-group:first-child .btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.textContent.toLowerCase().includes(status) || status === 'all') {
-            btn.classList.add('active');
-        }
-    });
 
     rows.forEach(row => {
         const match = status === 'all' || row.dataset.status === status;
@@ -341,13 +312,9 @@ function filterDebts(status) {
     });
 }
 
-// Filter by debt type
+// Debt type filter
 function filterDebtType(type) {
     const rows = document.querySelectorAll('.debt-row');
-    document.querySelectorAll('.btn-group:nth-child(2) .btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
 
     rows.forEach(row => {
         const match = type === 'all' || row.dataset.debtType === type;
@@ -355,25 +322,17 @@ function filterDebtType(type) {
     });
 }
 
-// Sort by due date
-function sortByDueDate(order) {
-    const tbody = document.querySelector('tbody');
-    const rows = Array.from(document.querySelectorAll('.debt-row'));
-
-    rows.sort((a, b) => {
-        const dateA = a.dataset.dueDate || '9999-12-31';
-        const dateB = b.dataset.dueDate || '9999-12-31';
-        return order === 'asc' ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
-    });
-
-    rows.forEach(row => tbody.appendChild(row));
-}
-
 // Delete confirmation
-function deleteDebt(id, name) {
-    document.getElementById('debtorName').textContent = name;
-    document.getElementById('deleteForm').action = `/sales/debts/${id}/delete/`;
+function confirmDelete(debtId, debtorName) {
+    document.getElementById('debtorName').textContent = debtorName;
+    document.getElementById('deleteForm').action = `/sales/debts/${debtId}/delete/`;
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateDueDateColors();
+    setInterval(updateDueDateColors, 60000);
+});
 </script>
 {% endblock %}

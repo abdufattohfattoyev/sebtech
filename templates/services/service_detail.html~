@@ -263,7 +263,7 @@
             <small class="text-muted">{{ service.master.full_name }}</small>
         </div>
         <div class="d-flex align-items-center">
-    <a href="{% url 'services:service_list' %}" class="action-btn info">
+    <a href="{% url 'services:dashboard' %}" class="action-btn info">
         <i class="fas fa-arrow-left"></i>
         <span class="d-none d-sm-inline">Ortga</span>
     </a>

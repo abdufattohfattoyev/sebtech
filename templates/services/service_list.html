@@ -246,6 +246,24 @@
                 <span>{{ service.master.first_name }} {{ service.master.last_name }}</span>
             </div>
 
+            {% if service.created_by %}
+            <div class="mt-2">
+                <small class="text-muted">
+                    <i class="fas fa-user-tie me-1"></i>
+                    Bergan: {{ service.created_by.get_full_name|default:service.created_by.username }}
+                </small>
+            </div>
+            {% endif %}
+
+            {% if service.status == 'completed' and service.completed_by %}
+            <div class="mt-1">
+                <small class="text-success">
+                    <i class="fas fa-check-circle me-1"></i>
+                    Tugallagan: {{ service.completed_by.get_full_name|default:service.completed_by.username }}
+                </small>
+            </div>
+            {% endif %}
+
             <div class="price-grid">
                 <div class="price-item">
                     <div class="price-label">Xizmat haqi</div>
@@ -308,6 +326,7 @@
                 <tr>
                     <th>Telefon</th>
                     <th>Usta</th>
+                    <th>Ustaga bergan</th>
                     <th>Holat</th>
                     <th class="text-end">Haqi</th>
                     <th class="text-end">To'langan</th>
@@ -330,6 +349,18 @@
                             </div>
                             <span>{{ service.master.first_name }} {{ service.master.last_name }}</span>
                         </div>
+                    </td>
+                    <td>
+                        {% if service.created_by %}
+                            <small>{{ service.created_by.get_full_name|default:service.created_by.username }}</small>
+                        {% else %}
+                            <small class="text-muted">-</small>
+                        {% endif %}
+                        {% if service.status == 'completed' and service.completed_by %}
+                            <br><small class="text-success">
+                                <i class="fas fa-check-circle"></i> {{ service.completed_by.get_full_name|default:service.completed_by.username }}
+                            </small>
+                        {% endif %}
                     </td>
                     <td>
                         {% if service.status == 'in_progress' %}
@@ -368,7 +399,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8">
+                    <td colspan="9">
                         <div class="empty-state">
                             <i class="fas fa-clipboard-list fa-3x mb-3"></i>
                             <h5>Xizmatlar topilmadi</h5>

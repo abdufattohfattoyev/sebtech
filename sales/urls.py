@@ -13,6 +13,7 @@ urlpatterns = [
     path('api/search-phone-by-imei/', views.search_phone_by_imei_api, name='search_phone_by_imei_api'),
     path("api/search-phone-sale-by-imei/", views.search_phone_sale_by_imei_api, name="search_phone_sale_by_imei_api"),
     path('api/search-accessory-by-code/', views.search_accessory_by_code_api, name='search_accessory_by_code_api'),
+    path('api/get-phone-sale/<int:pk>/', views.get_phone_sale_api, name='get_phone_sale_api'),
 
     # Phone Sales
     path('phone-sales/', views.phone_sale_list, name='phone_sale_list'),
@@ -41,17 +42,16 @@ urlpatterns = [
     path('phone-exchange/<int:pk>/edit/', views.phone_exchange_edit, name='phone_exchange_edit'),
     path('phone-exchange/<int:pk>/delete/', views.phone_exchange_delete, name='phone_exchange_delete'),
 
-    # Debts
+    # Debts - TO'LDIRILGAN
     path('debts/', views.debt_list, name='debt_list'),
     path('debts/create/', views.debt_create, name='debt_create'),
     path('debts/<int:pk>/', views.debt_detail, name='debt_detail'),
     path('debts/<int:pk>/edit/', views.debt_edit, name='debt_edit'),
-    path('debts/<int:pk>/delete/', views.debt_delete, name='debt_delete'),
+    path('debts/<int:pk>/delete/', views.debt_delete, name='debt_delete'),  # BU YO'Q EDI!
 
-    # Debt Payments - TO'G'IRLANGAN URL PATTERN
+    # Debt Payments
     path('debt-payments/', views.debt_payment_list, name='debt_payment_list'),
     path('debt-payments/create/<int:debt_id>/', views.debt_payment_create, name='debt_payment_create'),
-    # debt_id parametri qo'shildi
     path('debt-payments/<int:pk>/', views.debt_payment_detail, name='debt_payment_detail'),
     path('debt-payments/<int:pk>/edit/', views.debt_payment_edit, name='debt_payment_edit'),
     path('debt-payments/<int:pk>/delete/', views.debt_payment_delete, name='debt_payment_delete'),
@@ -62,7 +62,4 @@ urlpatterns = [
     path('expenses/<int:pk>/', views.expense_detail, name='expense_detail'),
     path('expenses/<int:pk>/edit/', views.expense_edit, name='expense_edit'),
     path('expenses/<int:pk>/delete/', views.expense_delete, name='expense_delete'),
-
-
-    path('api/get-phone-sale/<int:pk>/', views.get_phone_sale_api, name='get_phone_sale_api'),
 ]

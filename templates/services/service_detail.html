@@ -52,6 +52,21 @@
     text-align: right;
 }
 
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    background: #f3f4f6;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+}
+
+.user-badge i {
+    color: #6b7280;
+    font-size: 0.75rem;
+}
+
 .repair-reasons {
     background: #f9fafb;
     padding: 0.75rem;
@@ -125,6 +140,15 @@
     align-items: center;
     gap: 0.5rem;
     text-decoration: none;
+}
+
+.action-btn.info {
+    background: #6b7280;
+    color: white;
+}
+
+.action-btn.info:hover {
+    background: #4b5563;
 }
 
 .action-btn.primary {
@@ -262,14 +286,11 @@
             <h5 class="mb-1">{{ service.phone.phone_model }} {{ service.phone.memory_size }}</h5>
             <small class="text-muted">{{ service.master.full_name }}</small>
         </div>
-        <div class="d-flex align-items-center">
-    <a href="{% url 'services:dashboard' %}" class="action-btn info">
-        <i class="fas fa-arrow-left"></i>
-        <span class="d-none d-sm-inline">Ortga</span>
-    </a>
-</div>
-
         <div class="d-flex gap-2">
+            <a href="{% url 'services:dashboard' %}" class="action-btn info">
+                <i class="fas fa-arrow-left"></i>
+                <span class="d-none d-sm-inline">Ortga</span>
+            </a>
             <a href="{% url 'services:service_edit' service.pk %}" class="action-btn primary">
                 <i class="fas fa-edit"></i>
                 <span class="d-none d-sm-inline">Tahrirlash</span>
@@ -336,8 +357,36 @@
                 </div>
 
                 <div class="mt-3">
-                    <h6>Holat</h6>
-                    <span class="status-badge {{ service.status }}">{{ service.get_status_display }}</span>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <h6>Holat</h6>
+                            <span class="status-badge {{ service.status }}">{{ service.get_status_display }}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Kim yaratdi</h6>
+                            <span class="user-badge">
+                                <i class="fas fa-user"></i>
+                                {% if service.created_by %}
+                                    {{ service.created_by.get_full_name|default:service.created_by.username }}
+                                {% else %}
+                                    Noma'lum
+                                {% endif %}
+                            </span>
+                            <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem;">
+                                {{ service.created_at|date:"d.m.Y H:i" }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if service.status == 'completed' and service.completed_by %}
+                    <div class="mt-3">
+                        <h6>Kim tugalladi</h6>
+                        <span class="user-badge" style="background: #dcfce7; color: #166534;">
+                            <i class="fas fa-check-circle"></i>
+                            {{ service.completed_by.get_full_name|default:service.completed_by.username }}
+                        </span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

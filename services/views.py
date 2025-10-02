@@ -693,6 +693,12 @@ def service_update_status(request, pk):
                 # Status o'zgartirish
                 service.status = new_status
 
+                # ✅ YANGI: Kim tugallaganini saqlash
+                if new_status == 'completed':
+                    service.completed_by = request.user
+                elif new_status == 'in_progress':
+                    service.completed_by = None  # Qayta jarayonga o'tkazilsa, tozalash
+
                 # Manual validation o'tkazish (ValidationError ni ushlash uchun)
                 try:
                     service.full_clean()
@@ -713,7 +719,8 @@ def service_update_status(request, pk):
                         'message': '; '.join(error_messages)
                     })
 
-                service.save(update_fields=['status'])
+                # ✅ TO'G'IRLANGAN: completed_by ham saqlanadi
+                service.save(update_fields=['status', 'completed_by'])
 
                 # Telefon holatini yangilash
                 if new_status == 'completed':
@@ -746,6 +753,10 @@ def service_update_status(request, pk):
             # Response message
             status_text = 'tugallandi' if new_status == 'completed' else 'jarayonga qaytarildi'
             message = f'Xizmat {status_text}!'
+
+            # ✅ YANGI: Kim tugallaganini message ga qo'shish
+            if new_status == 'completed':
+                message += f' ({request.user.get_full_name() or request.user.username} tomonidan)'
 
             # Ogohlantirish - to'lanmagan qarz borligini ko'rsatish
             unpaid_amount = service.service_fee - service.paid_amount

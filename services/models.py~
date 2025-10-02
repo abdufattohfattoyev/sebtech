@@ -134,6 +134,7 @@ class MasterService(models.Model):
         blank=True,
         verbose_name="Yaratgan foydalanuvchi"
     )
+    
 
     class Meta:
         verbose_name = "Usta xizmati"
@@ -227,16 +228,14 @@ class MasterService(models.Model):
 
     def create_or_update_debt(self):
         """
-        TO'G'IRLANGAN QARZ MANTIQIY:
-        - Usta xizmat bajaradi va pul olishi kerak
-        - Boshliq ustaga pul to'lashi kerak
-        - boss_to_master: Boshliq → Usta (qarz beruvchi - boshliq, oluvchi - usta)
+        ✅ TO'G'RILANGAN QARZ MANTIQIY:
+        - boss_to_master: Boshliq → Usta (boshliq to'lashi kerak)
         """
         remaining = self.remaining_amount
         shop_owner = getattr(self.phone, 'shop', None) and self.phone.shop.owner
 
         if not shop_owner:
-            print("Shop owner topilmadi")
+            print("❌ Shop owner topilmadi")
             return
 
         try:
@@ -244,9 +243,9 @@ class MasterService(models.Model):
 
             # Ushbu xizmat uchun qarz borligini tekshirish
             existing_debt = Debt.objects.filter(
-                debt_type='boss_to_master',  # Boshliq → Usta
-                creditor=shop_owner,         # Boshliq qarz bergan (to'lashi kerak)
-                master=self.master,          # Usta qarz olgan (pul olishi kerak)
+                debt_type='boss_to_master',
+                creditor=shop_owner,
+                master=self.master,
                 status='active',
                 notes__contains=f"Xizmat ID: {self.id}"
             ).first()
@@ -254,32 +253,36 @@ class MasterService(models.Model):
             if remaining > 0:
                 if existing_debt:
                     # Mavjud qarzni yangilash
-                    old_amount = existing_debt.debt_amount
                     existing_debt.debt_amount = remaining
+                    existing_debt.currency = 'USD'  # ✅ Valyuta qo'shildi
                     existing_debt.notes = f"Usta xizmati: {self.master.full_name}, Telefon: {self.phone}, Xizmat ID: {self.id}"
-                    existing_debt.save(update_fields=['debt_amount', 'notes'])
-                    print(
-                        f"Qarz yangilandi: {shop_owner.username} → {self.master.full_name}, ${old_amount} → ${remaining}")
+                    existing_debt.save(update_fields=['debt_amount', 'currency', 'notes'])
+                    print(f"✅ Qarz yangilandi: {shop_owner.username} → {self.master.full_name}, ${remaining}")
                 else:
                     # Yangi qarz yaratish
                     Debt.objects.create(
-                        debt_type='boss_to_master',     # Boshliq → Usta
-                        creditor=shop_owner,            # Boshliq qarz bergan
-                        master=self.master,             # Usta qarz olgan
+                        debt_type='boss_to_master',
+                        creditor=shop_owner,  # Boshliq to'lashi kerak
+                        master=self.master,  # Usta pul olishi kerak
+                        currency='USD',  # ✅ Valyuta qo'shildi
                         debt_amount=remaining,
+                        paid_amount=Decimal('0'),  # ✅ Qo'shildi
+                        status='active',
                         notes=f"Usta xizmati: {self.master.full_name}, Telefon: {self.phone}, Xizmat ID: {self.id}"
                     )
-                    print(f"Yangi qarz yaratildi: {shop_owner.username} → {self.master.full_name}, ${remaining}")
+                    print(f"✅ Yangi qarz yaratildi: {shop_owner.username} → {self.master.full_name}, ${remaining}")
             else:
                 # To'liq to'langanda qarzni o'chirish
                 if existing_debt:
-                    debt_amount = existing_debt.debt_amount
                     existing_debt.delete()
-                    print(
-                        f"Qarz to'liq to'landi va o'chirildi: {shop_owner.username} → {self.master.full_name}, ${debt_amount}")
+                    print(f"✅ Qarz to'liq to'landi va o'chirildi: ${existing_debt.debt_amount}")
 
         except Exception as e:
-            print(f"Qarz yaratishda xatolik: {e}")
+            print(f"❌ Qarz yaratishda xatolik: {e}")
+            import traceback
+            traceback.print_exc()
+
+
 
     def update_paid_amount(self):
         total_paid = self.payments.aggregate(
@@ -296,19 +299,22 @@ class MasterService(models.Model):
         return total_paid
 
     def save(self, *args, **kwargs):
+        """✅ TO'G'RILANGAN save metodi"""
         is_new = not self.pk
 
         if not kwargs.get('skip_validation', False):
             self.full_clean()
 
+        # Telefon statusini yangilash
         if is_new and self.phone:
             self.phone.status = 'master'
             self.phone.save(update_fields=['status'])
 
         super().save(*args, **kwargs)
 
-        # Qarzni yaratish yoki yangilash
-        if is_new or not kwargs.get('update_fields') or 'paid_amount' in kwargs.get('update_fields', []):
+        # ✅ Qarzni yaratish yoki yangilash (har doim)
+        if 'update_fields' not in kwargs or kwargs.get('update_fields') is None or 'paid_amount' in kwargs.get(
+                'update_fields', []):
             self.create_or_update_debt()
 
     def delete(self, *args, **kwargs):
