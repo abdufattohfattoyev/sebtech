@@ -4,7 +4,7 @@ from django.dispatch import receiver
 from django.db.models import Sum
 from django.db import transaction
 from decimal import Decimal
-from .models import PhoneSale, PhoneExchange, Debt, DebtPayment, Expense, PhoneReturn
+from .models import PhoneSale, PhoneExchange, Debt, DebtPayment, Expense, PhoneReturn, AccessorySale
 
 
 # ==================== PhoneSale Signals ====================
@@ -24,23 +24,33 @@ def handle_phone_sale_create_update(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=PhoneSale)
 def handle_phone_sale_delete(sender, instance, **kwargs):
-    """PhoneSale o'chirilganda"""
+    """PhoneSale o'chirilganda bog'liq qarzlarni o'chirish"""
     try:
         with transaction.atomic():
             if instance.phone:
                 instance.phone.status = 'shop'
                 instance.phone.save(update_fields=['status'])
 
+            # ✅ BOG'LIQ QARZLARNI TO'LIQ O'CHIRISH
             if instance.debt_amount > 0:
                 shop_owner = instance.phone.shop.owner if instance.phone else None
 
+                # Mijoz → Sotuvchi qarz
+                Debt.objects.filter(
+                    debt_type='customer_to_seller',
+                    creditor=instance.salesman,
+                    customer=instance.customer,
+                    currency='USD',
+                    notes__contains=instance.phone.imei
+                ).delete()
+
+                # Sotuvchi → Boss qarz
                 if shop_owner:
                     Debt.objects.filter(
-                        debt_type='customer_to_seller',
+                        debt_type='seller_to_boss',
+                        debtor=instance.salesman,
                         creditor=shop_owner,
-                        customer=instance.customer,
                         currency='USD',
-                        status='active',
                         notes__contains=instance.phone.imei
                     ).delete()
 
@@ -212,3 +222,33 @@ def handle_expense_delete(sender, instance, **kwargs):
 
     except Exception as e:
         print(f"Expense delete signal error: {e}")
+
+
+# sales/signals.py
+
+@receiver(post_delete, sender=AccessorySale)
+def handle_accessory_sale_delete(sender, instance, **kwargs):
+    """AccessorySale o'chirilganda aksessuar sonini qaytarish"""
+    try:
+        with transaction.atomic():
+            if instance.accessory:
+                # Sotilgan miqdorni ombor qaytarish
+                instance.accessory.quantity += instance.quantity
+                instance.accessory.save(update_fields=['quantity'])
+
+            # Qarzni o'chirish
+            if instance.debt_amount > 0:
+                shop_owner = instance.accessory.shop.owner if instance.accessory else None
+
+                if shop_owner:
+                    Debt.objects.filter(
+                        debt_type='customer_to_seller',
+                        creditor=shop_owner,
+                        customer=instance.customer,
+                        currency='UZS',
+                        status='active',
+                        notes__contains=f"{instance.accessory.name}"
+                    ).delete()
+
+    except Exception as e:
+        print(f"AccessorySale delete signal error: {e}")

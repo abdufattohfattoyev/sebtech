@@ -358,8 +358,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="returns-warning-content">
       <h4>Qaytarilgan telefonlar mavjud!</h4>
       <p>
-        Bugun <strong>{{ seller_stats.counts.returns }} ta</strong> telefon qaytarildi
-        (<strong>${{ seller_stats.sales.returns_total_usd|floatformat:2 }}</strong>).
+        Bugun <strong>{{ seller_stats.counts.returns }} ta</strong> telefon qaytarildi.
         Bu telefonlar sotish sonidan va foydadan ayirilgan. Komissiya hisoblanmaydi.
       </p>
     </div>
@@ -472,7 +471,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 Mijoz: {{ sale.customer.name }}<br>
                 Birlik: {{ sale.unit_price|floatformat:0 }} so'm<br>
                 Naqd: {{ sale.cash_amount|floatformat:0 }}{% if sale.card_amount > 0 %} | Karta: {{ sale.card_amount|floatformat:0 }}{% endif %}<br>
-                <strong>Foyda: {{ sale.profit|floatformat:0 }} so'm</strong>
+                <strong>Foyda: {{ sale.calculated_profit|floatformat:0 }} so'm</strong>
               </div>
             </div>
             {% endfor %}
@@ -539,8 +538,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   {% if seller_stats.sales_data.phone_returns %}
   <div class="card">
     <div class="card-header returns">
-      ⚠️ Qaytarilgan Telefonlar ({{ seller_stats.counts.returns }}) -
-      <span style="color: #dc2626;">-${{ seller_stats.sales.returns_total_usd|floatformat:2 }}</span>
+      ⚠️ Qaytarilgan Telefonlar ({{ seller_stats.counts.returns }})
     </div>
     <div class="card-body">
       <div class="sales-list">
@@ -556,8 +554,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
             Mijoz: {{ return.phone_sale.customer.name }}<br>
             IMEI: {{ return.phone_sale.phone.imei|default:"N/A" }}<br>
             Qaytarish sanasi: {{ return.return_date|date:"d.m.Y" }}<br>
-            <strong style="color: #dc2626;">Sabab:</strong> {{ return.reason|truncatewords:10 }}<br>
-            <strong style="color: #dc2626;">Yo'qotilgan foyda: ${{ return.phone_sale.sale_price|add:return.phone_sale.phone.cost_price|floatformat:2 }}</strong>
+            <strong style="color: #dc2626;">Sabab:</strong> {{ return.reason|truncatewords:10 }}
           </div>
         </div>
         {% endfor %}

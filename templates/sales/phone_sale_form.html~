@@ -40,6 +40,23 @@
 .payment-calc.valid { background: #d4edda; border-color: #28a745; }
 .payment-calc.invalid { background: #fff3cd; border-color: #ffc107; }
 
+.debt-due-field {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+    display: none;
+    animation: fadeIn 0.3s;
+}
+.debt-due-field.show { display: block; }
+.debt-due-field label {
+    color: #856404;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -149,7 +166,6 @@
             </div>
         </div>
 
-        <!-- Hidden phone field -->
         <input type="hidden" name="phone" id="phoneId">
 
         <!-- Asosiy ma'lumotlar -->
@@ -227,6 +243,22 @@
                     </div>
                 </div>
 
+                <!-- Qarz muddati -->
+                <div class="debt-due-field {% if form.instance.debt_amount and form.instance.debt_amount > 0 %}show{% endif %}" id="debtDueField">
+                    <label>
+                        <i class="fas fa-calendar-alt"></i> Qarz qaytarish muddati <span class="text-danger">*</span>
+                    </label>
+                    {{ form.debt_due_date }}
+                    {% if form.debt_due_date.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.debt_due_date.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <small class="text-muted d-block mt-1">Qarz bo'lganda qaytarish sanasi kiritilishi shart</small>
+                </div>
+
                 <div class="payment-calc mt-3" id="paymentCalc">
                     <div class="row text-center">
                         <div class="col-4">
@@ -254,7 +286,6 @@
             {{ form.notes }}
         </div>
 
-        <!-- Django form errors -->
         {% if form.errors %}
         <div class="alert alert-danger mb-3">
             <strong>Xatolar:</strong>
@@ -293,11 +324,14 @@ document.addEventListener('DOMContentLoaded', function() {
         customerName: $('{{ form.customer_name.id_for_label }}'),
         customerPhone: $('{{ form.customer_phone.id_for_label }}'),
         salePrice: $('{{ form.sale_price.id_for_label }}'),
+        debtAmount: $('{{ form.debt_amount.id_for_label }}'),
+        debtDueDate: $('{{ form.debt_due_date.id_for_label }}'),
+        debtDueField: $('debtDueField'),
         payments: [
-            document.getElementById('{{ form.cash_amount.id_for_label }}'),
-            document.getElementById('{{ form.card_amount.id_for_label }}'),
-            document.getElementById('{{ form.credit_amount.id_for_label }}'),
-            document.getElementById('{{ form.debt_amount.id_for_label }}')
+            $('{{ form.cash_amount.id_for_label }}'),
+            $('{{ form.card_amount.id_for_label }}'),
+            $('{{ form.credit_amount.id_for_label }}'),
+            $('{{ form.debt_amount.id_for_label }}')
         ],
         paymentCalc: $('paymentCalc'),
         totalPayment: $('totalPayment'),
@@ -307,7 +341,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let searchTimeout, results = [], selectedIndex = -1, currentPhoneData = null;
 
-    // Initialize phone data
     initializePhoneData();
 
     function initializePhoneData() {
@@ -320,14 +353,39 @@ document.addEventListener('DOMContentLoaded', function() {
             condition: {{ form.instance.phone.condition_percentage }},
             sale_price: "{{ form.instance.phone.sale_price|default:'0' }}"
         };
-
         currentPhoneData = phoneData;
         elements.phoneId.value = phoneData.id;
         elements.imeiSearch.value = phoneData.imei;
         displaySelectedPhone(phoneData);
-        console.log('Telefon yuklandi:', phoneData);
         {% endif %}
+
+        // Qarz maydonini ko'rsatish
+        const debtAmount = parseFloat(elements.debtAmount.value) || 0;
+        if (debtAmount > 0) {
+            elements.debtDueField.classList.add('show');
+            elements.debtDueDate.required = true;
+
+            // Agar sana yo'q bo'lsa va formda mavjud bo'lsa
+            {% if form.debt_due_date.value %}
+            if (!elements.debtDueDate.value) {
+                elements.debtDueDate.value = '{{ form.debt_due_date.value|date:"Y-m-d" }}';
+            }
+            {% endif %}
+        }
     }
+
+    function checkDebtDueField() {
+        const debtAmount = parseFloat(elements.debtAmount.value) || 0;
+        if (debtAmount > 0) {
+            elements.debtDueField.classList.add('show');
+            elements.debtDueDate.required = true;
+        } else {
+            elements.debtDueField.classList.remove('show');
+            elements.debtDueDate.required = false;
+        }
+    }
+
+    elements.debtAmount.addEventListener('input', checkDebtDueField);
 
     // IMEI qidirish
     elements.imeiSearch.addEventListener('input', function() {
@@ -424,7 +482,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Telefon tozalash
     $('clearPhone').addEventListener('click', function() {
         elements.phoneId.value = '';
         elements.imeiSearch.value = '';
@@ -460,7 +517,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // To'lovlar hisoblash
     function calculatePayments() {
         const total = elements.payments.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
         const price = parseFloat(elements.salePrice.value) || 0;
@@ -490,16 +546,11 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => toast.remove(), 3000);
     }
 
-    // Event listeners
     elements.payments.concat([elements.salePrice]).forEach(el => {
         el.addEventListener('input', calculatePayments);
-
         el.addEventListener('focus', function() {
-            if (this.value === '0' || this.value === '0.00') {
-                this.value = '';
-            }
+            if (this.value === '0' || this.value === '0.00') this.value = '';
         });
-
         el.addEventListener('blur', function() {
             if (this.value === '' || this.value === '.') {
                 this.value = '0';
@@ -508,7 +559,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Form submit
     $('saleForm').addEventListener('submit', function(e) {
         if (!elements.phoneId.value) {
             e.preventDefault();
@@ -531,6 +581,14 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        const debtAmount = parseFloat(elements.debtAmount.value) || 0;
+        if (debtAmount > 0 && !elements.debtDueDate.value) {
+            e.preventDefault();
+            showAlert('Qarz uchun qaytarish muddati kiritilishi kerak!', 'danger');
+            elements.debtDueDate.focus();
+            return;
+        }
+
         const total = elements.payments.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
         const price = parseFloat(elements.salePrice.value) || 0;
 
@@ -544,7 +602,6 @@ document.addEventListener('DOMContentLoaded', function() {
         $('submitBtn').disabled = true;
     });
 
-    // Telefon raqam formatlash
     elements.customerPhone.addEventListener('input', function() {
         let val = this.value.replace(/\D/g, '');
         if (val.startsWith('998')) val = '+' + val;
@@ -552,14 +609,12 @@ document.addEventListener('DOMContentLoaded', function() {
         this.value = val;
     });
 
-    // Click outside
     document.addEventListener('click', e => {
         if (!elements.imeiSearch.contains(e.target) && !elements.searchResults.contains(e.target)) {
             hideResults();
         }
     });
 
-    // Initialize
     calculatePayments();
 });
 </script>

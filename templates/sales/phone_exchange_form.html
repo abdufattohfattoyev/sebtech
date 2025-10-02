@@ -50,7 +50,10 @@
             <div class="card-body">
                 <div class="mb-3 search-box">
                     <label class="form-label fw-bold">IMEI qidirish</label>
-                    <input type="text" id="phoneSearch" class="form-control" placeholder="IMEI..." autocomplete="off">
+                    <input type="text" id="phoneSearch" class="form-control" placeholder="IMEI..." autocomplete="off"
+                        {% if phone_exchange and phone_exchange.new_phone %}
+                        value="{{ phone_exchange.new_phone.phone_model }} {{ phone_exchange.new_phone.memory_size }} - IMEI: {{ phone_exchange.new_phone.imei }}"
+                        {% endif %}>
                     <div id="phoneResults" class="search-results"></div>
                 </div>
                 <div class="row">
@@ -60,6 +63,11 @@
                     </div>
                 </div>
                 {{ form.new_phone }}
+
+                {# ✅ EDIT HOLATIDA TELEFON ID NI KO'RSATISH #}
+                {% if phone_exchange and phone_exchange.new_phone %}
+                <input type="hidden" id="existing_phone_id" value="{{ phone_exchange.new_phone.id }}">
+                {% endif %}
             </div>
         </div>
 
@@ -115,6 +123,12 @@
                 <div class="mb-3">
                     <label class="form-label">{{ form.old_phone_image.label }}</label>
                     {{ form.old_phone_image }}
+                    {% if phone_exchange and phone_exchange.old_phone_image %}
+                    <div class="mt-2">
+                        <small>Hozirgi rasm:</small><br>
+                        <img src="{{ phone_exchange.old_phone_image.url }}" style="max-width: 200px; max-height: 200px;" class="img-thumbnail">
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -231,6 +245,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const payments = ['cash_amount', 'card_amount', 'credit_amount', 'debt_amount'].map(id => $('id_' + id));
     let searchTimeout;
+
+    // ✅ EDIT HOLATIDA TELEFON ID NI O'RNATISH
+    const existingPhoneId = $('existing_phone_id');
+    if (existingPhoneId && existingPhoneId.value) {
+        newPhoneField.value = existingPhoneId.value;
+        console.log('Edit mode: Phone ID set to', existingPhoneId.value);
+    }
 
     // Qarz muddati ko'rsatish
     function checkDebtDueField() {
@@ -388,7 +409,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // ✅ SAHIFA YUKLANGANDA HISOBLASH
     calculateDifference();
+    checkDebtDueField();
 });
 </script>
 {% endblock %}

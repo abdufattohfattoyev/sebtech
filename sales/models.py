@@ -140,28 +140,43 @@ class Debt(models.Model):
             self.save(update_fields=['paid_amount', 'status', 'updated_at'])
 
     def clean(self):
-        """Validatsiya"""
+        """Validatsiya - form orqali yaratilgan qarzlar uchun"""
+        errors = {}
+
         # Valyuta bo'yicha maksimal summa
         if self.currency == 'USD' and self.debt_amount > 500:
-            raise ValidationError("Dollar qarz summasi maksimal 500$ bo'lishi kerak!")
+            errors['debt_amount'] = "Dollar qarz summasi maksimal 500$ bo'lishi kerak!"
         elif self.currency == 'UZS' and self.debt_amount > 10000000:
-            raise ValidationError("So'm qarz summasi maksimal 10,000,000 so'm bo'lishi kerak!")
+            errors['debt_amount'] = "So'm qarz summasi maksimal 10,000,000 so'm bo'lishi kerak!"
 
-        # ✅ Minimal summa tekshiruvi
+        # Minimal summa tekshiruvi
         if self.debt_amount <= 0:
-            raise ValidationError("Qarz summasi 0 dan katta bo'lishi kerak!")
+            errors['debt_amount'] = "Qarz summasi 0 dan katta bo'lishi kerak!"
 
-        # Qarz oluvchi tekshiruvi
-        debt_recipients = [self.debtor, self.customer, self.master]
-        active_recipients = [r for r in debt_recipients if r is not None]
+        # ✅ MUHIM: Qarz oluvchi tekshiruvini FAQAT pk mavjud bo'lganda qilish
+        if self.pk is not None:
+            debt_recipients = [self.debtor, self.customer, self.master]
+            active_recipients = [r for r in debt_recipients if r is not None]
 
-        if len(active_recipients) == 0:
-            raise ValidationError("Qarz oluvchi ko'rsatilishi shart!")
-        if len(active_recipients) > 1:
-            raise ValidationError("Faqat bitta qarz oluvchi tanlanishi mumkin!")
+            if len(active_recipients) == 0:
+                errors['debtor'] = "Qarz oluvchi ko'rsatilishi shart!"
+            elif len(active_recipients) > 1:
+                errors['debtor'] = "Faqat bitta qarz oluvchi tanlanishi mumkin!"
 
+            # Qarz turi va qarz oluvchi mosligi
+            if self.debt_type == 'customer_to_seller' and not self.customer:
+                errors['customer'] = "Mijoz → Sotuvchi qarzi uchun mijoz tanlanishi shart!"
+            elif self.debt_type == 'seller_to_boss' and not self.debtor:
+                errors['debtor'] = "Sotuvchi → Boshliq qarzi uchun sotuvchi tanlanishi shart!"
+            elif self.debt_type == 'boss_to_master' and not self.master:
+                errors['master'] = "Boshliq → Usta qarzi uchun usta tanlanishi shart!"
+
+        # To'langan summa tekshiruvi
         if self.paid_amount > self.debt_amount:
-            raise ValidationError("To'langan summa qarz summasidan ko'p bo'lmasligi kerak!")
+            errors['paid_amount'] = "To'langan summa qarz summasidan ko'p bo'lmasligi kerak!"
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         """Saqlash - avtomatik status yangilash bilan"""
@@ -172,8 +187,7 @@ class Debt(models.Model):
             self.status = 'active'
 
         # Validatsiya
-        if not kwargs.pop('skip_validation', False):
-            self.full_clean()
+        self.full_clean()
 
         super().save(*args, **kwargs)
 
@@ -523,6 +537,13 @@ class PhoneExchange(models.Model):
     def __str__(self):
         return f"{self.customer_name} — {self.old_phone_model} → {self.new_phone}"
 
+    # ✅ __init__ ENG BIRINCHI BO'LISHI KERAK!
+    def __init__(self, *args, **kwargs):
+        """Asl qiymatlarni saqlash"""
+        super().__init__(*args, **kwargs)
+        # Asl telefon ID ni saqlash
+        self._original_new_phone_id = self.new_phone_id if self.pk else None
+
     def calculate_price_difference(self):
         """Narx farqini hisoblash"""
         self.price_difference = self.new_phone_price - self.old_phone_accepted_price
@@ -543,11 +564,13 @@ class PhoneExchange(models.Model):
 
         # IMEI dublikat tekshiruvi
         if self.old_phone_imei and self.old_phone_imei.strip():
-            # Faqat 15 raqamli IMEI ni tekshirish
             imei = self.old_phone_imei.strip()
             if len(imei) == 15 and imei.isdigit():
-                # Shu IMEI bilan telefon mavjudmi?
+                # ✅ O'ZINI CHIQARIB TASHLASH
                 existing_phones = Phone.objects.filter(imei=imei)
+                if self.created_old_phone:
+                    existing_phones = existing_phones.exclude(pk=self.created_old_phone.pk)
+
                 if existing_phones.exists():
                     raise ValidationError(
                         f"IMEI {imei} raqami bilan telefon allaqachon mavjud! "
@@ -574,26 +597,35 @@ class PhoneExchange(models.Model):
                     "Teng almashtirish yoki do'kon to'laydigan holatda to'lov summalari 0 bo'lishi kerak."
                 )
 
-        # Yangi telefon tekshiruvi
         if not self.new_phone_id:
             raise ValidationError("Yangi telefon tanlanishi kerak!")
 
-        # Qabul narxi tekshiruvi
         if self.old_phone_accepted_price < 0:
             raise ValidationError("Qabul narxi manfiy bo'lishi mumkin emas!")
 
     def save(self, *args, **kwargs):
-        """Saqlash"""
-        # Yangi telefonni "sotilgan" qilish
+        """Saqlash - yangi va update holatlarini ajratish"""
+        is_new = not self.pk
+
+        # ✅ Yangi telefonni "sotilgan" qilish (faqat zarurat bo'lganda)
         if self.new_phone:
-            self.new_phone.status = 'sold'
-            self.new_phone.save(update_fields=['status'])
+            # FAQAT yangi yaratishda yoki telefon almashtirilganda
+            should_update_status = (
+                    is_new or
+                    (hasattr(self, '_original_new_phone_id') and
+                     self._original_new_phone_id and
+                     self._original_new_phone_id != self.new_phone_id)
+            )
+
+            if should_update_status:
+                self.new_phone.status = 'sold'
+                self.new_phone.save(update_fields=['status'])
 
         # Asosiy saqlash
         super().save(*args, **kwargs)
 
-        # Eski telefonni yaratish
-        if not self.created_old_phone:
+        # ✅ Eski telefonni FAQAT yangi yaratishda yaratish
+        if is_new and not self.created_old_phone:
             old_phone = Phone.objects.create(
                 shop=self.new_phone.shop,
                 phone_model=self.old_phone_model,
@@ -612,5 +644,6 @@ class PhoneExchange(models.Model):
                 original_owner_phone=self.customer_phone_number,
                 created_by=self.salesman,
             )
+            # ✅ Recursion oldini olish
+            PhoneExchange.objects.filter(pk=self.pk).update(created_old_phone=old_phone)
             self.created_old_phone = old_phone
-            self.save(update_fields=['created_old_phone'])

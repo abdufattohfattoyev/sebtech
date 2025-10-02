@@ -185,8 +185,8 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
         <div class="returns-alert-content">
             <h4>Bu oyda {{ salary_data.sales.returns_count }} ta telefon qaytarildi!</h4>
             <p>
-                Qaytarilgan telefonlar sotish sonidan ayirildi va ular uchun komissiya hisoblanmadi.
-                Yo'qotilgan foyda: <strong>${{ salary_data.profits.returns_profit|floatformat:2 }}</strong>
+                Qaytarilgan telefonlar <strong>sotish sonidan va maosh hisob-kitobidan to'liq ayirildi</strong>.
+                Faqat hozirda faol sotuvlar uchun komissiya hisoblanadi.
             </p>
         </div>
     </div>
@@ -266,9 +266,9 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
             <div>
                 <div class="commission-title">Komissiya Tafsilotlari</div>
                 <div class="commission-subtitle">
-                    Qaytarilganlar ayirilgandan keyin sof foydadan hisoblanadi
+                    Faqat hozirda faol sotuvlardan hisoblanadi
                     {% if salary_data.sales.returns_count > 0 %}
-                    <span style="color: #dc2626;">({{ salary_data.sales.returns_count }} ta qaytarildi)</span>
+                    <span style="color: #dc2626;">({{ salary_data.sales.returns_count }} ta qaytarilgan hisobga olinmadi)</span>
                     {% endif %}
                 </div>
             </div>
@@ -278,12 +278,12 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
             <div class="commission-card usd">
                 <div class="commission-card-title usd">
                     <span class="currency-icon">💵</span>
-                    <span>Dollar ($) - Komissiyalar</span>
+                    <span>Dollar ($) - Komissiyalar (Faol sotuvlar)</span>
                 </div>
                 <div class="commission-items">
                     <div class="commission-item phone">
                         <div>
-                            <div class="commission-label">Telefon (Sof)</div>
+                            <div class="commission-label">Telefon (Faol)</div>
                             <div class="commission-calc">${{ salary_data.profits.phone_profit|floatformat:2 }} × {{ salary_data.commission_rates.phone_rate }}%</div>
                         </div>
                         <div class="commission-value usd">${{ salary_data.commission.phone_commission|floatformat:2 }}</div>
@@ -440,17 +440,17 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
     </div>
 
     <div class="total-salary">
-        <div class="total-label">OYLIK MAOSH (SOF)</div>
+        <div class="total-label">OYLIK MAOSH (FAQAT FAOL SOTUVLARDAN)</div>
         <div class="total-value">${{ salary_data.commission.total_salary|floatformat:2 }}</div>
         <div class="total-breakdown">
             <strong>Dollar hisobida:</strong> Asosiy: ${{ salary_data.commission.base_salary|floatformat:2 }} +
-            Telefon (sof): ${{ salary_data.commission.phone_commission|floatformat:2 }} +
+            Telefon (faol): ${{ salary_data.commission.phone_commission|floatformat:2 }} +
             Almashtirish: ${{ salary_data.commission.exchange_commission|floatformat:2 }}<br>
             <strong>So'm hisobida:</strong> Aksessuar komissiyasi: {{ salary_data.commission.accessory_commission|floatformat:0 }} so'm
             {% if salary_data.sales.returns_count > 0 %}
             <br><br>
             <span style="background: rgba(220, 38, 38, 0.2); padding: 0.5rem 1rem; border-radius: 6px; display: inline-block; margin-top: 0.5rem;">
-                ⚠️ {{ salary_data.sales.returns_count }} ta qaytarilgan uchun komissiya ayirildi
+                ℹ️ {{ salary_data.sales.returns_count }} ta qaytarilgan hisobga olinmadi
             </span>
             {% endif %}
         </div>

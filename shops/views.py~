@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -6,6 +7,7 @@ from django.db.models import Q, Sum
 from .models import Shop, Customer
 from .forms import ShopForm, CustomerForm
 from users.models import UserProfile
+from sales.models import Phone, Accessory
 
 
 def is_boss(user):
@@ -15,7 +17,7 @@ def is_boss(user):
 
 @login_required
 def dashboard(request):
-    """Umumiy dashboard: foydalanuvchilar, do‘konlar, mijozlar"""
+    """Umumiy dashboard: foydalanuvchilar, do‘konlar, mijozlar, telefonlar va aksessuarlar"""
     total_users = UserProfile.objects.count()
     active_users = UserProfile.objects.filter(user__is_active=True).count()
     inactive_users = total_users - active_users
@@ -56,6 +58,10 @@ def dashboard(request):
     customer_page_obj = customer_paginator.get_page(customer_page_number)
     total_customers = customers.count()
 
+    # Telefonlar va aksessuarlar soni
+    total_phones = Phone.objects.filter(status='shop').count()  # Faqat do'konda turgan telefonlar
+    total_accessories = Accessory.objects.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
+
     context = {
         'total_users': total_users,
         'active_users': active_users,
@@ -70,6 +76,8 @@ def dashboard(request):
         'role_choices': UserProfile.ROLE_CHOICES,
         'total_shops': total_shops,
         'total_customers': total_customers,
+        'total_phones': total_phones,
+        'total_accessories': total_accessories,
     }
     return render(request, 'shop/dashboard.html', context)
 
@@ -80,18 +88,48 @@ def customer_list(request):
     customers = Customer.objects.select_related('created_by').prefetch_related(
         'phone_sales', 'accessory_sales', 'phone_exchanges', 'debts'
     ).all()
-    customer_paginator = Paginator(customers, 10)
+
+    # Qidiruv va filter
+    search_query = request.GET.get('search', '')
+    if search_query:
+        customers = customers.filter(
+            Q(name__icontains=search_query) |
+            Q(phone_number__icontains=search_query) |
+            Q(notes__icontains=search_query)
+        )
+
+    # Saralash
+    sort_by = request.GET.get('sort', '-created_at')
+    if sort_by in ['name', '-name', 'created_at', '-created_at', 'total_purchases', '-total_purchases']:
+        customers = customers.order_by(sort_by)
+    else:
+        customers = customers.order_by('-created_at')
+
+    customer_paginator = Paginator(customers, 15)
     customer_page_number = request.GET.get('page', 1)
     try:
         customer_page_obj = customer_paginator.get_page(customer_page_number)
     except (Paginator.PageNotAnInteger, Paginator.EmptyPage):
         customer_page_obj = customer_paginator.get_page(1)
+
     total_customers = customers.count()
+
+    # Umumiy statistika
+    total_purchases_usd = sum(customer.total_purchases_usd for customer in customer_page_obj)
+    total_purchases_uzs = sum(customer.total_purchases_uzs for customer in customer_page_obj)
+    total_debt_usd = sum(customer.total_debt_usd for customer in customer_page_obj)
+    total_debt_uzs = sum(customer.total_debt_uzs for customer in customer_page_obj)
 
     context = {
         'customer_page_obj': customer_page_obj,
         'is_boss': is_boss(request.user),
         'total_customers': total_customers,
+        'search_query': search_query,
+        'sort_by': sort_by,
+        'total_purchases_usd': total_purchases_usd,
+        'total_purchases_uzs': total_purchases_uzs,
+        'total_debt_usd': total_debt_usd,
+        'total_debt_uzs': total_debt_uzs,
     }
     return render(request, 'shop/customer_list.html', context)
 
@@ -100,18 +138,51 @@ def customer_list(request):
 def customer_detail(request, pk):
     """Mijoz tafsilotlari"""
     if not (is_boss(request.user) or request.user.userprofile.role == 'seller'):
-        messages.error(request, "Sizda mijoz tafsilotlarini ko‘rish uchun ruxsat yo‘q!")
+        messages.error(request, "Sizda mijoz tafsilotlarini ko'rish uchun ruxsat yo'q!")
         return redirect('shop:dashboard')
+
     customer = get_object_or_404(
-        Customer.objects.prefetch_related('phone_sales', 'accessory_sales', 'phone_exchanges', 'debts'),
+        Customer.objects.prefetch_related(
+            'phone_sales',
+            'accessory_sales',
+            'phone_exchanges',
+            'debts'
+        ),
         pk=pk
     )
+
+    # Qarz ma'lumotlari
+    phone_debt_usd = customer.phone_sales.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or Decimal('0')
+    accessory_debt_uzs = customer.accessory_sales.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or Decimal('0')
+    exchange_debt_usd = customer.phone_exchanges.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or Decimal('0')
+
+    # Xaridlar statistikasi
+    phone_sales_count = customer.phone_sales.count()
+    accessory_sales_count = customer.accessory_sales.count()
+    exchange_count = customer.phone_exchanges.count()
+    total_purchases_count = phone_sales_count + accessory_sales_count + exchange_count
+
+    # So'nggi xaridlar (5 ta)
+    recent_purchases = customer.get_purchase_history()[:5]
+
+    # Faol qarzlar
+    active_debts = customer.debts.filter(status='active').select_related('creditor')
+
     context = {
         'customer': customer,
         'is_boss': is_boss(request.user),
-        'has_phone_debt': customer.phone_sales.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or 0 > 0,
-        'has_accessory_debt': customer.accessory_sales.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or 0 > 0,
-        'has_exchange_debt': customer.phone_exchanges.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or 0 > 0,
+        'has_phone_debt': phone_debt_usd > 0,
+        'has_accessory_debt': accessory_debt_uzs > 0,
+        'has_exchange_debt': exchange_debt_usd > 0,
+        'phone_debt_usd': phone_debt_usd,
+        'accessory_debt_uzs': accessory_debt_uzs,
+        'exchange_debt_usd': exchange_debt_usd,
+        'phone_sales_count': phone_sales_count,
+        'accessory_sales_count': accessory_sales_count,
+        'exchange_count': exchange_count,
+        'total_purchases_count': total_purchases_count,
+        'recent_purchases': recent_purchases,
+        'active_debts': active_debts,
     }
     return render(request, 'shop/customer_detail.html', context)
 

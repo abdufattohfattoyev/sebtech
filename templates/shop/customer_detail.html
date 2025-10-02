@@ -1,244 +1,307 @@
 {% extends 'base.html' %}
 
-{% block title %}Mijoz Tafsilotlari{% endblock %}
-{% block page_title %}Mijoz: {{ customer.name }}{% endblock %}
+{% block title %}{{ customer.name }} - Mijoz{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-8 col-md-10">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center p-3">
-                    <h5 class="mb-0">Mijoz Ma'lumotlari</h5>
-                    <div class="d-flex gap-2">
-                        <a href="{% url 'shop:dashboard' %}" class="btn btn-light btn-sm"><i class="fas fa-arrow-left me-1"></i> Orqaga</a>
-                        {% if is_boss or request.user.userprofile.role == 'seller' %}
-                        <a href="{% url 'shop:customer_edit' customer.pk %}" class="btn btn-warning btn-sm"><i class="fas fa-edit me-1"></i> Tahrirlash</a>
-                        <a href="{% url 'shop:customer_delete' customer.pk %}" class="btn btn-danger btn-sm"><i class="fas fa-trash me-1"></i> O'chirish</a>
-                        {% endif %}
-                    </div>
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">{{ customer.name }}</h4>
+            <p class="text-muted mb-0">{{ customer.phone_number }}</p>
+        </div>
+        <div>
+            <a href="{% url 'shop:customer_list' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Orqaga
+            </a>
+            {% if can_edit_customer %}
+            <a href="{% url 'shop:customer_edit' customer.pk %}" class="btn btn-warning btn-sm">
+                <i class="fas fa-edit"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-6 col-md-3 mb-2">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <h6 class="card-title text-primary mb-1">{{ total_purchases_count }}</h6>
+                    <small class="text-muted">Xaridlar</small>
                 </div>
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center mb-4">
-                        {% if customer.image %}
-                        <img src="{{ customer.image.url }}" alt="{{ customer.name }}" class="rounded-circle me-3" style="width: 60px; height: 60px; object-fit: cover;">
-                        {% else %}
-                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
-                            {{ customer.name.0|upper }}
-                        </div>
-                        {% endif %}
-                        <div>
-                            <h2 class="h4 mb-0 fw-bold">{{ customer.name }}</h2>
-                            <p class="text-muted mb-0">@{{ customer.phone_number }}</p>
-                        </div>
-                    </div>
-
-                    <!-- Asosiy ma'lumotlar -->
-                    <div class="mb-4">
-                        <div class="row g-3">
-                            <div class="col-12 col-md-6">
-                                <p><strong>Telefon:</strong> {{ customer.phone_number }}</p>
-                                {% if customer.notes %}
-                                <p><strong>Izohlar:</strong> {{ customer.notes }}</p>
-                                {% endif %}
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <p><strong>Umumiy xarid:</strong> <span class="text-success fw-bold">{{ customer.total_purchases|floatformat:0 }}$</span></p>
-                                <p><strong>Umumiy qarz:</strong> <span class="text-danger fw-bold">{{ customer.total_debt|floatformat:0 }}$</span></p>
-                                <p><strong>Qo'shgan:</strong> {% if customer.created_by %}{{ customer.created_by.get_full_name|default:customer.created_by.username }}{% else %}-{% endif %}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Telefon sotuvlari -->
-                    <div class="mb-4">
-                        <h5 class="mb-3">Telefon Sotuvlari <span class="badge bg-secondary">{{ customer.phone_sales.count }}</span></h5>
-                        {% if customer.phone_sales.exists %}
-                        <div class="table-responsive">
-                            <table class="table table-hover table-striped">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Telefon</th>
-                                        <th>Sotish Narxi</th>
-                                        <th>Naqd</th>
-                                        <th>Karta</th>
-                                        <th>Nasiya</th>
-                                        <th class="d-none d-md-table-cell">Qarz</th>
-                                        <th class="d-none d-md-table-cell">Sotuvchi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for sale in customer.phone_sales.all %}
-                                    <tr>
-                                        <td>{{ sale.phone }}</td>
-                                        <td>{{ sale.sale_price|floatformat:0 }}$</td>
-                                        <td>{{ sale.cash_amount|floatformat:0 }}$</td>
-                                        <td>{{ sale.card_amount|floatformat:0 }}$</td>
-                                        <td>{{ sale.credit_amount|floatformat:0 }}$</td>
-                                        <td class="d-none d-md-table-cell">{{ sale.debt_amount|floatformat:0 }}$</td>
-                                        <td class="d-none d-md-table-cell">{% if sale.salesman %}{{ sale.salesman.get_full_name|default:sale.salesman.username }}{% else %}-{% endif %}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <p class="text-muted text-center py-2">Telefon sotuvlari mavjud emas.</p>
-                        {% endif %}
-                    </div>
-
-                    <!-- Aksessuar sotuvlari -->
-                    <div class="mb-4">
-                        <h5 class="mb-3">Aksessuar Sotuvlari <span class="badge bg-secondary">{{ customer.accessory_sales.count }}</span></h5>
-                        {% if customer.accessory_sales.exists %}
-                        <div class="table-responsive">
-                            <table class="table table-hover table-striped">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Aksessuar</th>
-                                        <th>Soni</th>
-                                        <th>Umumiy Narx</th>
-                                        <th>Naqd</th>
-                                        <th>Karta</th>
-                                        <th class="d-none d-md-table-cell">Qarz</th>
-                                        <th class="d-none d-md-table-cell">Sotuvchi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for sale in customer.accessory_sales.all %}
-                                    <tr>
-                                        <td>{{ sale.accessory.name }}</td>
-                                        <td>{{ sale.quantity }}</td>
-                                        <td>{{ sale.total_sale_price|floatformat:0 }}$</td>
-                                        <td>{{ sale.cash_amount|floatformat:0 }}$</td>
-                                        <td>{{ sale.card_amount|floatformat:0 }}$</td>
-                                        <td class="d-none d-md-table-cell">{{ sale.debt_amount|floatformat:0 }}$</td>
-                                        <td class="d-none d-md-table-cell">{% if sale.salesman %}{{ sale.salesman.get_full_name|default:sale.salesman.username }}{% else %}-{% endif %}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <p class="text-muted text-center py-2">Aksessuar sotuvlari mavjud emas.</p>
-                        {% endif %}
-                    </div>
-
-                    <!-- Telefon almashtirish -->
-                    <div class="mb-4">
-                        <h5 class="mb-3">Telefon Almashtirish <span class="badge bg-secondary">{{ customer.phone_exchanges.count }}</span></h5>
-                        {% if customer.phone_exchanges.exists %}
-                        <div class="table-responsive">
-                            <table class="table table-hover table-striped">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Eski Telefon</th>
-                                        <th>Yangi Telefon</th>
-                                        <th>Narx Farqi</th>
-                                        <th>Naqd</th>
-                                        <th>Karta</th>
-                                        <th>Nasiya</th>
-                                        <th class="d-none d-md-table-cell">Qarz</th>
-                                        <th class="d-none d-md-table-cell">Sotuvchi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for exchange in customer.phone_exchanges.all %}
-                                    <tr>
-                                        <td>{{ exchange.old_phone_model }} {{ exchange.old_phone_memory }}</td>
-                                        <td>{{ exchange.new_phone }}</td>
-                                        <td>{{ exchange.price_difference|floatformat:0 }}$</td>
-                                        <td>{{ exchange.cash_amount|floatformat:0 }}$</td>
-                                        <td>{{ exchange.card_amount|floatformat:0 }}$</td>
-                                        <td>{{ exchange.credit_amount|floatformat:0 }}$</td>
-                                        <td class="d-none d-md-table-cell">{{ exchange.debt_amount|floatformat:0 }}$</td>
-                                        <td class="d-none d-md-table-cell">{% if exchange.salesman %}{{ exchange.salesman.get_full_name|default:exchange.salesman.username }}{% else %}-{% endif %}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <p class="text-muted text-center py-2">Telefon almashtirishlar mavjud emas.</p>
-                        {% endif %}
-                    </div>
-
-                    <!-- Qarzlar -->
-                    <div class="mb-4">
-                        <h5 class="mb-3">Qarzlar <span class="badge bg-secondary">{{ customer.debts.count }}</span></h5>
-                        {% if customer.debts.exists %}
-                        <div class="table-responsive">
-                            <table class="table table-hover table-striped">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Qarz Turi</th>
-                                        <th>Summa</th>
-                                        <th>To'langan</th>
-                                        <th class="d-none d-md-table-cell">Qoldiq</th>
-                                        <th>Holati</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for debt in customer.debts.all %}
-                                    <tr>
-                                        <td>{{ debt.get_debt_type_display }}</td>
-                                        <td>{{ debt.debt_amount|floatformat:0 }}$</td>
-                                        <td>{{ debt.paid_amount|floatformat:0 }}$</td>
-                                        <td class="d-none d-md-table-cell">{{ debt.remaining_amount|floatformat:0 }}$</td>
-                                        <td>
-                                            <span class="badge bg-{% if debt.status == 'active' %}warning{% elif debt.status == 'paid' %}success{% else %}danger{% endif %}">
-                                                {{ debt.get_status_display }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <p class="text-muted text-center py-2">Qarzlar mavjud emas.</p>
-                        {% endif %}
-                    </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-2">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <h6 class="card-title text-success mb-1">${{ customer.total_purchases_usd|floatformat:0 }}</h6>
+                    <small class="text-muted">Xarid ($)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-2">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <h6 class="card-title text-info mb-1">{{ customer.total_purchases_uzs|floatformat:0 }}</h6>
+                    <small class="text-muted">Xarid (so'm)</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 mb-2">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center py-3">
+                    <h6 class="card-title text-danger mb-1">{{ customer.active_debts_count }}</h6>
+                    <small class="text-muted">Faol qarz</small>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Telefon Sotuvlari -->
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Telefon Sotuvlari ({{ phone_sales_count }})</h6>
+        </div>
+        <div class="card-body p-0">
+            {% if customer.phone_sales.exists %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Telefon</th>
+                            <th>Narxi</th>
+                            <th>To'lov</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sale in customer.phone_sales.all %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <strong class="d-block">{{ sale.phone.phone_model }}</strong>
+                                    <small class="text-muted">{{ sale.phone.imei }}</small>
+                                </div>
+                            </td>
+                            <td class="text-success">${{ sale.sale_price|floatformat:0 }}</td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    {% if sale.cash_amount > 0 %}
+                                    <span class="badge bg-success">Naqd: ${{ sale.cash_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                    {% if sale.card_amount > 0 %}
+                                    <span class="badge bg-primary">Karta: ${{ sale.card_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                    {% if sale.credit_amount > 0 %}
+                                    <span class="badge bg-warning">Nasiya: ${{ sale.credit_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                    {% if sale.debt_amount > 0 %}
+                                    <span class="badge bg-danger">Qarz: ${{ sale.debt_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-mobile-alt fa-2x mb-2"></i>
+                <p>Telefon sotuvlari yo'q</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Aksessuar Sotuvlari -->
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Aksessuar Sotuvlari ({{ accessory_sales_count }})</h6>
+        </div>
+        <div class="card-body p-0">
+            {% if customer.accessory_sales.exists %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Aksessuar</th>
+                            <th>Soni</th>
+                            <th>Narxi</th>
+                            <th>To'lov</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sale in customer.accessory_sales.all %}
+                        <tr>
+                            <td>{{ sale.accessory.name }}</td>
+                            <td><span class="badge bg-secondary">{{ sale.quantity }}x</span></td>
+                            <td class="text-info">{{ sale.total_price|floatformat:0 }} so'm</td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    {% if sale.cash_amount > 0 %}
+                                    <span class="badge bg-success">Naqd: {{ sale.cash_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                    {% if sale.card_amount > 0 %}
+                                    <span class="badge bg-primary">Karta: {{ sale.card_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                    {% if sale.credit_amount > 0 %}
+                                    <span class="badge bg-warning">Nasiya: {{ sale.credit_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                    {% if sale.debt_amount > 0 %}
+                                    <span class="badge bg-danger">Qarz: {{ sale.debt_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-headphones fa-2x mb-2"></i>
+                <p>Aksessuar sotuvlari yo'q</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Telefon Almashtirish -->
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Telefon Almashtirish ({{ exchange_count }})</h6>
+        </div>
+        <div class="card-body p-0">
+            {% if customer.phone_exchanges.exists %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Eski → Yangi</th>
+                            <th>Farq</th>
+                            <th>To'lov</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exchange in customer.phone_exchanges.all %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <strong class="d-block">{{ exchange.old_phone_model }} → {{ exchange.new_phone.phone_model }}</strong>
+                                    <small class="text-muted">{{ exchange.new_phone.imei }}</small>
+                                </div>
+                            </td>
+                            <td class="text-success">${{ exchange.price_difference|floatformat:0 }}</td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    {% if exchange.cash_amount > 0 %}
+                                    <span class="badge bg-success">Naqd: ${{ exchange.cash_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                    {% if exchange.card_amount > 0 %}
+                                    <span class="badge bg-primary">Karta: ${{ exchange.card_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                    {% if exchange.credit_amount > 0 %}
+                                    <span class="badge bg-warning">Nasiya: ${{ exchange.credit_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                    {% if exchange.debt_amount > 0 %}
+                                    <span class="badge bg-danger">Qarz: ${{ exchange.debt_amount|floatformat:0 }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-exchange-alt fa-2x mb-2"></i>
+                <p>Almashtirishlar yo'q</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Qarzlar -->
+    {% if active_debts %}
+    <div class="card">
+        <div class="card-header">
+            <h6 class="mb-0">Faol Qarzlar</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+                {% for debt in active_debts %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ debt.get_debt_type_display }}</strong>
+                            {% if debt.due_date %}
+                            <small class="text-muted d-block">Muddati: {{ debt.due_date|date:"d.m.Y" }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="text-end">
+                            <div class="text-danger">
+                                {% if debt.currency == 'USD' %}
+                                ${{ debt.remaining_amount|floatformat:0 }}
+                                {% else %}
+                                {{ debt.remaining_amount|floatformat:0 }} so'm
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">
+                                Jami:
+                                {% if debt.currency == 'USD' %}
+                                ${{ debt.debt_amount|floatformat:0 }}
+                                {% else %}
+                                {{ debt.debt_amount|floatformat:0 }} so'm
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <style>
-@media (max-width: 767.98px) {
-    .table { font-size: 0.75rem; }
-    .btn-sm { padding: 0.15rem 0.3rem; font-size: 0.65rem; }
-    .card-body { padding: 0.75rem; }
-    h2.h4 { font-size: 1.1rem; }
-    img.rounded-circle, .rounded-circle { width: 40px !important; height: 40px !important; font-size: 0.9rem; }
-    .card-header h5 { font-size: 1rem; }
-    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.card {
+    border: 1px solid #e3e6f0;
+    border-radius: 0.5rem;
 }
-@media (min-width: 768px) {
-    .card-header { border-radius: 0.5rem 0.5rem 0 0; }
-    .table th, .table td { padding: 0.75rem; }
+.card-header {
+    background-color: #f8f9fc;
+    border-bottom: 1px solid #e3e6f0;
+    padding: 0.75rem 1rem;
 }
-.card { border-radius: 0.5rem; transition: box-shadow 0.3s ease; }
-.card:hover { box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1); }
-.badge { font-size: 0.8rem; padding: 0.25rem 0.5rem; }
-.text-success { color: #28a745 !important; }
-.text-danger { color: #dc3545 !important; }
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 0.75rem;
+}
+.table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+}
+.badge {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.5rem;
+}
+@media (max-width: 576px) {
+    .container-fluid {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    .table {
+        font-size: 0.8rem;
+    }
+    .badge {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.4rem;
+    }
+}
 </style>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    setTimeout(() => {
-        document.querySelectorAll('.alert').forEach(alert => {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        });
-    }, 5000);
-    document.querySelectorAll('.table-responsive').forEach(table => {
-        table.addEventListener('touchmove', (e) => {
-            e.stopPropagation();
-        }, { passive: true });
-    });
-</script>
 {% endblock %}

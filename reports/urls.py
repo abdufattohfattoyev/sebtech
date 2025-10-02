@@ -29,4 +29,8 @@ urlpatterns = [
     # YANGI: Cash Flow API
     path('api/cashflow/', views.cashflow_api, name='cashflow_api'),
     path('api/cashflow/details/', views.cashflow_details_api, name='cashflow_details_api'),
+    path('api/phone-sales/', views.phone_sales_api, name='phone_sales_api'),
+    path('api/accessory-sales/', views.accessory_sales_api, name='accessory_sales_api'),
+    path('api/exchange-sales/', views.exchange_sales_api, name='exchange_sales_api'),
+    path('api/yearly-profit/', views.yearly_profit_detail, name='yearly_profit_detail'),
 ]

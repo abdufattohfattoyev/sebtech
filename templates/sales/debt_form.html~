@@ -1,254 +1,141 @@
-{% extends "base.html" %}
-{% block page_title %}{{ title }}{% endblock %}
+{% extends 'base.html' %}
+{% load static %}
 
-{% block extra_css %}
-<style>
-.form-section {
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-.section-title {
-    color: #667eea;
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #f0f0f0;
-}
-.required-field::after {
-    content: " *";
-    color: #dc3545;
-}
-.form-help {
-    font-size: 0.85rem;
-    color: #6c757d;
-    margin-top: 5px;
-}
-</style>
-{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>{{ title }}</h2>
-        <a href="{% url 'sales:debt_list' %}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left"></i> Orqaga
-        </a>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ title }}</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="debtForm">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- Qarz turi (ko'rinmaydi, lekin formada bor) -->
+                        <div style="display: none;">
+                            {{ form.debt_type }}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.creditor.id_for_label }}">
+                                        <i class="fas fa-user-tie"></i> Kimdan qarz olyapsiz? <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.creditor }}
+                                    {% if form.creditor.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.creditor.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">Qarz beruvchi boshliqni tanlang</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.currency.id_for_label }}">
+                                        <i class="fas fa-money-bill"></i> Valyuta <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.currency }}
+                                    {% if form.currency.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.currency.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.debt_amount.id_for_label }}">
+                                        <i class="fas fa-dollar-sign"></i> Qarz summasi <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.debt_amount }}
+                                    {% if form.debt_amount.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.debt_amount.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">Maksimal: USD - 500$, UZS - 10,000,000 so'm</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.due_date.id_for_label }}">
+                                        <i class="fas fa-calendar"></i> Qaytarish muddati <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.due_date }}
+                                    {% if form.due_date.errors %}
+                                        <div class="text-danger">
+                                            {% for error in form.due_date.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.notes.id_for_label }}">
+                                <i class="fas fa-sticky-note"></i> Izoh
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.notes.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Qarz maqsadini yoki boshqa ma'lumotlarni kiriting</small>
+                        </div>
+
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Saqlash
+                            </button>
+                            <a href="{% url 'sales:debt_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Bekor qilish
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Yordam kartasi -->
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5><i class="fas fa-info-circle text-info"></i> Eslatma:</h5>
+                    <ul>
+                        <li>Siz o'zingiz uchun boshliqdan qarz so'rayapsiz</li>
+                        <li>Qarz oluvchi sifatida avtomatik ravishda sizning ismingiz yoziladi</li>
+                        <li>Qarzni yaratgandan keyin status avtomatik "Faol" bo'ladi</li>
+                        <li>To'lovlarni keyinchalik qo'shishingiz mumkin</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <form method="post" id="debtForm">
-        {% csrf_token %}
-
-        <!-- Qarz turi va valyuta -->
-        <div class="form-section">
-            <h3 class="section-title">Asosiy ma'lumotlar</h3>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label required-field">{{ form.debt_type.label }}</label>
-                    {{ form.debt_type }}
-                    {% if form.debt_type.errors %}
-                        <div class="text-danger mt-1">{{ form.debt_type.errors.0 }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label required-field">{{ form.currency.label }}</label>
-                    {{ form.currency }}
-                    <div class="form-help">USD - Dollar, UZS - So'm</div>
-                    {% if form.currency.errors %}
-                        <div class="text-danger mt-1">{{ form.currency.errors.0 }}</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Qarz bergan va olgan -->
-        <div class="form-section">
-            <h3 class="section-title">Ishtirokchilar</h3>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label required-field">{{ form.creditor.label }}</label>
-                    {{ form.creditor }}
-                    <div class="form-help">Qarz bergan shaxs</div>
-                    {% if form.creditor.errors %}
-                        <div class="text-danger mt-1">{{ form.creditor.errors.0 }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Qarz olgan</label>
-                    <div class="mb-2">
-                        <label class="form-label">{{ form.debtor.label }}</label>
-                        {{ form.debtor }}
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">{{ form.customer.label }}</label>
-                        {{ form.customer }}
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">{{ form.master.label }}</label>
-                        {{ form.master }}
-                    </div>
-                    <div class="form-help">Faqat bittasini tanlang</div>
-                    {% if form.debtor.errors %}
-                        <div class="text-danger mt-1">{{ form.debtor.errors.0 }}</div>
-                    {% endif %}
-                    {% if form.customer.errors %}
-                        <div class="text-danger mt-1">{{ form.customer.errors.0 }}</div>
-                    {% endif %}
-                    {% if form.master.errors %}
-                        <div class="text-danger mt-1">{{ form.master.errors.0 }}</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Summa va muddat -->
-        <div class="form-section">
-            <h3 class="section-title">Moliyaviy ma'lumotlar</h3>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label required-field">{{ form.debt_amount.label }}</label>
-                    <div class="input-group">
-                        {{ form.debt_amount }}
-                        <span class="input-group-text" id="currencySymbol">$</span>
-                    </div>
-                    <div class="form-help">
-                        <span id="limitText">Maksimal: 500 USD</span>
-                    </div>
-                    {% if form.debt_amount.errors %}
-                        <div class="text-danger mt-1">{{ form.debt_amount.errors.0 }}</div>
-                    {% endif %}
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label required-field">{{ form.due_date.label }}</label>
-                    {{ form.due_date }}
-                    <div class="form-help">Qarz qaytarish muddati</div>
-                    {% if form.due_date.errors %}
-                        <div class="text-danger mt-1">{{ form.due_date.errors.0 }}</div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Izoh -->
-        <div class="form-section">
-            <h3 class="section-title">Qo'shimcha ma'lumot</h3>
-            <div class="mb-3">
-                <label class="form-label">{{ form.notes.label }}</label>
-                {{ form.notes }}
-                <div class="form-help">Qarz haqida qo'shimcha ma'lumotlar</div>
-                {% if form.notes.errors %}
-                    <div class="text-danger mt-1">{{ form.notes.errors.0 }}</div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Django form errors -->
-        {% if form.non_field_errors %}
-        <div class="alert alert-danger">
-            {{ form.non_field_errors }}
-        </div>
-        {% endif %}
-
-        <!-- Tugmalar -->
-        <div class="text-end">
-            <a href="{% url 'sales:debt_list' %}" class="btn btn-secondary me-2">Bekor qilish</a>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save"></i> Saqlash
-            </button>
-        </div>
-    </form>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const currencyField = document.getElementById('id_currency');
-    const debtAmountField = document.getElementById('id_debt_amount');
-    const currencySymbol = document.getElementById('currencySymbol');
-    const limitText = document.getElementById('limitText');
-
-    function updateCurrency() {
-        const currency = currencyField.value;
-        if (currency === 'USD') {
-            currencySymbol.textContent = '$';
-            limitText.textContent = 'Maksimal: 500 USD';
-            debtAmountField.max = '500';
-            debtAmountField.step = '0.01';
-        } else if (currency === 'UZS') {
-            currencySymbol.textContent = "so'm";
-            limitText.textContent = 'Maksimal: 10,000,000 UZS';
-            debtAmountField.max = '10000000';
-            debtAmountField.step = '1';  // faqat butun son
-        }
-    }
-
-    if (currencyField) {
-        currencyField.addEventListener('change', updateCurrency);
-        updateCurrency();
-    }
-
-    const debtorField = document.getElementById('id_debtor');
-    const customerField = document.getElementById('id_customer');
-    const masterField = document.getElementById('id_master');
-
-    function validateDebtRecipient() {
-        const selectedCount = [debtorField, customerField, masterField]
-            .filter(field => field && field.value).length;
-
-        if (selectedCount > 1) {
-            alert('Faqat bitta qarz oluvchi tanlanishi mumkin!');
-            return false;
-        }
-        if (selectedCount === 0) {
-            alert('Qarz oluvchi tanlanishi kerak!');
-            return false;
-        }
-        return true;
-    }
-
-    document.getElementById('debtForm').addEventListener('submit', function(e) {
-        if (!validateDebtRecipient()) {
-            e.preventDefault();
-            return false;
-        }
-
-        const amount = parseFloat(debtAmountField.value) || 0;
-        const currency = currencyField.value;
-
-        if (currency === 'USD' && amount > 500) {
-            e.preventDefault();
-            alert('Dollar qarz summasi maksimal 500$ bo\'lishi kerak!');
-            return false;
-        }
-
-        if (currency === 'UZS' && amount > 10000000) {
-            e.preventDefault();
-            alert('So\'m qarz summasi maksimal 10,000,000 so\'m bo\'lishi kerak!');
-            return false;
-        }
-
-        if (amount <= 0) {
-            e.preventDefault();
-            alert('Qarz summasi 0 dan katta bo\'lishi kerak!');
-            return false;
-        }
-    });
-
-    [debtorField, customerField, masterField].forEach(field => {
-        if (field) {
-            field.addEventListener('change', function() {
-                if (this.value) {
-                    [debtorField, customerField, masterField].forEach(otherField => {
-                        if (otherField && otherField !== this) {
-                            otherField.value = '';
-                        }
-                    });
-                }
-            });
-        }
-    });
-});
-</script>
 {% endblock %}

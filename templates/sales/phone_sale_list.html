@@ -1,60 +1,292 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block page_title %}Telefon sotuvlari{% endblock %}
 
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Telefon sotuvlari</h2>
-    <a href="{% url 'sales:phone_sale_create' %}" class="btn btn-primary">
-        <i class="fas fa-plus me-1"></i>Yangi sotish
-    </a>
-</div>
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
 
-<div class="card">
-    <div class="card-body">
-        {% if phone_sales %}
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .phone-image {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .amount-box {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .amount-cash { background: #d4edda; color: #155724; }
+    .amount-card { background: #d1ecf1; color: #0c5460; }
+    .amount-credit { background: #fff3cd; color: #856404; }
+    .amount-debt { background: #f8d7da; color: #721c24; }
+
+    @media (max-width: 768px) {
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+        .btn-group-sm .btn {
+            padding: 0.25rem 0.4rem;
+        }
+        .filter-card {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-mobile-alt me-2"></i>Telefon sotuvlari</h2>
+            <p class="text-muted mb-0">Barcha telefon sotuvlarini boshqarish</p>
+        </div>
+        <a href="{% url 'sales:phone_sale_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Yangi sotish
+        </a>
+    </div>
+
+    <!-- Statistika -->
+    {% if phone_sales %}
+    <div class="row mb-3">
+        <div class="col-md-3 col-6 mb-2">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <small>Jami sotuvlar</small>
+                        <h4 class="mb-0">{{ total_count }}</h4>
+                    </div>
+                    <i class="fas fa-chart-line fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted">Jami summa</small>
+                    <h4 class="mb-0 text-primary">${{ total_sum|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted">Naqd</small>
+                    <h4 class="mb-0 text-success">${{ total_cash|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-2">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted">Qarz</small>
+                    <h4 class="mb-0 text-danger">${{ total_debt|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filterlar -->
+    <div class="filter-card">
+        <form method="get" id="filterForm">
+            <div class="row g-3">
+                <!-- Sotuvchi filter -->
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label"><i class="fas fa-user me-1"></i>Sotuvchi</label>
+                    <select name="salesman" class="form-select" onchange="this.form.submit()">
+                        <option value="">Barcha sotuvchilar</option>
+                        {% for seller in salesmen %}
+                        <option value="{{ seller.id }}" {% if selected_salesman == seller.id|stringformat:"s" %}selected{% endif %}>
+                            {{ seller.get_full_name|default:seller.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Sana (dan) -->
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label"><i class="fas fa-calendar me-1"></i>Sana (dan)</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ date_from }}" onchange="this.form.submit()">
+                </div>
+
+                <!-- Sana (gacha) -->
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label"><i class="fas fa-calendar-check me-1"></i>Sana (gacha)</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ date_to }}" onchange="this.form.submit()">
+                </div>
+
+                <!-- IMEI qidiruv -->
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label"><i class="fas fa-search me-1"></i>IMEI qidiruv</label>
+                    <input type="text" name="imei" class="form-control" placeholder="IMEI kiriting" value="{{ search_imei }}">
+                </div>
+
+                <!-- Tugmalar -->
+                <div class="col-md-2 col-sm-12 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100 me-2">
+                        <i class="fas fa-search"></i> Qidirish
+                    </button>
+                    <a href="{% url 'sales:phone_sale_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-redo"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Jadval -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            {% if phone_sales %}
             <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
+                            <th style="width: 50px;">#</th>
                             <th>Telefon</th>
+                            <th>IMEI</th>
                             <th>Mijoz</th>
                             <th>Sotuvchi</th>
-                            <th>Narx</th>
-                            <th>Naqd</th>
-                            <th>Karta</th>
-                            <th>Nasiya</th>
-                            <th>Qarz</th>
-                            <th>Sana</th>
-                            <th>Amallar</th>
+                            <th class="text-end">Narx</th>
+                            <th class="text-center">To'lov usullari</th>
+                            <th class="text-center">Sana</th>
+                            <th class="text-center">Amallar</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for sale in phone_sales %}
                         <tr>
+                            <td class="text-muted">{{ forloop.counter }}</td>
+
+                            <!-- Telefon -->
                             <td>
-                                <div class="fw-bold">{{ sale.phone.phone_model.name }}</div>
-                                <small class="text-muted">{{ sale.phone.memory_size.size }}</small>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-light rounded p-2 me-2">
+                                        <i class="fas fa-mobile-alt fa-2x text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark">{{ sale.phone.phone_model.name }}</div>
+                                        <small class="text-muted">
+                                            <i class="fas fa-memory me-1"></i>{{ sale.phone.memory_size.size }}
+                                        </small>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-store me-1"></i>{{ sale.phone.shop.name }}
+                                        </small>
+                                    </div>
+                                </div>
                             </td>
-                            <td>{{ sale.customer.name }}</td>
-                            <td>{{ sale.salesman.get_full_name|default:sale.salesman.username }}</td>
-                            <td class="fw-bold text-primary">${{ sale.sale_price }}</td>
-                            <td class="text-success">${{ sale.cash_amount }}</td>
-                            <td class="text-info">${{ sale.card_amount }}</td>
-                            <td class="text-warning">${{ sale.credit_amount }}</td>
-                            <td class="text-danger">${{ sale.debt_amount }}</td>
-                            <td>{{ sale.sale_date|date:"d.m.Y" }}</td>
+
+                            <!-- IMEI -->
                             <td>
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{% url 'sales:phone_sale_detail' sale.pk %}" class="btn btn-outline-primary" title="Ko'rish">
+                                <code class="text-primary">{{ sale.phone.imei|default:"N/A" }}</code>
+                            </td>
+
+                            <!-- Mijoz -->
+                            <td>
+                                <div>
+                                    <i class="fas fa-user text-muted me-1"></i>
+                                    <span class="fw-medium">{{ sale.customer.name }}</span>
+                                </div>
+                                {% if sale.customer.phone_number %}
+                                <small class="text-muted">
+                                    <i class="fas fa-phone me-1"></i>{{ sale.customer.phone_number }}
+                                </small>
+                                {% endif %}
+                            </td>
+
+                            <!-- Sotuvchi -->
+                            <td>
+                                <span class="badge bg-info">
+                                    {{ sale.salesman.get_full_name|default:sale.salesman.username }}
+                                </span>
+                            </td>
+
+                            <!-- Narx -->
+                            <td class="text-end">
+                                <strong class="text-primary fs-5">${{ sale.sale_price }}</strong>
+                            </td>
+
+                            <!-- To'lov usullari -->
+                            <td>
+                                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                    {% if sale.cash_amount > 0 %}
+                                    <span class="amount-box amount-cash">
+                                        <i class="fas fa-money-bill-wave"></i> ${{ sale.cash_amount }}
+                                    </span>
+                                    {% endif %}
+                                    {% if sale.card_amount > 0 %}
+                                    <span class="amount-box amount-card">
+                                        <i class="fas fa-credit-card"></i> ${{ sale.card_amount }}
+                                    </span>
+                                    {% endif %}
+                                    {% if sale.credit_amount > 0 %}
+                                    <span class="amount-box amount-credit">
+                                        <i class="fas fa-calendar-alt"></i> ${{ sale.credit_amount }}
+                                    </span>
+                                    {% endif %}
+                                    {% if sale.debt_amount > 0 %}
+                                    <span class="amount-box amount-debt">
+                                        <i class="fas fa-exclamation-triangle"></i> ${{ sale.debt_amount }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- Sana -->
+                            <td class="text-center">
+                                <div class="badge bg-secondary">
+                                    <i class="fas fa-calendar me-1"></i>{{ sale.sale_date|date:"d.m.Y" }}
+                                </div>
+                            </td>
+
+                            <!-- Amallar -->
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'sales:phone_sale_detail' sale.pk %}"
+                                       class="btn btn-outline-primary"
+                                       title="Ko'rish">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="{% url 'sales:phone_sale_edit' sale.pk %}" class="btn btn-outline-secondary" title="Tahrirlash">
+                                    {% if request.user.is_superuser or sale.salesman == request.user %}
+                                    <a href="{% url 'sales:phone_sale_edit' sale.pk %}"
+                                       class="btn btn-outline-warning"
+                                       title="Tahrirlash">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="{% url 'sales:phone_sale_delete' sale.pk %}" class="btn btn-outline-danger" title="O'chirish">
+                                    <a href="{% url 'sales:phone_sale_delete' sale.pk %}"
+                                       class="btn btn-outline-danger"
+                                       title="O'chirish"
+                                       onclick="return confirm('Rostdan ham o\'chirmoqchimisiz?')">
                                         <i class="fas fa-trash"></i>
                                     </a>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -62,16 +294,60 @@
                     </tbody>
                 </table>
             </div>
-        {% else %}
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <div class="card-footer bg-light">
+                <nav>
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_imei %}&imei={{ search_imei }}{% endif %}">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_imei %}&imei={{ search_imei }}{% endif %}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_imei %}&imei={{ search_imei }}{% endif %}">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_imei %}&imei={{ search_imei }}{% endif %}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <!-- Bo'sh holat -->
             <div class="text-center py-5">
-                <i class="fas fa-mobile-alt text-muted" style="font-size: 3rem;"></i>
-                <h4 class="text-muted mt-3">Hali telefon sotuvlari yo'q</h4>
+                <i class="fas fa-mobile-alt text-muted" style="font-size: 4rem;"></i>
+                <h4 class="text-muted mt-4">Hali telefon sotuvlari yo'q</h4>
                 <p class="text-muted">Birinchi telefon sotishini qo'shing!</p>
-                <a href="{% url 'sales:phone_sale_create' %}" class="btn btn-primary">
-                    <i class="fas fa-plus me-1"></i>Telefon sotish
+                <a href="{% url 'sales:phone_sale_create' %}" class="btn btn-primary btn-lg mt-3">
+                    <i class="fas fa-plus me-2"></i>Telefon sotish
                 </a>
             </div>
-        {% endif %}
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}

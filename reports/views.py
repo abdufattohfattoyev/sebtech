@@ -1,6 +1,6 @@
 # reports/views.py - TO'LIQ CASH FLOW INTEGRATSIYASI
 
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Q
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, date
 from decimal import Decimal
 from calendar import monthrange
 
+from sales.models import PhoneSale, PhoneExchange, PhoneReturn
 from shops.models import Shop
 from .models import ReportCalculator, ProfitCalculator
 
@@ -1003,3 +1004,333 @@ def cashflow_details_api(request):
         'transactions': results
     })
 
+
+@login_required
+def sales_chart_dashboard(request):
+    """Asosiy diagramma dashboard"""
+    from django.db.models import Q
+
+    shops = Shop.objects.all()
+    if hasattr(request.user, 'userprofile') and request.user.userprofile.role != 'boss':
+        shops = shops.filter(owner=request.user)
+
+    if not shops.exists():
+        return render(request, 'reports/no_shop.html')
+
+    selected_shop = shops.first()
+    if request.GET.get('shop'):
+        selected_shop = get_object_or_404(shops, id=request.GET.get('shop'))
+
+    # Sotuvchilar ro'yxati
+    sellers = User.objects.filter(
+        Q(phonesale__phone__shop=selected_shop) |
+        Q(phoneexchange__new_phone__shop=selected_shop)
+    ).distinct()
+
+    current_year = timezone.now().year
+    current_month = timezone.now().month
+
+    return render(request, 'reports/sales_chart_dashboard.html', {
+        'shops': shops,
+        'selected_shop': selected_shop,
+        'sellers': sellers,
+        'current_year': current_year,
+        'current_month': current_month,
+        'years': range(2020, current_year + 2),
+        'months': range(1, 13),
+        'month_names': {
+            1: 'Yanvar', 2: 'Fevral', 3: 'Mart', 4: 'Aprel',
+            5: 'May', 6: 'Iyun', 7: 'Iyul', 8: 'Avgust',
+            9: 'Sentabr', 10: 'Oktabr', 11: 'Noyabr', 12: 'Dekabr'
+        }
+    })
+
+
+@login_required
+def daily_sales_chart_api(request):
+    """Kunlik sotuvlar diagrammasi API"""
+    shop_id = request.GET.get('shop')
+    year = int(request.GET.get('year', timezone.now().year))
+    month = int(request.GET.get('month', timezone.now().month))
+    seller_id = request.GET.get('seller')
+
+    if not shop_id:
+        return JsonResponse({'error': "Do'kon ID kerak"}, status=400)
+
+    try:
+        shop = Shop.objects.get(id=shop_id)
+    except Shop.DoesNotExist:
+        return JsonResponse({'error': "Do'kon topilmadi"}, status=404)
+
+    # Oy boshi va oxiri
+    start_date = date(year, month, 1)
+    _, last_day = monthrange(year, month)
+    end_date = date(year, month, last_day)
+
+    # Filter setup
+    phone_filter = Q(phone__shop=shop, sale_date__range=[start_date, end_date])
+    exchange_filter = Q(new_phone__shop=shop, exchange_date__range=[start_date, end_date])
+    return_filter = Q(phone_sale__phone__shop=shop, return_date__range=[start_date, end_date])
+
+    if seller_id:
+        seller = get_object_or_404(User, id=seller_id)
+        phone_filter &= Q(salesman=seller)
+        exchange_filter &= Q(salesman=seller)
+        return_filter &= Q(phone_sale__salesman=seller)
+
+    # Har bir kun uchun ma'lumot
+    daily_data = []
+    current_date = start_date
+
+    while current_date <= end_date:
+        # Sotilgan telefonlar
+        phone_sales_count = PhoneSale.objects.filter(
+            phone_filter & Q(sale_date=current_date)
+        ).count()
+
+        # Almashtirishlar
+        exchanges_count = PhoneExchange.objects.filter(
+            exchange_filter & Q(exchange_date=current_date)
+        ).count()
+
+        # Qaytarilganlar
+        returns_count = PhoneReturn.objects.filter(
+            return_filter & Q(return_date=current_date)
+        ).count()
+
+        # Net sotuvlar
+        net_sales = phone_sales_count + exchanges_count - returns_count
+
+        daily_data.append({
+            'date': current_date.strftime('%Y-%m-%d'),
+            'day': current_date.day,
+            'phone_sales': phone_sales_count,
+            'exchanges': exchanges_count,
+            'returns': returns_count,
+            'net_sales': net_sales
+        })
+
+        current_date += timedelta(days=1)
+
+    return JsonResponse({
+        'success': True,
+        'period': f"{month}/{year}",
+        'data': daily_data
+    })
+
+
+@login_required
+def monthly_sales_chart_api(request):
+    """Oylik sotuvlar diagrammasi API"""
+    shop_id = request.GET.get('shop')
+    year = int(request.GET.get('year', timezone.now().year))
+    seller_id = request.GET.get('seller')
+
+    if not shop_id:
+        return JsonResponse({'error': "Do'kon ID kerak"}, status=400)
+
+    try:
+        shop = Shop.objects.get(id=shop_id)
+    except Shop.DoesNotExist:
+        return JsonResponse({'error': "Do'kon topilmadi"}, status=404)
+
+    monthly_data = []
+
+    for month in range(1, 13):
+        start_date = date(year, month, 1)
+        _, last_day = monthrange(year, month)
+        end_date = date(year, month, last_day)
+
+        # Filter setup
+        phone_filter = Q(phone__shop=shop, sale_date__range=[start_date, end_date])
+        exchange_filter = Q(new_phone__shop=shop, exchange_date__range=[start_date, end_date])
+        return_filter = Q(phone_sale__phone__shop=shop, return_date__range=[start_date, end_date])
+
+        if seller_id:
+            seller = get_object_or_404(User, id=seller_id)
+            phone_filter &= Q(salesman=seller)
+            exchange_filter &= Q(salesman=seller)
+            return_filter &= Q(phone_sale__salesman=seller)
+
+        # Sotilgan telefonlar
+        phone_sales_count = PhoneSale.objects.filter(phone_filter).count()
+
+        # Almashtirishlar
+        exchanges_count = PhoneExchange.objects.filter(exchange_filter).count()
+
+        # Qaytarilganlar
+        returns_count = PhoneReturn.objects.filter(return_filter).count()
+
+        # Net sotuvlar
+        net_sales = phone_sales_count + exchanges_count - returns_count
+
+        month_names = {
+            1: 'Yan', 2: 'Fev', 3: 'Mar', 4: 'Apr',
+            5: 'May', 6: 'Iyun', 7: 'Iyul', 8: 'Avg',
+            9: 'Sen', 10: 'Okt', 11: 'Noy', 12: 'Dek'
+        }
+
+        monthly_data.append({
+            'month': month,
+            'month_name': month_names[month],
+            'phone_sales': phone_sales_count,
+            'exchanges': exchanges_count,
+            'returns': returns_count,
+            'net_sales': net_sales
+        })
+
+    return JsonResponse({
+        'success': True,
+        'year': year,
+        'data': monthly_data
+    })
+
+
+@login_required
+def seller_comparison_chart_api(request):
+    """Sotuvchilar taqqoslash diagrammasi API"""
+    shop_id = request.GET.get('shop')
+    year = int(request.GET.get('year', timezone.now().year))
+    month = int(request.GET.get('month', timezone.now().month))
+    period_type = request.GET.get('period', 'monthly')  # 'monthly' or 'yearly'
+
+    if not shop_id:
+        return JsonResponse({'error': "Do'kon ID kerak"}, status=400)
+
+    try:
+        shop = Shop.objects.get(id=shop_id)
+    except Shop.DoesNotExist:
+        return JsonResponse({'error': "Do'kon topilmadi"}, status=404)
+
+    # Sana diapazoni
+    if period_type == 'monthly':
+        start_date = date(year, month, 1)
+        _, last_day = monthrange(year, month)
+        end_date = date(year, month, last_day)
+    else:  # yearly
+        start_date = date(year, 1, 1)
+        end_date = date(year, 12, 31)
+
+    # Sotuvchilarni topish
+    seller_ids = set(
+        PhoneSale.objects.filter(
+            phone__shop=shop,
+            sale_date__range=[start_date, end_date]
+        ).values_list('salesman_id', flat=True)
+    ) | set(
+        PhoneExchange.objects.filter(
+            new_phone__shop=shop,
+            exchange_date__range=[start_date, end_date]
+        ).values_list('salesman_id', flat=True)
+    )
+
+    sellers = User.objects.filter(id__in=seller_ids)
+
+    seller_data = []
+
+    for seller in sellers:
+        # Sotilgan telefonlar
+        phone_sales_count = PhoneSale.objects.filter(
+            phone__shop=shop,
+            salesman=seller,
+            sale_date__range=[start_date, end_date]
+        ).count()
+
+        # Almashtirishlar
+        exchanges_count = PhoneExchange.objects.filter(
+            new_phone__shop=shop,
+            salesman=seller,
+            exchange_date__range=[start_date, end_date]
+        ).count()
+
+        # Qaytarilganlar
+        returns_count = PhoneReturn.objects.filter(
+            phone_sale__phone__shop=shop,
+            phone_sale__salesman=seller,
+            return_date__range=[start_date, end_date]
+        ).count()
+
+        # Net sotuvlar
+        net_sales = phone_sales_count + exchanges_count - returns_count
+
+        if net_sales > 0 or phone_sales_count > 0 or exchanges_count > 0:
+            seller_data.append({
+                'seller_id': seller.id,
+                'seller_name': seller.get_full_name() or seller.username,
+                'phone_sales': phone_sales_count,
+                'exchanges': exchanges_count,
+                'returns': returns_count,
+                'net_sales': net_sales
+            })
+
+    # Eng ko'p sotgan bo'yicha tartiblash
+    seller_data.sort(key=lambda x: x['net_sales'], reverse=True)
+
+    return JsonResponse({
+        'success': True,
+        'period': f"{month}/{year}" if period_type == 'monthly' else str(year),
+        'data': seller_data
+    })
+
+
+@login_required
+def shop_comparison_chart_api(request):
+    """Do'konlar taqqoslash diagrammasi API"""
+    year = int(request.GET.get('year', timezone.now().year))
+    month = int(request.GET.get('month', timezone.now().month))
+    period_type = request.GET.get('period', 'monthly')
+
+    shops = Shop.objects.all()
+    if hasattr(request.user, 'userprofile') and request.user.userprofile.role != 'boss':
+        shops = shops.filter(owner=request.user)
+
+    # Sana diapazoni
+    if period_type == 'monthly':
+        start_date = date(year, month, 1)
+        _, last_day = monthrange(year, month)
+        end_date = date(year, month, last_day)
+    else:  # yearly
+        start_date = date(year, 1, 1)
+        end_date = date(year, 12, 31)
+
+    shop_data = []
+
+    for shop in shops:
+        # Sotilgan telefonlar
+        phone_sales_count = PhoneSale.objects.filter(
+            phone__shop=shop,
+            sale_date__range=[start_date, end_date]
+        ).count()
+
+        # Almashtirishlar
+        exchanges_count = PhoneExchange.objects.filter(
+            new_phone__shop=shop,
+            exchange_date__range=[start_date, end_date]
+        ).count()
+
+        # Qaytarilganlar
+        returns_count = PhoneReturn.objects.filter(
+            phone_sale__phone__shop=shop,
+            return_date__range=[start_date, end_date]
+        ).count()
+
+        # Net sotuvlar
+        net_sales = phone_sales_count + exchanges_count - returns_count
+
+        shop_data.append({
+            'shop_id': shop.id,
+            'shop_name': shop.name,
+            'phone_sales': phone_sales_count,
+            'exchanges': exchanges_count,
+            'returns': returns_count,
+            'net_sales': net_sales
+        })
+
+    # Eng ko'p sotgan bo'yicha tartiblash
+    shop_data.sort(key=lambda x: x['net_sales'], reverse=True)
+
+    return JsonResponse({
+        'success': True,
+        'period': f"{month}/{year}" if period_type == 'monthly' else str(year),
+        'data': shop_data
+    })

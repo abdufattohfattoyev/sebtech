@@ -4,6 +4,7 @@ from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 from decimal import Decimal
 from .models import CashFlowTransaction
+from datetime import date
 
 
 # ==================== TELEFON SOTISH ====================
@@ -137,7 +138,25 @@ def handle_exchange_cashflow(sender, instance, created, **kwargs):
     """Almashtirish - CREATE va UPDATE"""
     try:
         if created:
-            # Yangi almashtirish
+            # ========== YANGI ALMASHTIRISH ==========
+
+            # 1️⃣ OLINGAN ESKI TELEFON QIYMATI - CHIQIM (har doim yaratiladi)
+            if instance.old_phone_value > 0:
+                CashFlowTransaction.objects.create(
+                    shop=instance.new_phone.shop,
+                    transaction_date=instance.exchange_date,
+                    transaction_type='exchange_old_phone_value',
+                    amount_usd=-instance.old_phone_value,  # ✅ Minus - chiqim
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance.new_phone,
+                    related_exchange=instance,
+                    description=f"Olingan telefon: {instance.old_phone_model}",
+                    notes=f"Mijoz: {instance.customer_name} | Yangi: {instance.new_phone.phone_model}",
+                    created_by=instance.salesman
+                )
+                print(f"✅ Old phone value: -${instance.old_phone_value}")
+
+            # 2️⃣ MIJOZ TO'LAGAN FARQ (agar mijoz to'lasa)
             if instance.exchange_type == 'customer_pays' and instance.cash_amount > 0:
                 CashFlowTransaction.objects.create(
                     shop=instance.new_phone.shop,
@@ -147,11 +166,13 @@ def handle_exchange_cashflow(sender, instance, created, **kwargs):
                     amount_uzs=Decimal('0'),
                     related_phone=instance.new_phone,
                     related_exchange=instance,
-                    description=f"Almashtirish: {instance.old_phone_model} → {instance.new_phone.phone_model}",
+                    description=f"Mijoz to'lovi: {instance.old_phone_model} → {instance.new_phone.phone_model}",
                     notes=f"Mijoz: {instance.customer_name}",
                     created_by=instance.salesman
                 )
-                print(f"✅ Exchange income created: ${instance.cash_amount}")
+                print(f"✅ Exchange income: +${instance.cash_amount}")
+
+            # 3️⃣ DO'KON TO'LAGAN FARQ (agar do'kon to'lasa)
             elif instance.exchange_type == 'seller_pays' and instance.cash_amount > 0:
                 CashFlowTransaction.objects.create(
                     shop=instance.new_phone.shop,
@@ -161,11 +182,13 @@ def handle_exchange_cashflow(sender, instance, created, **kwargs):
                     amount_uzs=Decimal('0'),
                     related_phone=instance.new_phone,
                     related_exchange=instance,
-                    description=f"Almashtirish: {instance.old_phone_model} → {instance.new_phone.phone_model}",
+                    description=f"Do'kon to'lovi: {instance.old_phone_model} → {instance.new_phone.phone_model}",
                     notes=f"Mijoz: {instance.customer_name}",
                     created_by=instance.salesman
                 )
-                print(f"✅ Exchange expense created: -${instance.cash_amount}")
+                print(f"✅ Exchange expense: -${instance.cash_amount}")
+
+            # 4️⃣ TENG ALMASHTIRISH
             elif instance.exchange_type == 'equal':
                 CashFlowTransaction.objects.create(
                     shop=instance.new_phone.shop,
@@ -179,12 +202,27 @@ def handle_exchange_cashflow(sender, instance, created, **kwargs):
                     notes=f"Mijoz: {instance.customer_name}",
                     created_by=instance.salesman
                 )
-                print(f"✅ Exchange equal created")
+                print(f"✅ Exchange equal")
+
         else:
-            # Yangilanish - avval eski cashflow ni o'chirish
+            # ========== YANGILANISH ==========
             CashFlowTransaction.objects.filter(related_exchange=instance).delete()
 
-            # Yangi cashflow yaratish
+            # Yangi qiymatlar bilan qayta yaratish
+            if instance.old_phone_value > 0:
+                CashFlowTransaction.objects.create(
+                    shop=instance.new_phone.shop,
+                    transaction_date=instance.exchange_date,
+                    transaction_type='exchange_old_phone_value',
+                    amount_usd=-instance.old_phone_value,
+                    amount_uzs=Decimal('0'),
+                    related_phone=instance.new_phone,
+                    related_exchange=instance,
+                    description=f"Olingan telefon: {instance.old_phone_model}",
+                    notes=f"Mijoz: {instance.customer_name} | Yangi: {instance.new_phone.phone_model}",
+                    created_by=instance.salesman
+                )
+
             if instance.exchange_type == 'customer_pays' and instance.cash_amount > 0:
                 CashFlowTransaction.objects.create(
                     shop=instance.new_phone.shop,
@@ -194,11 +232,10 @@ def handle_exchange_cashflow(sender, instance, created, **kwargs):
                     amount_uzs=Decimal('0'),
                     related_phone=instance.new_phone,
                     related_exchange=instance,
-                    description=f"Almashtirish: {instance.old_phone_model} → {instance.new_phone.phone_model}",
+                    description=f"Mijoz to'lovi: {instance.old_phone_model} → {instance.new_phone.phone_model}",
                     notes=f"Mijoz: {instance.customer_name}",
                     created_by=instance.salesman
                 )
-                print(f"✅ Exchange updated: income ${instance.cash_amount}")
             elif instance.exchange_type == 'seller_pays' and instance.cash_amount > 0:
                 CashFlowTransaction.objects.create(
                     shop=instance.new_phone.shop,
@@ -208,11 +245,10 @@ def handle_exchange_cashflow(sender, instance, created, **kwargs):
                     amount_uzs=Decimal('0'),
                     related_phone=instance.new_phone,
                     related_exchange=instance,
-                    description=f"Almashtirish: {instance.old_phone_model} → {instance.new_phone.phone_model}",
+                    description=f"Do'kon to'lovi: {instance.old_phone_model} → {instance.new_phone.phone_model}",
                     notes=f"Mijoz: {instance.customer_name}",
                     created_by=instance.salesman
                 )
-                print(f"✅ Exchange updated: expense -${instance.cash_amount}")
             elif instance.exchange_type == 'equal':
                 CashFlowTransaction.objects.create(
                     shop=instance.new_phone.shop,
@@ -226,7 +262,9 @@ def handle_exchange_cashflow(sender, instance, created, **kwargs):
                     notes=f"Mijoz: {instance.customer_name}",
                     created_by=instance.salesman
                 )
-                print(f"✅ Exchange updated: equal")
+
+            print(f"✅ Exchange updated")
+
     except Exception as e:
         print(f"❌ Exchange cashflow error: {e}")
 

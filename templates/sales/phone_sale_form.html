@@ -40,7 +40,6 @@
 .payment-calc.valid { background: #d4edda; border-color: #28a745; }
 .payment-calc.invalid { background: #fff3cd; border-color: #ffc107; }
 
-/* ✅ Qarz muddati maydoni */
 .debt-due-field {
     background: #fff3cd;
     border: 2px solid #ffc107;
@@ -167,7 +166,6 @@
             </div>
         </div>
 
-        <!-- Hidden phone field -->
         <input type="hidden" name="phone" id="phoneId">
 
         <!-- Asosiy ma'lumotlar -->
@@ -245,12 +243,19 @@
                     </div>
                 </div>
 
-                <!-- ✅ Qarz muddati maydoni -->
-                <div class="debt-due-field" id="debtDueField">
+                <!-- Qarz muddati -->
+                <div class="debt-due-field {% if form.instance.debt_amount and form.instance.debt_amount > 0 %}show{% endif %}" id="debtDueField">
                     <label>
                         <i class="fas fa-calendar-alt"></i> Qarz qaytarish muddati <span class="text-danger">*</span>
                     </label>
                     {{ form.debt_due_date }}
+                    {% if form.debt_due_date.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.debt_due_date.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                     <small class="text-muted d-block mt-1">Qarz bo'lganda qaytarish sanasi kiritilishi shart</small>
                 </div>
 
@@ -319,6 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
         customerName: $('{{ form.customer_name.id_for_label }}'),
         customerPhone: $('{{ form.customer_phone.id_for_label }}'),
         salePrice: $('{{ form.sale_price.id_for_label }}'),
+        saleDate: $('{{ form.sale_date.id_for_label }}'),
         debtAmount: $('{{ form.debt_amount.id_for_label }}'),
         debtDueDate: $('{{ form.debt_due_date.id_for_label }}'),
         debtDueField: $('debtDueField'),
@@ -339,6 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializePhoneData();
 
     function initializePhoneData() {
+        // Telefon ma'lumotlarini yuklash
         {% if form.instance.phone %}
         const phoneData = {
             id: {{ form.instance.phone.id }},
@@ -354,11 +361,31 @@ document.addEventListener('DOMContentLoaded', function() {
         displaySelectedPhone(phoneData);
         {% endif %}
 
-        // ✅ Dastlabki qarz muddatini tekshirish
-        checkDebtDueField();
+        // ✅ SALE DATE ni to'ldirish (EDIT paytida)
+        {% if editing and form.instance.sale_date %}
+        if (elements.saleDate && !elements.saleDate.value) {
+            elements.saleDate.value = '{{ form.instance.sale_date|date:"Y-m-d" }}';
+        }
+        {% endif %}
+
+        // Qarz maydonini ko'rsatish va sanani to'ldirish
+        const debtAmount = parseFloat(elements.debtAmount.value) || 0;
+        if (debtAmount > 0) {
+            elements.debtDueField.classList.add('show');
+            elements.debtDueDate.required = true;
+
+            // ✅ DEBT DUE DATE ni to'ldirish
+            {% if form.debt_due_date.value %}
+            if (!elements.debtDueDate.value) {
+                elements.debtDueDate.value = '{{ form.debt_due_date.value|date:"Y-m-d" }}';
+            }
+            {% endif %}
+        }
+
+        // To'lovlar kalkulyatorini yangilash
+        calculatePayments();
     }
 
-    // ✅ Qarz muddati maydonini ko'rsatish/yashirish
     function checkDebtDueField() {
         const debtAmount = parseFloat(elements.debtAmount.value) || 0;
         if (debtAmount > 0) {
@@ -367,10 +394,10 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             elements.debtDueField.classList.remove('show');
             elements.debtDueDate.required = false;
+            elements.debtDueDate.value = '';
         }
     }
 
-    // ✅ Qarz maydoniga event listener
     elements.debtAmount.addEventListener('input', checkDebtDueField);
 
     // IMEI qidirish
@@ -503,7 +530,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // To'lovlar hisoblash
     function calculatePayments() {
         const total = elements.payments.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
         const price = parseFloat(elements.salePrice.value) || 0;
@@ -533,7 +559,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => toast.remove(), 3000);
     }
 
-    // Event listeners
     elements.payments.concat([elements.salePrice]).forEach(el => {
         el.addEventListener('input', calculatePayments);
         el.addEventListener('focus', function() {
@@ -547,7 +572,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Form submit
     $('saleForm').addEventListener('submit', function(e) {
         if (!elements.phoneId.value) {
             e.preventDefault();
@@ -570,7 +594,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // ✅ Qarz muddati validatsiyasi
         const debtAmount = parseFloat(elements.debtAmount.value) || 0;
         if (debtAmount > 0 && !elements.debtDueDate.value) {
             e.preventDefault();
@@ -592,7 +615,6 @@ document.addEventListener('DOMContentLoaded', function() {
         $('submitBtn').disabled = true;
     });
 
-    // Telefon raqam formatlash
     elements.customerPhone.addEventListener('input', function() {
         let val = this.value.replace(/\D/g, '');
         if (val.startsWith('998')) val = '+' + val;
@@ -600,15 +622,11 @@ document.addEventListener('DOMContentLoaded', function() {
         this.value = val;
     });
 
-    // Click outside
     document.addEventListener('click', e => {
         if (!elements.imeiSearch.contains(e.target) && !elements.searchResults.contains(e.target)) {
             hideResults();
         }
     });
-
-    // Initialize
-    calculatePayments();
 });
 </script>
 {% endblock %}

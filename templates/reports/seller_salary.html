@@ -14,7 +14,6 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
 .filter-card { background: white; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 .filter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 
-/* ✅ QAYTARILGANLAR OGOHLANTIRUV */
 .returns-alert {
   background: linear-gradient(135deg, #fee2e2, #fecaca);
   border-left: 4px solid #dc2626;
@@ -178,7 +177,6 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
         </form>
     </div>
 
-    <!-- ✅ QAYTARILGANLAR OGOHLANTIRUV -->
     {% if salary_data.sales.returns_count > 0 %}
     <div class="returns-alert">
         <div class="returns-alert-icon">⚠️</div>
@@ -205,12 +203,12 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
         </div>
         <div class="summary-card">
             <div class="summary-label">Asosiy Maosh</div>
-            <div class="summary-value">${{ salary_data.commission.base_salary|floatformat:2 }}</div>
+            <div class="summary-value">${{ salary_data.commission.base_salary_usd|floatformat:2 }}</div>
             <div class="summary-currency">USD</div>
         </div>
         <div class="summary-card" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
             <div class="summary-label" style="color: white;">Jami Maosh</div>
-            <div class="summary-value" style="color: white;">${{ salary_data.commission.total_salary|floatformat:2 }}</div>
+            <div class="summary-value" style="color: white;">${{ salary_data.commission.total_salary_usd|floatformat:2 }}</div>
             <div class="summary-currency" style="color: white;">USD</div>
         </div>
     </div>
@@ -229,7 +227,7 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
                 </div>
                 <div class="currency-stat">
                     <div class="currency-stat-label">Foyda (Sof)</div>
-                    <div class="currency-stat-value usd">${{ salary_data.profits.phone_profit|floatformat:2 }}</div>
+                    <div class="currency-stat-value usd">${{ salary_data.profits.phone_profit|add:salary_data.profits.exchange_profit|floatformat:2 }}</div>
                 </div>
                 <div class="currency-stat">
                     <div class="currency-stat-label">Komissiya</div>
@@ -383,7 +381,7 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
                                         <div class="sale-price" style="color: #3b82f6;">{{ sale.total_price|floatformat:0 }} so'm</div>
                                     </div>
                                     <div class="sale-meta">
-                                        {{ sale.customer.name|truncatewords:3 }} • Foyda: {{ sale.profit|floatformat:0 }} so'm
+                                        {{ sale.customer.name|truncatewords:3 }} • Foyda: {{ sale.calculated_profit|floatformat:0 }} so'm
                                     </div>
                                 </div>
                                 {% empty %}
@@ -411,7 +409,6 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
                             </div>
                         </div>
 
-                        <!-- ✅ QAYTARILGANLAR -->
                         <div class="detail-section">
                             <div class="detail-title" style="color: #dc2626;">⚠️ Qaytarilganlar</div>
                             <div class="sale-list">
@@ -441,12 +438,13 @@ body { font-family: -apple-system, sans-serif; background: #fafafa; }
 
     <div class="total-salary">
         <div class="total-label">OYLIK MAOSH (FAQAT FAOL SOTUVLARDAN)</div>
-        <div class="total-value">${{ salary_data.commission.total_salary|floatformat:2 }}</div>
+        <div class="total-value">${{ salary_data.commission.total_salary_usd|floatformat:2 }}</div>
         <div class="total-breakdown">
-            <strong>Dollar hisobida:</strong> Asosiy: ${{ salary_data.commission.base_salary|floatformat:2 }} +
+            <strong>Dollar hisobida:</strong> Asosiy: ${{ salary_data.commission.base_salary_usd|floatformat:2 }} +
             Telefon (faol): ${{ salary_data.commission.phone_commission|floatformat:2 }} +
             Almashtirish: ${{ salary_data.commission.exchange_commission|floatformat:2 }}<br>
-            <strong>So'm hisobida:</strong> Aksessuar komissiyasi: {{ salary_data.commission.accessory_commission|floatformat:0 }} so'm
+            <strong>So'm hisobida:</strong> Asosiy: {{ salary_data.commission.base_salary_uzs|floatformat:0 }} so'm +
+            Aksessuar komissiya: {{ salary_data.commission.accessory_commission|floatformat:0 }} so'm
             {% if salary_data.sales.returns_count > 0 %}
             <br><br>
             <span style="background: rgba(220, 38, 38, 0.2); padding: 0.5rem 1rem; border-radius: 6px; display: inline-block; margin-top: 0.5rem;">

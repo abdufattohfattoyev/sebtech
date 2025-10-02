@@ -20,14 +20,7 @@
     --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
 }
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--gray-50);
-    color: var(--gray-900);
-    line-height: 1.6;
-}
-
-.container {
+.dashboard-container {
     max-width: 1280px;
     margin: 0 auto;
     padding: 1rem;
@@ -46,6 +39,7 @@ body {
     padding: 1.5rem;
     box-shadow: var(--shadow);
     transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
 }
 
 .stat-card:hover {
@@ -120,6 +114,7 @@ body {
     box-shadow: var(--shadow);
     overflow: hidden;
     margin-bottom: 2rem;
+    border: none;
 }
 
 .table-header {
@@ -313,8 +308,26 @@ body {
     margin-bottom: 1rem;
 }
 
+.amount-usd {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.amount-uzs {
+    color: var(--info);
+    font-weight: 600;
+}
+
+.debt-badge {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
 @media (max-width: 768px) {
-    .container {
+    .dashboard-container {
         padding: 0.5rem;
     }
 
@@ -353,7 +366,7 @@ body {
         font-size: 0.75rem;
     }
 
-    .d-md-none {
+    .d-mobile-none {
         display: none;
     }
 }
@@ -391,7 +404,8 @@ body {
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="dashboard-container">
+    <!-- Statistics Grid -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-header">
@@ -448,6 +462,7 @@ body {
         </div>
     </div>
 
+    <!-- Shops Table -->
     <div class="table-card">
         <div class="table-header">
             <div class="table-title">
@@ -462,7 +477,7 @@ body {
                 <thead>
                     <tr>
                         <th>Nomi</th>
-                        <th class="d-md-none">Egasi</th>
+                        <th class="d-mobile-none">Egasi</th>
                         <th class="text-center">Amallar</th>
                     </tr>
                 </thead>
@@ -475,7 +490,7 @@ body {
                                 <span class="user-meta">{{ shop.created_at|date:"d.m.Y" }}</span>
                             </div>
                         </td>
-                        <td class="d-md-none">
+                        <td class="d-mobile-none">
                             <div class="user-info">
                                 <div class="avatar primary">
                                     {{ shop.owner.first_name|first|default:shop.owner.username|first|upper }}
@@ -530,6 +545,7 @@ body {
         {% endif %}
     </div>
 
+    <!-- Customers Table -->
     <div class="table-card">
         <div class="table-header">
             <div class="table-title">
@@ -549,9 +565,9 @@ body {
                 <thead>
                     <tr>
                         <th>Ism</th>
-                        <th class="d-md-none">Telefon</th>
-                        <th>Xarid</th>
-                        <th>Qarz</th>
+                        <th class="d-mobile-none">Telefon</th>
+                        <th>Xaridlar</th>
+                        <th>Qarzlar</th>
                         <th class="text-center">Amallar</th>
                     </tr>
                 </thead>
@@ -569,18 +585,28 @@ body {
                                 </div>
                             </div>
                         </td>
-                        <td class="d-md-none">
+                        <td class="d-mobile-none">
                             <span style="color: var(--info);">{{ customer.phone_number }}</span>
                         </td>
                         <td>
-                            <span class="fw-bold text-success">${{ customer.total_purchases|floatformat:0 }}</span>
+                            <div class="d-flex flex-column gap-1">
+                                <span class="amount-usd">${{ customer.total_purchases_usd|floatformat:0 }}</span>
+                                <span class="amount-uzs">{{ customer.total_purchases_uzs|floatformat:0 }} so'm</span>
+                            </div>
                         </td>
                         <td>
-                            {% if customer.total_debt > 0 %}
-                            <span class="fw-bold text-danger">${{ customer.total_debt|floatformat:0 }}</span>
-                            {% else %}
-                            <span class="text-muted">$0</span>
-                            {% endif %}
+                            <div class="d-flex flex-column gap-1">
+                                {% if customer.total_debt_usd > 0 %}
+                                <span class="debt-badge">${{ customer.total_debt_usd|floatformat:0 }}</span>
+                                {% else %}
+                                <span class="text-muted">$0</span>
+                                {% endif %}
+                                {% if customer.total_debt_uzs > 0 %}
+                                <span class="debt-badge">{{ customer.total_debt_uzs|floatformat:0 }} so'm</span>
+                                {% else %}
+                                <span class="text-muted">0 so'm</span>
+                                {% endif %}
+                            </div>
                         </td>
                         <td class="text-center">
                             <div class="action-btns">
@@ -590,9 +616,6 @@ body {
                                 {% if is_boss or request.user.userprofile.role == 'seller' %}
                                 <a href="{% url 'shop:customer_edit' customer.pk %}" class="action-btn edit" title="Tahrirlash">
                                     <i class="fas fa-edit"></i>
-                                </a>
-                                <a href="{% url 'shop:customer_delete' customer.pk %}" class="action-btn delete" title="O'chirish">
-                                    <i class="fas fa-trash"></i>
                                 </a>
                                 {% endif %}
                             </div>

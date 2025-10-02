@@ -407,13 +407,15 @@ def yearly_report(request):
                 count=Count('id')
             )
 
+            # TO'G'RILANGAN - ProfitCalculator ishlatish
             phone_profit = sum(
                 profit_calc.calculate_phone_profit(sale)
                 for sale in seller_phone_sales
             )
 
             accessory_profit = sum(
-                sale.profit for sale in seller_accessory_sales
+                profit_calc.calculate_accessory_profit(sale)
+                for sale in seller_accessory_sales
             )
 
             exchange_profit = sum(

@@ -108,6 +108,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   font-weight: 500;
 }
 
+/* Returns Warning */
+.returns-warning {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-left: 4px solid #f59e0b;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.returns-warning-icon {
+  font-size: 32px;
+  color: #d97706;
+}
+.returns-warning-content h4 {
+  margin: 0 0 8px 0;
+  color: #92400e;
+  font-size: 16px;
+  font-weight: 700;
+}
+.returns-warning-content p {
+  margin: 0;
+  color: #78350f;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 /* Content Grid */
 .content-grid {
   display: grid;
@@ -132,6 +160,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   font-weight: 600;
   font-size: 15px;
   color: #111827;
+}
+.card-header.returns {
+  background: #fef3c7;
+  border-bottom-color: #fde68a;
+  color: #92400e;
 }
 .card-body {
   padding: 0;
@@ -164,6 +197,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .sale-item.phone { border-left-color: #10b981; background: linear-gradient(135deg, #ecfdf5 0%, #f9fafb 100%); }
 .sale-item.accessory { border-left-color: #3b82f6; background: linear-gradient(135deg, #eff6ff 0%, #f9fafb 100%); }
 .sale-item.exchange { border-left-color: #f59e0b; background: linear-gradient(135deg, #fef3c7 0%, #f9fafb 100%); }
+.sale-item.return {
+  border-left-color: #ef4444;
+  background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
+}
 
 .sale-header {
   display: flex;
@@ -183,6 +220,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 }
 .sale-price.usd { color: #10b981; }
 .sale-price.uzs { color: #3b82f6; }
+.sale-price.return { color: #ef4444; }
 
 .sale-details {
   font-size: 13px;
@@ -313,6 +351,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </form>
   </div>
 
+  <!-- ✅ QAYTARILGANLAR OGOHLANTIRUV -->
+  {% if seller_stats.counts.returns > 0 %}
+  <div class="returns-warning">
+    <div class="returns-warning-icon">⚠️</div>
+    <div class="returns-warning-content">
+      <h4>Qaytarilgan telefonlar mavjud!</h4>
+      <p>
+        Bugun <strong>{{ seller_stats.counts.returns }} ta</strong> telefon qaytarildi
+        (<strong>${{ seller_stats.sales.returns_total_usd|floatformat:2 }}</strong>).
+        Bu telefonlar sotish sonidan va foydadan ayirilgan. Komissiya hisoblanmaydi.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Stats -->
   <div class="stats-container">
     <!-- Telefon -->
@@ -329,11 +382,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div class="stat-box">
           <div class="stat-value usd">{{ seller_stats.counts.phone|default:0 }}</div>
-          <div class="stat-label">Soni</div>
+          <div class="stat-label">Soni (Sof)</div>
         </div>
         <div class="stat-box">
           <div class="stat-value usd">${{ seller_stats.profits.phone_profit|floatformat:2|default:"0.00" }}</div>
-          <div class="stat-label">Foyda</div>
+          <div class="stat-label">Foyda (Sof)</div>
         </div>
       </div>
     </div>
@@ -481,6 +534,42 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       {% endif %}
     </div>
   </div>
+
+  <!-- ✅ QAYTARILGAN TELEFONLAR -->
+  {% if seller_stats.sales_data.phone_returns %}
+  <div class="card">
+    <div class="card-header returns">
+      ⚠️ Qaytarilgan Telefonlar ({{ seller_stats.counts.returns }}) -
+      <span style="color: #dc2626;">-${{ seller_stats.sales.returns_total_usd|floatformat:2 }}</span>
+    </div>
+    <div class="card-body">
+      <div class="sales-list">
+        {% for return in seller_stats.sales_data.phone_returns %}
+        <div class="sale-item return">
+          <div class="sale-header">
+            <div class="sale-title">
+              {{ return.phone_sale.phone.phone_model }} {{ return.phone_sale.phone.memory_size }}
+            </div>
+            <div class="sale-price return">-${{ return.phone_sale.sale_price|floatformat:2 }}</div>
+          </div>
+          <div class="sale-details">
+            Mijoz: {{ return.phone_sale.customer.name }}<br>
+            IMEI: {{ return.phone_sale.phone.imei|default:"N/A" }}<br>
+            Qaytarish sanasi: {{ return.return_date|date:"d.m.Y" }}<br>
+            <strong style="color: #dc2626;">Sabab:</strong> {{ return.reason|truncatewords:10 }}<br>
+            <strong style="color: #dc2626;">Yo'qotilgan foyda: ${{ return.phone_sale.sale_price|add:return.phone_sale.phone.cost_price|floatformat:2 }}</strong>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div style="padding: 15px 20px; background: #fef2f2; border-top: 2px solid #fecaca;">
+        <p style="margin: 0; color: #991b1b; font-size: 14px; font-weight: 600;">
+          ℹ️ Bu telefonlar sotish sonidan ayirilgan va uchun komissiya hisoblanmaydi.
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Maosh Link -->
   <a href="{% url 'reports:seller_salary' seller.id %}?shop={{ selected_shop.id }}&year={{ selected_date|date:'Y' }}&month={{ selected_date|date:'m' }}" class="salary-link">

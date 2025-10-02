@@ -1,26 +1,24 @@
-from django.db import models
-from django.contrib.auth.models import User
-from django.utils import timezone
-from django.db.models import Sum
-from decimal import Decimal
+from django import forms
+from .models import Shop, Customer
+from users.models import UserProfile
 
 
-class Shop(models.Model):
-    name = models.CharField(max_length=100, unique=True, verbose_name="Do'kon nomi")
-    owner = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        limit_choices_to={'userprofile__role': 'boss'},
-        verbose_name="Do'kon egasi"
-    )
-    created_at = models.DateField(default=timezone.now, verbose_name="Yaratilgan sana")
-
+class ShopForm(forms.ModelForm):
     class Meta:
-        verbose_name = "Do'kon"
-        verbose_name_plural = "Do'konlar"
+        model = Shop
+        fields = ['name', 'owner']
+        labels = {
+            'name': "Do'kon nomi",
+            'owner': "Do'kon egasi",
+        }
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Do'kon nomini kiriting"}),
+            'owner': forms.Select(attrs={'class': 'form-select'}),
+        }
 
-    def __str__(self):
-        return self.name
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['owner'].queryset = UserProfile.objects.filter(role='boss').select_related('user')
 
 
 class Customer(models.Model):

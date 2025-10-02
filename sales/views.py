@@ -85,14 +85,80 @@ def sales_dashboard(request):
 
 @login_required
 def phone_sale_list(request):
+    """Telefon sotuvlari ro'yxati - filter va qidiruv"""
+    from django.contrib.auth.models import User
+    from django.core.paginator import Paginator
+
+    # Asosiy queryset
     phone_sales = PhoneSale.objects.select_related(
         'phone__phone_model',
         'phone__memory_size',
         'phone__shop',
         'customer',
         'salesman'
-    ).order_by('-sale_date')
-    return render(request, 'sales/phone_sale_list.html', {'phone_sales': phone_sales})
+    ).order_by('-sale_date', '-id')
+
+    # Filter parametrlar
+    selected_salesman = request.GET.get('salesman', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    search_imei = request.GET.get('imei', '')
+
+    # Filterlar
+    if selected_salesman:
+        phone_sales = phone_sales.filter(salesman_id=selected_salesman)
+
+    if date_from:
+        phone_sales = phone_sales.filter(sale_date__gte=date_from)
+
+    if date_to:
+        phone_sales = phone_sales.filter(sale_date__lte=date_to)
+
+    if search_imei:
+        phone_sales = phone_sales.filter(phone__imei__icontains=search_imei)
+
+    # Statistika (filterlangan natijalar uchun)
+    stats = phone_sales.aggregate(
+        total_count=Count('id'),
+        total_sum=Sum('sale_price'),
+        total_cash=Sum('cash_amount'),
+        total_card=Sum('card_amount'),
+        total_credit=Sum('credit_amount'),
+        total_debt=Sum('debt_amount')
+    )
+
+    # Pagination
+    paginator = Paginator(phone_sales, 20)  # 20 ta yozuv har sahifada
+    page = request.GET.get('page')
+    phone_sales_page = paginator.get_page(page)
+
+    # Barcha sotuvchilar (filter uchun)
+    salesmen = User.objects.filter(
+        phonesale__isnull=False
+    ).distinct().order_by('first_name', 'username')
+
+    context = {
+        'phone_sales': phone_sales_page,
+        'page_obj': phone_sales_page,
+        'is_paginated': phone_sales_page.has_other_pages(),
+
+        # Statistika
+        'total_count': stats['total_count'] or 0,
+        'total_sum': stats['total_sum'] or Decimal('0'),
+        'total_cash': stats['total_cash'] or Decimal('0'),
+        'total_card': stats['total_card'] or Decimal('0'),
+        'total_credit': stats['total_credit'] or Decimal('0'),
+        'total_debt': stats['total_debt'] or Decimal('0'),
+
+        # Filter parametrlar
+        'salesmen': salesmen,
+        'selected_salesman': selected_salesman,
+        'date_from': date_from,
+        'date_to': date_to,
+        'search_imei': search_imei,
+    }
+
+    return render(request, 'sales/phone_sale_list.html', context)
 
 
 @login_required
@@ -158,20 +224,105 @@ def phone_sale_detail(request, pk):
 
 @login_required
 def phone_sale_edit(request, pk):
+    """Telefon sotishni tahrirlash - QARZ QAYTA YARATILMASIN"""
     phone_sale = get_object_or_404(PhoneSale, pk=pk)
 
     if request.method == 'POST':
+        # Eski qiymatlarni saqlash
+        old_customer = phone_sale.customer
+        old_debt_amount = phone_sale.debt_amount
+
         form = PhoneSaleForm(request.POST, instance=phone_sale, user=request.user)
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # ❌ QARZNI QAYTA YARATMASLIK - faqat PhoneSale yangilanadi
-                    form.save()
-                messages.success(request, 'Telefon sotish ma\'lumotlari yangilandi!')
+                    # Yangi qiymatlar
+                    new_phone_sale = form.save(commit=False)
+                    new_customer = new_phone_sale.customer
+                    new_debt_amount = new_phone_sale.debt_amount
+                    debt_due_date = form.cleaned_data.get('debt_due_date')
+                    shop_owner = phone_sale.phone.shop.owner
+
+                    # ✅ 1. FAQAT MAVJUD QARZLARNI YANGILASH, YANGI QARZ YARATILMASIN
+                    if old_debt_amount > 0 or new_debt_amount > 0:
+                        # Mijoz → Sotuvchi qarzini topish va yangilash
+                        customer_debt = Debt.objects.filter(
+                            debt_type='customer_to_seller',
+                            customer=old_customer,
+                            creditor=phone_sale.salesman,
+                            currency='USD',
+                            notes__icontains=phone_sale.phone.imei
+                        ).first()
+
+                        if customer_debt:
+                            # Agar qarz mavjud bo'lsa, uni yangilash
+                            if new_debt_amount > 0:
+                                customer_debt.debt_amount = new_debt_amount
+                                customer_debt.customer = new_customer
+                                if debt_due_date:
+                                    customer_debt.due_date = debt_due_date
+                                customer_debt.notes = f"Telefon sotish (tahrirlangan): {phone_sale.phone.phone_model} {phone_sale.phone.memory_size} (IMEI: {phone_sale.phone.imei})"
+                                customer_debt.save()
+                            else:
+                                # Agar yangi qarz 0 bo'lsa, qarzni o'chirish
+                                customer_debt.delete()
+                        elif new_debt_amount > 0:
+                            # Agar qarz mavjud bo'lmasa va yangi qarz > 0 bo'lsa, yangi qarz yaratish
+                            Debt.objects.create(
+                                debt_type='customer_to_seller',
+                                creditor=phone_sale.salesman,
+                                customer=new_customer,
+                                currency='USD',
+                                debt_amount=new_debt_amount,
+                                paid_amount=Decimal('0'),
+                                due_date=debt_due_date,
+                                status='active',
+                                notes=f"Telefon sotish (tahrirlangan): {phone_sale.phone.phone_model} {phone_sale.phone.memory_size} (IMEI: {phone_sale.phone.imei})"
+                            )
+
+                        # Sotuvchi → Boss qarzini topish va yangilash
+                        seller_debt = Debt.objects.filter(
+                            debt_type='seller_to_boss',
+                            debtor=phone_sale.salesman,
+                            creditor=shop_owner,
+                            currency='USD',
+                            notes__icontains=phone_sale.phone.imei
+                        ).first()
+
+                        if seller_debt:
+                            # Agar qarz mavjud bo'lsa, uni yangilash
+                            if new_debt_amount > 0 and phone_sale.salesman != shop_owner:
+                                seller_debt.debt_amount = new_debt_amount
+                                if debt_due_date:
+                                    seller_debt.due_date = debt_due_date
+                                seller_debt.notes = f"Telefon sotish qarz javobgarligi (tahrirlangan): {phone_sale.phone.phone_model} (Mijoz: {new_customer.name}) IMEI: {phone_sale.phone.imei}"
+                                seller_debt.save()
+                            else:
+                                # Agar yangi qarz 0 bo'lsa yoki sotuvchi rahbar bo'lsa, qarzni o'chirish
+                                seller_debt.delete()
+                        elif new_debt_amount > 0 and phone_sale.salesman != shop_owner:
+                            # Agar qarz mavjud bo'lmasa va yangi qarz > 0 bo'lsa, yangi qarz yaratish
+                            Debt.objects.create(
+                                debt_type='seller_to_boss',
+                                creditor=shop_owner,
+                                debtor=phone_sale.salesman,
+                                currency='USD',
+                                debt_amount=new_debt_amount,
+                                paid_amount=Decimal('0'),
+                                due_date=debt_due_date,
+                                status='active',
+                                notes=f"Telefon sotish qarz javobgarligi (tahrirlangan): {phone_sale.phone.phone_model} (Mijoz: {new_customer.name}) IMEI: {phone_sale.phone.imei}"
+                            )
+
+                    # PhoneSale ni saqlash
+                    new_phone_sale.save()
+
+                messages.success(request, '✅ Telefon sotish va qarz ma\'lumotlari yangilandi!')
                 return redirect('sales:phone_sale_detail', pk=phone_sale.pk)
+
             except Exception as e:
                 logger.error(f"Phone sale edit error: {str(e)}", exc_info=True)
-                messages.error(request, f'Xatolik: {str(e)}')
+                messages.error(request, f'❌ Xatolik: {str(e)}')
         else:
             for field, errors in form.errors.items():
                 for error in errors:
@@ -182,9 +333,29 @@ def phone_sale_edit(request, pk):
                         messages.error(request, f'{field_label}: {error}')
     else:
         form = PhoneSaleForm(instance=phone_sale, user=request.user)
-        # ✅ Sanalarni to'g'ri formatda initial qilish
+
+        # ✅ TO'G'RI INITIAL QILISH - SANALAR
         if phone_sale.sale_date:
-            form.fields['sale_date'].initial = phone_sale.sale_date.strftime('%Y-%m-%d')
+            form.initial['sale_date'] = phone_sale.sale_date.strftime('%Y-%m-%d')
+
+        # Mijoz ma'lumotlarini initial qilish
+        if phone_sale.customer:
+            form.initial['customer_name'] = phone_sale.customer.name
+            form.initial['customer_phone'] = phone_sale.customer.phone_number
+
+        # ✅ QARZ SANASINI INITIAL QILISH (agar qarz mavjud bo'lsa)
+        if phone_sale.debt_amount > 0:
+            # Mijoz → Sotuvchi qarzini topish
+            customer_debt = Debt.objects.filter(
+                debt_type='customer_to_seller',
+                customer=phone_sale.customer,
+                creditor=phone_sale.salesman,
+                currency='USD',
+                notes__icontains=phone_sale.phone.imei
+            ).first()
+
+            if customer_debt and customer_debt.due_date:
+                form.initial['debt_due_date'] = customer_debt.due_date.strftime('%Y-%m-%d')
 
     return render(request, 'sales/phone_sale_form.html', {
         'form': form,
@@ -288,21 +459,132 @@ def accessory_sale_detail(request, pk):
 
 @login_required
 def accessory_sale_edit(request, pk):
+    """Aksessuar sotishni tahrirlash - qarzni ham yangilash"""
     accessory_sale = get_object_or_404(AccessorySale, pk=pk)
 
     if request.method == 'POST':
+        # Eski qiymatlar
+        old_customer = accessory_sale.customer
+        old_debt_amount = accessory_sale.debt_amount
+        old_quantity = accessory_sale.quantity
+
         form = AccessorySaleForm(request.POST, instance=accessory_sale, user=request.user)
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    form.save()
-                messages.success(request, 'Aksessuar sotish ma\'lumotlari yangilandi!')
+                    # Yangi qiymatlar
+                    new_accessory_sale = form.save(commit=False)
+                    new_customer = new_accessory_sale.customer
+                    new_debt_amount = new_accessory_sale.debt_amount
+                    shop_owner = accessory_sale.accessory.shop.owner
+
+                    # Aksessuar sonini to'g'rilash
+                    quantity_diff = new_accessory_sale.quantity - old_quantity
+                    if quantity_diff != 0:
+                        if quantity_diff > 0:
+                            if accessory_sale.accessory.quantity < quantity_diff:
+                                raise ValidationError(f"Yetarli aksessuar yo'q!")
+                        accessory_sale.accessory.quantity -= quantity_diff
+                        accessory_sale.accessory.save(update_fields=['quantity'])
+
+                    # 1. ESKI QARZLARNI TO'LIQ O'CHIRISH
+                    if old_debt_amount > 0:
+                        # Mijoz → Sotuvchi qarz
+                        Debt.objects.filter(
+                            debt_type='customer_to_seller',
+                            customer=old_customer,
+                            currency='UZS',
+                            notes__icontains=accessory_sale.accessory.name
+                        ).delete()
+
+                        # Sotuvchi → Boss qarz
+                        if accessory_sale.salesman != shop_owner:
+                            Debt.objects.filter(
+                                debt_type='seller_to_boss',
+                                debtor=accessory_sale.salesman,
+                                creditor=shop_owner,
+                                currency='UZS',
+                                notes__icontains=accessory_sale.accessory.name
+                            ).delete()
+
+                    # 2. YANGI QARZLARNI YARATISH
+                    if new_debt_amount > 0:
+                        debt_due_date = form.cleaned_data.get('debt_due_date')
+
+                        if accessory_sale.salesman == shop_owner:
+                            # Rahbar o'zi sotyapti
+                            Debt.objects.create(
+                                debt_type='customer_to_seller',
+                                creditor=shop_owner,
+                                customer=new_customer,
+                                currency='UZS',
+                                debt_amount=new_debt_amount,
+                                paid_amount=Decimal('0'),
+                                due_date=debt_due_date,
+                                status='active',
+                                notes=f"Aksessuar (tahrirlangan): {accessory_sale.accessory.name} x {new_accessory_sale.quantity}"
+                            )
+                        else:
+                            # Xodim sotyapti - ikki qarz
+                            Debt.objects.create(
+                                debt_type='customer_to_seller',
+                                creditor=accessory_sale.salesman,
+                                customer=new_customer,
+                                currency='UZS',
+                                debt_amount=new_debt_amount,
+                                paid_amount=Decimal('0'),
+                                due_date=debt_due_date,
+                                status='active',
+                                notes=f"Aksessuar (tahrirlangan): {accessory_sale.accessory.name} x {new_accessory_sale.quantity}"
+                            )
+
+                            Debt.objects.create(
+                                debt_type='seller_to_boss',
+                                creditor=shop_owner,
+                                debtor=accessory_sale.salesman,
+                                currency='UZS',
+                                debt_amount=new_debt_amount,
+                                paid_amount=Decimal('0'),
+                                due_date=debt_due_date,
+                                status='active',
+                                notes=f"Aksessuar qarz javobgarligi (tahrirlangan): {accessory_sale.accessory.name} (Mijoz: {new_customer.name})"
+                            )
+
+                    # Saqlash
+                    new_accessory_sale.save()
+
+                messages.success(request, 'Aksessuar sotish va qarz yangilandi!')
                 return redirect('sales:accessory_sale_detail', pk=accessory_sale.pk)
+
+            except ValidationError as e:
+                messages.error(request, str(e))
             except Exception as e:
                 logger.error(f"Accessory sale edit error: {str(e)}", exc_info=True)
                 messages.error(request, f'Xatolik: {str(e)}')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    field_label = form.fields.get(field).label if field in form.fields else field
+                    messages.error(request, f'{field_label}: {error}')
     else:
         form = AccessorySaleForm(instance=accessory_sale, user=request.user)
+
+        # Mijoz ma'lumotlarini initial qilish
+        if accessory_sale.customer:
+            form.initial['customer_name'] = accessory_sale.customer.name
+            form.initial['customer_phone'] = accessory_sale.customer.phone_number
+
+        # Qarz sanasini initial qilish
+        if accessory_sale.debt_amount > 0:
+            customer_debt = Debt.objects.filter(
+                debt_type='customer_to_seller',
+                customer=accessory_sale.customer,
+                currency='UZS',
+                notes__icontains=accessory_sale.accessory.name
+            ).first()
+
+            if customer_debt and customer_debt.due_date:
+                form.initial['debt_due_date'] = customer_debt.due_date
 
     return render(request, 'sales/accessory_sale_form.html', {
         'form': form,
@@ -512,36 +794,144 @@ def phone_exchange_create(request):
 
 @login_required
 def phone_exchange_edit(request, pk):
+    """Telefon almashtirishni tahrirlash - qarzni ham yangilash"""
     phone_exchange = get_object_or_404(PhoneExchange, pk=pk)
 
     if request.method == 'POST':
+        # Eski qiymatlar
+        old_customer = phone_exchange.customer
+        old_debt_amount = phone_exchange.debt_amount
+
         form = PhoneExchangeForm(request.POST, request.FILES, instance=phone_exchange, user=request.user)
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    phone_exchange = form.save(commit=False)
+                    # Yangi qiymatlar
+                    new_exchange = form.save(commit=False)
+                    new_customer = new_exchange.customer
+                    new_debt_amount = new_exchange.debt_amount
 
-                    # Sotuvchini saqlab qolish yoki yangilash
-                    if not phone_exchange.salesman_id:
-                        phone_exchange.salesman = request.user
+                    # Sotuvchini saqlab qolish
+                    if not new_exchange.salesman_id:
+                        new_exchange.salesman = request.user
 
-                    phone_exchange.save()
+                    shop_owner = phone_exchange.new_phone.shop.owner
 
-                messages.success(request, 'Telefon almashtirish ma\'lumotlari yangilandi!')
+                    # 1️⃣ ESKI QARZLARNI O'CHIRISH
+                    if old_debt_amount > 0 and phone_exchange.exchange_type == 'customer_pays':
+                        # Mijoz → Sotuvchi qarz
+                        old_customer_debt = Debt.objects.filter(
+                            debt_type='customer_to_seller',
+                            customer=old_customer,
+                            currency='USD',
+                            notes__contains=phone_exchange.new_phone.imei
+                        ).first()
+
+                        # Sotuvchi → Boss qarz
+                        old_seller_debt = Debt.objects.filter(
+                            debt_type='seller_to_boss',
+                            debtor=phone_exchange.salesman,
+                            creditor=shop_owner,
+                            currency='USD',
+                            notes__contains=phone_exchange.new_phone.imei
+                        ).first()
+
+                        if old_customer_debt:
+                            old_customer_debt.delete()
+                        if old_seller_debt:
+                            old_seller_debt.delete()
+
+                    # 2️⃣ YANGI QARZLARNI YARATISH
+                    if new_debt_amount > 0 and new_exchange.exchange_type == 'customer_pays':
+                        debt_due_date = form.cleaned_data.get('debt_due_date')
+
+                        if phone_exchange.salesman == shop_owner:
+                            # Rahbar o'zi almashtiryapti
+                            Debt.objects.create(
+                                debt_type='customer_to_seller',
+                                creditor=shop_owner,
+                                customer=new_customer,
+                                currency='USD',
+                                debt_amount=new_debt_amount,
+                                paid_amount=Decimal('0'),
+                                due_date=debt_due_date,
+                                status='active',
+                                notes=f"Telefon almashtirish (tahrirlangan): {phone_exchange.old_phone_model} → {phone_exchange.new_phone.phone_model}"
+                            )
+                        else:
+                            # Xodim almashtiryapti
+
+                            # a) MIJOZ → SOTUVCHI
+                            Debt.objects.create(
+                                debt_type='customer_to_seller',
+                                creditor=phone_exchange.salesman,
+                                customer=new_customer,
+                                currency='USD',
+                                debt_amount=new_debt_amount,
+                                paid_amount=Decimal('0'),
+                                due_date=debt_due_date,
+                                status='active',
+                                notes=f"Telefon almashtirish (tahrirlangan): {phone_exchange.old_phone_model} → {phone_exchange.new_phone.phone_model}"
+                            )
+
+                            # b) SOTUVCHI → BOSS
+                            Debt.objects.create(
+                                debt_type='seller_to_boss',
+                                creditor=shop_owner,
+                                debtor=phone_exchange.salesman,
+                                currency='USD',
+                                debt_amount=new_debt_amount,
+                                paid_amount=Decimal('0'),
+                                due_date=debt_due_date,
+                                status='active',
+                                notes=f"Almashtirish qarz javobgarligi (tahrirlangan): {phone_exchange.new_phone.phone_model} (Mijoz: {new_customer.name})"
+                            )
+
+                    # Saqlash
+                    new_exchange.save()
+
+                messages.success(request, '✅ Telefon almashtirish va qarz yangilandi!')
                 return redirect('sales:phone_exchange_detail', pk=phone_exchange.pk)
+
             except Exception as e:
                 logger.error(f"Phone exchange edit error: {str(e)}", exc_info=True)
-                messages.error(request, f'Xatolik: {str(e)}')
+                messages.error(request, f'❌ Xatolik: {str(e)}')
         else:
             for field, errors in form.errors.items():
                 field_name = form.fields.get(field).label if field in form.fields else field
                 for error in errors:
                     messages.error(request, f'{field_name}: {error}')
     else:
+        # GET so'rovi - formni yaratish
         form = PhoneExchangeForm(instance=phone_exchange, user=request.user)
-        # Mijoz ma'lumotlarini initial qilish
-        form.fields['customer_name_input'].initial = phone_exchange.customer_name
-        form.fields['customer_phone_input'].initial = phone_exchange.customer_phone_number
+
+        # ✅ TELEFON ID NI INITIAL QILISH (ENG MUHIM!)
+        if phone_exchange.new_phone:
+            form.fields['new_phone'].initial = phone_exchange.new_phone.id
+
+        # ✅ SANALARNI TO'G'RI FORMATDA INITIAL QILISH
+        if phone_exchange.exchange_date:
+            form.fields['exchange_date'].initial = phone_exchange.exchange_date.strftime('%Y-%m-%d')
+
+        # ✅ MIJOZ MA'LUMOTLARINI INITIAL QILISH
+        if phone_exchange.customer_name:
+            form.fields['customer_name_input'].initial = phone_exchange.customer_name
+        if phone_exchange.customer_phone_number:
+            form.fields['customer_phone_input'].initial = phone_exchange.customer_phone_number
+
+        # ✅ QARZ SANASINI INITIAL QILISH (agar qarz mavjud bo'lsa)
+        if phone_exchange.debt_amount > 0 and phone_exchange.exchange_type == 'customer_pays':
+            # Mijoz → Sotuvchi qarzini topish
+            customer_debt = Debt.objects.filter(
+                debt_type='customer_to_seller',
+                customer=phone_exchange.customer,
+                creditor=phone_exchange.salesman,
+                currency='USD',
+                notes__icontains=phone_exchange.new_phone.imei if phone_exchange.new_phone else ''
+            ).first()
+
+            if customer_debt and customer_debt.due_date:
+                form.fields['debt_due_date'].initial = customer_debt.due_date.strftime('%Y-%m-%d')
 
     return render(request, 'sales/phone_exchange_form.html', {
         'form': form,
@@ -663,11 +1053,26 @@ def get_debts_for_user(user):
 
 
 # ==================== DEBT VIEWS ====================
+# sales/views.py (Debt CRUD qismi) - TO'LIQ TUZATILGAN
 
 @login_required
 def debt_list(request):
     """Qarzlar ro'yxati - Permission asosida"""
-    debts = get_debts_for_user(request.user).select_related(
+    user_role = get_user_role(request.user)
+
+    # Foydalanuvchi ko'ra oladigan qarzlar
+    if user_role in ['boss', 'finance']:
+        # Boss va Finance - barcha qarzlar
+        debts = Debt.objects.all()
+    else:
+        # Sotuvchi - FAQAT o'ziga tegishli qarzlar
+        debts = Debt.objects.filter(
+            Q(creditor=request.user) |  # O'zi qarz bergan
+            Q(debtor=request.user) |  # O'zi qarz olgan
+            Q(customer__created_by=request.user)  # O'zining mijozlari
+        )
+
+    debts = debts.select_related(
         'creditor',
         'debtor',
         'customer',
@@ -680,7 +1085,18 @@ def debt_list(request):
     paid_debts_count = debts.filter(status='paid').count()
     cancelled_debts_count = debts.filter(status='cancelled').count()
 
-    user_role = get_user_role(request.user)
+    # Sotuvchi uchun o'zining qarzlari statistikasi
+    if user_role == 'seller':
+        my_debts = debts.filter(debtor=request.user, status='active')
+        my_total_debt_usd = my_debts.filter(currency='USD').aggregate(
+            total=Sum(F('debt_amount') - F('paid_amount'))
+        )['total'] or Decimal('0')
+        my_total_debt_uzs = my_debts.filter(currency='UZS').aggregate(
+            total=Sum(F('debt_amount') - F('paid_amount'))
+        )['total'] or Decimal('0')
+    else:
+        my_total_debt_usd = Decimal('0')
+        my_total_debt_uzs = Decimal('0')
 
     return render(request, 'sales/debt_list.html', {
         'debts': debts,
@@ -690,29 +1106,50 @@ def debt_list(request):
         'cancelled_debts_count': cancelled_debts_count,
         'user_role': user_role,
         'can_view_all': can_view_all_debts(request.user),
+        'my_total_debt_usd': my_total_debt_usd,
+        'my_total_debt_uzs': my_total_debt_uzs,
     })
 
 
 @login_required
 def debt_create(request):
-    """Qarz yaratish"""
+    """Qarz yaratish - sotuvchi o'zi uchun qarz so'raydi"""
     if request.method == 'POST':
-        form = DebtForm(request.POST)
+        form = DebtForm(request.POST, user=request.user)
         if form.is_valid():
             try:
-                with transaction.atomic():
-                    form.save()
-                messages.success(request, '✅ Qarz muvaffaqiyatli yaratildi!')
-                return redirect('sales:debt_list')
+                debt = form.save(commit=True)
+
+                messages.success(
+                    request,
+                    f'Qarz muvaffaqiyatli yaratildi! '
+                    f'Kimdan: {debt.creditor.get_full_name() or debt.creditor.username}, '
+                    f'Summa: {debt.currency_symbol}{debt.debt_amount}'
+                )
+                return redirect('sales:debt_detail', pk=debt.pk)
+
             except Exception as e:
                 logger.error(f"Debt create error: {str(e)}", exc_info=True)
-                messages.error(request, f'❌ Xatolik: {str(e)}')
+                messages.error(request, f'Xatolik: {str(e)}')
+        else:
+            # Form xatolarini ko'rsatish
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                        messages.error(request, error)
+                    else:
+                        field_label = form.fields.get(field)
+                        if field_label and hasattr(field_label, 'label'):
+                            messages.error(request, f'{field_label.label}: {error}')
+                        else:
+                            messages.error(request, f'{field}: {error}')
     else:
-        form = DebtForm()
+        form = DebtForm(user=request.user)
 
     return render(request, 'sales/debt_form.html', {
         'form': form,
-        'title': 'Qarz yaratish'
+        'title': 'Qarz so\'rash',
+        'creating': True
     })
 
 
@@ -724,7 +1161,7 @@ def debt_detail(request, pk):
     # Permission tekshirish
     allowed_debts = get_debts_for_user(request.user)
     if not allowed_debts.filter(pk=debt.pk).exists():
-        messages.error(request, "❌ Bu qarzni ko'rishga ruxsatingiz yo'q!")
+        messages.error(request, "Bu qarzni ko'rishga ruxsatingiz yo'q!")
         return redirect('sales:debt_list')
 
     payments = debt.payments.select_related('received_by').order_by('-payment_date')
@@ -732,70 +1169,84 @@ def debt_detail(request, pk):
     # Ruxsatlar
     user_can_edit = can_edit_debt(request.user, debt)
     user_can_delete = can_delete_debt(request.user, debt)
-    user_can_add_payment = can_add_payment(request.user, debt)  # ✅ BU QO'SHILDI
+    user_can_add_payment = can_add_payment(request.user, debt)
 
     return render(request, 'sales/debt_detail.html', {
         'debt': debt,
         'payments': payments,
         'user_can_edit': user_can_edit,
         'user_can_delete': user_can_delete,
-        'user_can_add_payment': user_can_add_payment,  # ✅ CONTEXT GA QO'SHILDI
+        'user_can_add_payment': user_can_add_payment,
         'user_role': get_user_role(request.user),
     })
 
 
 @login_required
 def debt_edit(request, pk):
-    """Qarzni tahrirlash - Permission check bilan"""
+    """Qarzni tahrirlash - faqat boss va finance"""
     debt = get_object_or_404(Debt, pk=pk)
 
     # Permission tekshirish
     if not can_edit_debt(request.user, debt):
-        messages.error(request, "❌ Bu qarzni tahrirlashga ruxsatingiz yo'q!")
+        messages.error(request, "Bu qarzni tahrirlashga ruxsatingiz yo'q!")
         return redirect('sales:debt_detail', pk=pk)
 
     if request.method == 'POST':
-        form = DebtForm(request.POST, instance=debt)
+        form = DebtForm(request.POST, instance=debt, user=request.user)
         if form.is_valid():
             try:
                 with transaction.atomic():
                     form.save()
-                messages.success(request, '✅ Qarz yangilandi!')
+
+                messages.success(request, 'Qarz yangilandi!')
                 return redirect('sales:debt_detail', pk=debt.pk)
+
             except Exception as e:
                 logger.error(f"Debt edit error: {str(e)}", exc_info=True)
-                messages.error(request, f'❌ Xatolik: {str(e)}')
+                messages.error(request, f'Xatolik: {str(e)}')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                        messages.error(request, error)
+                    else:
+                        field_label = form.fields.get(field)
+                        if field_label and hasattr(field_label, 'label'):
+                            messages.error(request, f'{field_label.label}: {error}')
+                        else:
+                            messages.error(request, f'{field}: {error}')
     else:
-        form = DebtForm(instance=debt)
+        form = DebtForm(instance=debt, user=request.user)
 
     return render(request, 'sales/debt_form.html', {
         'form': form,
         'title': 'Qarzni tahrirlash',
         'debt': debt,
+        'editing': True
     })
 
 
 @login_required
 def debt_delete(request, pk):
-    """Qarzni o'chirish - Permission check bilan"""
+    """Qarzni o'chirish - faqat boss va finance"""
     debt = get_object_or_404(Debt, pk=pk)
 
     # Permission tekshirish
     if not can_delete_debt(request.user, debt):
-        messages.error(request, "❌ Bu qarzni o'chirishga ruxsatingiz yo'q!")
+        messages.error(request, "Bu qarzni o'chirishga ruxsatingiz yo'q!")
         return redirect('sales:debt_detail', pk=pk)
 
     if request.method == 'POST':
         debtor_name = debt.debtor_display_name
         try:
             debt.delete()
-            messages.success(request, f"✅ '{debtor_name}' ning qarzи o'chirildi!")
+            messages.success(request, f"'{debtor_name}' ning qarzi o'chirildi!")
         except Exception as e:
-            messages.error(request, f"❌ Xatolik: {str(e)}")
+            messages.error(request, f"Xatolik: {str(e)}")
         return redirect('sales:debt_list')
 
     return render(request, 'sales/confirm_delete.html', {
-        'object': f"{debt.debtor_display_name} - ${debt.debt_amount}",
+        'object': f"{debt.debtor_display_name} - {debt.currency_symbol}{debt.debt_amount}",
         'title': 'Qarzni o\'chirish'
     })
 

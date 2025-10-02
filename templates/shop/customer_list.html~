@@ -1,116 +1,629 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Mijozlar Ro'yxati{% endblock %}
 {% block page_title %}Mijozlar Ro'yxati{% endblock %}
 
+{% block extra_css %}
+<style>
+.header-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    color: white;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.header-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(180deg); }
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    border: none;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(72, 187, 120, 0.2);
+}
+
+.stat-icon {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.5rem;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: #718096;
+    font-weight: 500;
+}
+
+.add-customer-btn {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+    text-decoration: none;
+    display: inline-block;
+}
+
+.add-customer-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+    color: white;
+}
+
+.customers-table-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    border: none;
+    overflow: hidden;
+}
+
+.table-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+    padding: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table-title {
+    color: #2d3748;
+    font-weight: 700;
+    font-size: 1.3rem;
+    margin: 0;
+}
+
+.customer-count {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.customers-table {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.customers-table thead th {
+    background: #f8fafc;
+    color: #4a5568;
+    font-weight: 600;
+    border: none;
+    padding: 1.2rem 1.5rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.customers-table tbody td {
+    padding: 1.2rem 1.5rem;
+    border: none;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.customers-table tbody tr {
+    transition: all 0.3s ease;
+}
+
+.customers-table tbody tr:hover {
+    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+}
+
+.customer-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    margin-right: 1rem;
+}
+
+.customer-info {
+    display: flex;
+    align-items: center;
+}
+
+.customer-name {
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+}
+
+.customer-date {
+    color: #a0aec0;
+    font-size: 0.8rem;
+}
+
+.purchase-amount {
+    font-weight: 700;
+}
+
+.purchase-amount.usd {
+    color: #48bb78;
+}
+
+.purchase-amount.uzs {
+    color: #4299e1;
+}
+
+.debt-amount {
+    font-weight: 700;
+}
+
+.debt-amount.has-debt {
+    color: #e53e3e;
+}
+
+.debt-amount.no-debt {
+    color: #a0aec0;
+}
+
+.product-badge {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.product-badge.phone {
+    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    color: white;
+}
+
+.product-badge.accessory {
+    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+    color: white;
+}
+
+.product-badge.exchange {
+    background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%);
+    color: white;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.action-btn {
+    border-radius: 8px;
+    padding: 0.5rem;
+    border: none;
+    transition: all 0.3s ease;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+}
+
+.btn-view {
+    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    color: white;
+}
+
+.btn-edit {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+    color: white;
+}
+
+.btn-disabled {
+    background: #e2e8f0;
+    color: #a0aec0;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.btn-disabled:hover {
+    transform: none;
+    cursor: not-allowed;
+}
+
+.custom-pagination {
+    padding: 1.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.page-link {
+    border: none;
+    background: #f8fafc;
+    color: #4a5568;
+    border-radius: 10px !important;
+    margin: 0 0.3rem;
+    padding: 0.7rem 1.2rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.page-link:hover {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.page-item.active .page-link {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+}
+
+.empty-state {
+    padding: 4rem;
+    text-align: center;
+    color: #a0aec0;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.5;
+}
+
+.empty-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.empty-subtitle {
+    font-size: 0.9rem;
+}
+
+.search-sort-container {
+    background: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+}
+
+@media (max-width: 768px) {
+    .header-section {
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .customers-table {
+        font-size: 0.85rem;
+    }
+
+    .customers-table thead th,
+    .customers-table tbody td {
+        padding: 1rem;
+    }
+
+    .customer-avatar {
+        width: 35px;
+        height: 35px;
+        margin-right: 0.8rem;
+    }
+
+    .action-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .d-mobile-none {
+        display: none;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
-    <!-- Mijozlar statistikasi -->
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-md-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body text-center">
-                    <h5 class="card-title fw-bold text-success">Jami Mijozlar</h5>
-                    <p class="card-text fs-4">{{ total_customers }}</p>
-                    {% if is_boss or request.user.userprofile.role == 'seller' %}
-                    <a href="{% url 'shop:customer_create' %}" class="btn btn-success btn-sm mt-2">
-                        <i class="fas fa-plus me-1"></i> Yangi Mijoz
-                    </a>
-                    {% endif %}
-                </div>
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-6 fw-bold mb-2">Mijozlar Boshqaruvi</h1>
+                <p class="lead mb-0 opacity-90">Barcha mijozlar ma'lumotlari va ularning faoliyati</p>
+            </div>
+            <div class="col-md-4 text-md-end text-center mt-3 mt-md-0">
+                {% if can_create_customer %}
+                <a href="{% url 'shop:customer_create' %}" class="add-customer-btn">
+                    <i class="fas fa-plus me-2"></i>Yangi Mijoz
+                </a>
+                {% else %}
+                <button class="add-customer-btn btn-disabled" disabled title="Sizda ruxsat yo'q">
+                    <i class="fas fa-plus me-2"></i>Yangi Mijoz
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- Mijozlar ro'yxati -->
-    <div class="card mb-4 shadow-sm">
-        <div class="card-body">
-            <h5 class="card-title fw-bold mb-3">Mijozlar <span class="badge bg-secondary">{{ total_customers }}</span></h5>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Ism</th>
-                            <th class="d-none d-md-table-cell">Telefon</th>
-                            <th>Umumiy xarid</th>
-                            <th>Qarz</th>
-                            <th>Nima olgan</th>
-                            <th class="text-center">Amallar</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if customer_page_obj %}
-                            {% for customer in customer_page_obj %}
-                            <tr>
-                                <td>{{ customer.name|default:"Noma'lum" }}</td>
-                                <td class="d-none d-md-table-cell">{{ customer.phone_number|default:'-' }}</td>
-                                <td>{{ customer.total_purchases|floatformat:0 }}$</td>
-                                <td>{{ customer.total_debt|floatformat:0 }}$</td>
-                                <td>
-                                    {% for sale in customer.phone_sales.all|slice:":1" %}
-                                        Telefon: {{ sale.phone }}
-                                    {% empty %}
-                                        {% for sale in customer.accessory_sales.all|slice:":1" %}
-                                            Aksessuar: {{ sale.accessory.name }} ({{ sale.quantity }} dona)
-                                        {% empty %}
-                                            {% for exchange in customer.phone_exchanges.all|slice:":1" %}
-                                                Almashtirish: {{ exchange.old_phone_model }} → {{ exchange.new_phone }}
-                                            {% empty %}
-                                                -
-                                            {% endfor %}
-                                        {% endfor %}
-                                    {% endfor %}
-                                </td>
-                                <td class="text-center">
-                                    <div class="btn-group">
-                                        <a href="{% url 'shop:customer_detail' customer.pk %}" class="btn btn-sm btn-info me-1" title="Ko'rish">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        {% if is_boss or request.user.userprofile.role == 'seller' %}
-                                        <a href="{% url 'shop:customer_edit' customer.pk %}" class="btn btn-sm btn-primary me-1" title="Tahrirlash">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="{% url 'shop:customer_delete' customer.pk %}" class="btn btn-sm btn-danger" title="O'chirish">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr><td colspan="6" class="text-center text-muted">Mijozlar topilmadi.</td></tr>
-                        {% endif %}
-                    </tbody>
-                </table>
+    <!-- Statistics -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
             </div>
-            <!-- Pagination for Customers -->
-            {% if customer_page_obj.has_other_pages %}
-            <nav aria-label="Customer pagination">
-                <ul class="pagination justify-content-center mt-3">
-                    {% if customer_page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ customer_page_obj.previous_page_number }}" aria-label="Oldingi">
-                            <span aria-hidden="true">&laquo;</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                    {% for num in customer_page_obj.paginator.page_range %}
-                    <li class="page-item {% if customer_page_obj.number == num %}active{% endif %}">
-                        <a class="page-link {% if customer_page_obj.number == num %}bg-primary text-white{% endif %}" href="?page={{ num }}">{{ num }}</a>
-                    </li>
-                    {% endfor %}
-                    {% if customer_page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ customer_page_obj.next_page_number }}" aria-label="Keyingi">
-                            <span aria-hidden="true">&raquo;</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </nav>
-            {% endif %}
+            <div class="stat-number">{{ total_customers }}</div>
+            <div class="stat-label">Jami Mijozlar</div>
         </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="stat-number">${{ total_purchases_usd|floatformat:0 }}</div>
+            <div class="stat-label">Xaridlar ($)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-credit-card"></i>
+            </div>
+            <div class="stat-number">{{ total_purchases_uzs|floatformat:0 }}</div>
+            <div class="stat-label">Xaridlar (so'm)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="stat-number">${{ total_debt_usd|floatformat:0 }}</div>
+            <div class="stat-label">Qarzlar ($)</div>
+        </div>
+    </div>
+
+    <!-- Search and Sort -->
+    <div class="search-sort-container">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <form method="get" class="d-flex">
+                    <input type="text" name="search" class="form-control me-2"
+                           placeholder="Mijoz nomi yoki telefon raqami bo'yicha qidirish..."
+                           value="{{ search_query }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+            <div class="col-md-6">
+                <form method="get" class="d-flex">
+                    <select name="sort" class="form-select me-2" onchange="this.form.submit()">
+                        <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Yangi → Eski</option>
+                        <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Eski → Yangi</option>
+                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Ism A-Z</option>
+                        <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Ism Z-A</option>
+                    </select>
+                    <input type="hidden" name="search" value="{{ search_query }}">
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customers Table -->
+    <div class="customers-table-card">
+        <div class="table-header d-flex justify-content-between align-items-center">
+            <h5 class="table-title">
+                <i class="fas fa-list me-2"></i>Mijozlar Ro'yxati
+            </h5>
+            <span class="customer-count">{{ total_customers }}</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table customers-table">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-user me-2"></i>Mijoz</th>
+                        <th class="d-mobile-none"><i class="fas fa-phone me-2"></i>Telefon</th>
+                        <th><i class="fas fa-shopping-cart me-2"></i>Xaridlar</th>
+                        <th><i class="fas fa-credit-card me-2"></i>Qarzlar</th>
+                        <th class="d-mobile-none"><i class="fas fa-box me-2"></i>So'nggi xarid</th>
+                        <th class="text-center"><i class="fas fa-cogs me-2"></i>Amallar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if customer_page_obj %}
+                        {% for customer in customer_page_obj %}
+                        <tr>
+                            <td>
+                                <div class="customer-info">
+                                    <div class="customer-avatar">
+                                        {{ customer.name|first|upper }}
+                                    </div>
+                                    <div>
+                                        <div class="customer-name">{{ customer.name }}</div>
+                                        <div class="customer-date">{{ customer.created_at|date:"d.m.Y" }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="d-mobile-none">
+                                <span class="text-primary fw-medium">{{ customer.phone_number }}</span>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <span class="purchase-amount usd">${{ customer.total_purchases_usd|floatformat:0 }}</span>
+                                    <span class="purchase-amount uzs">{{ customer.total_purchases_uzs|floatformat:0 }} so'm</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    {% if customer.total_debt_usd > 0 %}
+                                        <span class="debt-amount has-debt">${{ customer.total_debt_usd|floatformat:0 }}</span>
+                                    {% else %}
+                                        <span class="debt-amount no-debt">$0</span>
+                                    {% endif %}
+                                    {% if customer.total_debt_uzs > 0 %}
+                                        <span class="debt-amount has-debt">{{ customer.total_debt_uzs|floatformat:0 }} so'm</span>
+                                    {% else %}
+                                        <span class="debt-amount no-debt">0 so'm</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="d-mobile-none">
+                                {% with customer.get_purchase_history|first as last_purchase %}
+                                    {% if last_purchase %}
+                                        {% if last_purchase.type == 'phone_sale' %}
+                                            <span class="product-badge phone">Telefon</span>
+                                        {% elif last_purchase.type == 'accessory_sale' %}
+                                            <span class="product-badge accessory">Aksessuar</span>
+                                        {% elif last_purchase.type == 'phone_exchange' %}
+                                            <span class="product-badge exchange">Almashtirish</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-center">
+                                <div class="action-buttons">
+                                    <!-- Ko'rish tugmasi - hamma uchun ochiq -->
+                                    <a href="{% url 'shop:customer_detail' customer.pk %}" class="btn action-btn btn-view" title="Ko'rish">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+
+                                    <!-- Tahrirlash tugmasi - faqat boss va finance uchun -->
+                                    {% if can_edit_customer %}
+                                    <a href="{% url 'shop:customer_edit' customer.pk %}" class="btn action-btn btn-edit" title="Tahrirlash">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% else %}
+                                    <button class="btn action-btn btn-disabled" disabled title="Sizda tahrirlash ruxsati yo'q">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    {% endif %}
+
+                                    <!-- O'chirish tugmasi - faqat boss va finance uchun -->
+                                    {% if can_delete_customer %}
+                                    <a href="{% url 'shop:customer_delete' customer.pk %}" class="btn action-btn btn-delete" title="O'chirish">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                    {% else %}
+                                    <button class="btn action-btn btn-disabled" disabled title="Sizda o'chirish ruxsati yo'q">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                <div class="empty-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="empty-title">Mijozlar topilmadi</div>
+                                <div class="empty-subtitle">
+                                    {% if search_query %}
+                                        "{{ search_query }}" so'rovi bo'yicha mijoz topilmadi
+                                    {% else %}
+                                        Hozircha hech qanday mijoz qo'shilmagan
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if customer_page_obj.has_other_pages %}
+        <nav class="custom-pagination">
+            <ul class="pagination">
+                {% if customer_page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ customer_page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                {% for num in customer_page_obj.paginator.page_range %}
+                <li class="page-item {% if customer_page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endfor %}
+                {% if customer_page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ customer_page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

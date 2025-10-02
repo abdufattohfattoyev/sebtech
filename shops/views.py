@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -14,9 +15,39 @@ def is_boss(user):
     return hasattr(user, 'userprofile') and user.userprofile.role == 'boss'
 
 
+def is_finance(user):
+    """Foydalanuvchining finance ekanligini tekshiradi."""
+    return hasattr(user, 'userprofile') and user.userprofile.role == 'finance'
+
+
+def is_seller(user):
+    """Foydalanuvchining seller ekanligini tekshiradi."""
+    return hasattr(user, 'userprofile') and user.userprofile.role == 'seller'
+
+
+def can_edit_customer(user):
+    """Mijozni tahrirlash huquqi - boss va finance"""
+    return is_boss(user) or is_finance(user)
+
+
+def can_delete_customer(user):
+    """Mijozni o'chirish huquqi - boss va finance"""
+    return is_boss(user) or is_finance(user)
+
+
+def can_view_customer_details(user):
+    """Mijoz tafsilotlarini ko'rish huquqi - boss, finance va seller"""
+    return is_boss(user) or is_finance(user) or is_seller(user)
+
+
+def can_create_customer(user):
+    """Mijoz yaratish huquqi - boss, finance va seller"""
+    return is_boss(user) or is_finance(user) or is_seller(user)
+
+
 @login_required
 def dashboard(request):
-    """Umumiy dashboard: foydalanuvchilar, do‘konlar, mijozlar, telefonlar va aksessuarlar"""
+    """Umumiy dashboard: foydalanuvchilar, do'konlar, mijozlar, telefonlar va aksessuarlar"""
     total_users = UserProfile.objects.count()
     active_users = UserProfile.objects.filter(user__is_active=True).count()
     inactive_users = total_users - active_users
@@ -41,7 +72,7 @@ def dashboard(request):
     user_page_number = request.GET.get('user_page', 1)
     user_page_obj = user_paginator.get_page(user_page_number)
 
-    # Do‘konlar pagination
+    # Do'konlar pagination
     shops = Shop.objects.select_related('owner').all()
     shop_paginator = Paginator(shops, 10)
     shop_page_number = request.GET.get('shop_page', 1)
@@ -70,6 +101,12 @@ def dashboard(request):
         'shop_page_obj': shop_page_obj,
         'customer_page_obj': customer_page_obj,
         'is_boss': is_boss(request.user),
+        'is_finance': is_finance(request.user),
+        'is_seller': is_seller(request.user),
+        'can_edit_customer': can_edit_customer(request.user),
+        'can_delete_customer': can_delete_customer(request.user),
+        'can_view_customer_details': can_view_customer_details(request.user),
+        'can_create_customer': can_create_customer(request.user),
         'user_search_query': user_search_query,
         'user_role_filter': user_role_filter,
         'role_choices': UserProfile.ROLE_CHOICES,
@@ -87,18 +124,54 @@ def customer_list(request):
     customers = Customer.objects.select_related('created_by').prefetch_related(
         'phone_sales', 'accessory_sales', 'phone_exchanges', 'debts'
     ).all()
-    customer_paginator = Paginator(customers, 10)
+
+    # Qidiruv va filter
+    search_query = request.GET.get('search', '')
+    if search_query:
+        customers = customers.filter(
+            Q(name__icontains=search_query) |
+            Q(phone_number__icontains=search_query) |
+            Q(notes__icontains=search_query)
+        )
+
+    # Saralash
+    sort_by = request.GET.get('sort', '-created_at')
+    if sort_by in ['name', '-name', 'created_at', '-created_at', 'total_purchases', '-total_purchases']:
+        customers = customers.order_by(sort_by)
+    else:
+        customers = customers.order_by('-created_at')
+
+    customer_paginator = Paginator(customers, 15)
     customer_page_number = request.GET.get('page', 1)
     try:
         customer_page_obj = customer_paginator.get_page(customer_page_number)
     except (Paginator.PageNotAnInteger, Paginator.EmptyPage):
         customer_page_obj = customer_paginator.get_page(1)
+
     total_customers = customers.count()
+
+    # Umumiy statistika
+    total_purchases_usd = sum(customer.total_purchases_usd for customer in customer_page_obj)
+    total_purchases_uzs = sum(customer.total_purchases_uzs for customer in customer_page_obj)
+    total_debt_usd = sum(customer.total_debt_usd for customer in customer_page_obj)
+    total_debt_uzs = sum(customer.total_debt_uzs for customer in customer_page_obj)
 
     context = {
         'customer_page_obj': customer_page_obj,
         'is_boss': is_boss(request.user),
+        'is_finance': is_finance(request.user),
+        'is_seller': is_seller(request.user),
+        'can_edit_customer': can_edit_customer(request.user),
+        'can_delete_customer': can_delete_customer(request.user),
+        'can_view_customer_details': can_view_customer_details(request.user),
+        'can_create_customer': can_create_customer(request.user),
         'total_customers': total_customers,
+        'search_query': search_query,
+        'sort_by': sort_by,
+        'total_purchases_usd': total_purchases_usd,
+        'total_purchases_uzs': total_purchases_uzs,
+        'total_debt_usd': total_debt_usd,
+        'total_debt_uzs': total_debt_uzs,
     }
     return render(request, 'shop/customer_list.html', context)
 
@@ -106,19 +179,57 @@ def customer_list(request):
 @login_required
 def customer_detail(request, pk):
     """Mijoz tafsilotlari"""
-    if not (is_boss(request.user) or request.user.userprofile.role == 'seller'):
-        messages.error(request, "Sizda mijoz tafsilotlarini ko‘rish uchun ruxsat yo‘q!")
+    if not can_view_customer_details(request.user):
+        messages.error(request, "Sizda mijoz tafsilotlarini ko'rish uchun ruxsat yo'q!")
         return redirect('shop:dashboard')
+
     customer = get_object_or_404(
-        Customer.objects.prefetch_related('phone_sales', 'accessory_sales', 'phone_exchanges', 'debts'),
+        Customer.objects.prefetch_related(
+            'phone_sales',
+            'accessory_sales',
+            'phone_exchanges',
+            'debts'
+        ),
         pk=pk
     )
+
+    # Qarz ma'lumotlari
+    phone_debt_usd = customer.phone_sales.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or Decimal('0')
+    accessory_debt_uzs = customer.accessory_sales.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or Decimal('0')
+    exchange_debt_usd = customer.phone_exchanges.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or Decimal('0')
+
+    # Xaridlar statistikasi
+    phone_sales_count = customer.phone_sales.count()
+    accessory_sales_count = customer.accessory_sales.count()
+    exchange_count = customer.phone_exchanges.count()
+    total_purchases_count = phone_sales_count + accessory_sales_count + exchange_count
+
+    # So'nggi xaridlar (5 ta)
+    recent_purchases = customer.get_purchase_history()[:5]
+
+    # Faol qarzlar
+    active_debts = customer.debts.filter(status='active').select_related('creditor')
+
     context = {
         'customer': customer,
         'is_boss': is_boss(request.user),
-        'has_phone_debt': customer.phone_sales.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or 0 > 0,
-        'has_accessory_debt': customer.accessory_sales.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or 0 > 0,
-        'has_exchange_debt': customer.phone_exchanges.aggregate(total_debt=Sum('debt_amount'))['total_debt'] or 0 > 0,
+        'is_finance': is_finance(request.user),
+        'is_seller': is_seller(request.user),
+        'can_edit_customer': can_edit_customer(request.user),
+        'can_delete_customer': can_delete_customer(request.user),
+        'can_view_customer_details': can_view_customer_details(request.user),
+        'has_phone_debt': phone_debt_usd > 0,
+        'has_accessory_debt': accessory_debt_uzs > 0,
+        'has_exchange_debt': exchange_debt_usd > 0,
+        'phone_debt_usd': phone_debt_usd,
+        'accessory_debt_uzs': accessory_debt_uzs,
+        'exchange_debt_usd': exchange_debt_usd,
+        'phone_sales_count': phone_sales_count,
+        'accessory_sales_count': accessory_sales_count,
+        'exchange_count': exchange_count,
+        'total_purchases_count': total_purchases_count,
+        'recent_purchases': recent_purchases,
+        'active_debts': active_debts,
     }
     return render(request, 'shop/customer_detail.html', context)
 
@@ -127,25 +238,25 @@ def customer_detail(request, pk):
 def shop_create(request):
     """Yangi do'kon qo'shish (faqat boss uchun)"""
     if not is_boss(request.user):
-        messages.error(request, "Sizda do‘kon qo‘shish uchun ruxsat yo‘q!")
+        messages.error(request, "Sizda do'kon qo'shish uchun ruxsat yo'q!")
         return redirect('shop:dashboard')
 
     if request.method == 'POST':
         form = ShopForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, "Do‘kon muvaffaqiyatli qo‘shildi!")
+            messages.success(request, "Do'kon muvaffaqiyatli qo'shildi!")
             return redirect('shop:dashboard')
     else:
         form = ShopForm()
-    return render(request, 'shop/form.html', {'form': form, 'form_title': "Yangi Do‘kon", 'is_create': True})
+    return render(request, 'shop/form.html', {'form': form, 'form_title': "Yangi Do'kon", 'is_create': True})
 
 
 @login_required
 def shop_edit(request, pk):
     """Do'konni tahrirlash (faqat boss uchun)"""
     if not is_boss(request.user):
-        messages.error(request, "Sizda do‘kon tahrirlash uchun ruxsat yo‘q!")
+        messages.error(request, "Sizda do'kon tahrirlash uchun ruxsat yo'q!")
         return redirect('shop:dashboard')
 
     shop = get_object_or_404(Shop, pk=pk)
@@ -153,34 +264,34 @@ def shop_edit(request, pk):
         form = ShopForm(request.POST, instance=shop)
         if form.is_valid():
             form.save()
-            messages.success(request, f"Do‘kon {shop.name} yangilandi!")
+            messages.success(request, f"Do'kon {shop.name} yangilandi!")
             return redirect('shop:dashboard')
     else:
         form = ShopForm(instance=shop)
-    return render(request, 'shop/form.html', {'form': form, 'form_title': f"Do‘kon: {shop.name}", 'is_edit': True})
+    return render(request, 'shop/form.html', {'form': form, 'form_title': f"Do'kon: {shop.name}", 'is_edit': True})
 
 
 @login_required
 def shop_delete(request, pk):
     """Do'konni o'chirish (faqat boss uchun)"""
     if not is_boss(request.user):
-        messages.error(request, "Sizda do‘kon o‘chirish uchun ruxsat yo‘q!")
+        messages.error(request, "Sizda do'kon o'chirish uchun ruxsat yo'q!")
         return redirect('shop:dashboard')
 
     shop = get_object_or_404(Shop, pk=pk)
     if request.method == 'POST':
         shop_name = shop.name
         shop.delete()
-        messages.success(request, f"Do‘kon {shop_name} o‘chirildi!")
+        messages.success(request, f"Do'kon {shop_name} o'chirildi!")
         return redirect('shop:dashboard')
-    return render(request, 'shop/form.html', {'form_title': f"Do‘kon {shop.name} ni O‘chirish", 'is_delete': True, 'object': shop})
+    return render(request, 'shop/form.html', {'form_title': f"Do'kon {shop.name} ni O'chirish", 'is_delete': True, 'object': shop})
 
 
 @login_required
 def customer_create(request):
-    """Yangi mijoz qo'shish (boss yoki sotuvchi uchun)"""
-    if not (is_boss(request.user) or request.user.userprofile.role == 'seller'):
-        messages.error(request, "Sizda mijoz qo‘shish uchun ruxsat yo‘q!")
+    """Yangi mijoz qo'shish (boss, finance va seller uchun)"""
+    if not can_create_customer(request.user):
+        messages.error(request, "Sizda mijoz qo'shish uchun ruxsat yo'q!")
         return redirect('shop:dashboard')
 
     if request.method == 'POST':
@@ -189,7 +300,7 @@ def customer_create(request):
             customer = form.save(commit=False)
             customer.created_by = request.user
             customer.save()
-            messages.success(request, f"Mijoz {customer.name} muvaffaqiyatli qo‘shildi!")
+            messages.success(request, f"Mijoz {customer.name} muvaffaqiyatli qo'shildi!")
             return redirect('shop:customer_list')
     else:
         form = CustomerForm()
@@ -198,10 +309,10 @@ def customer_create(request):
 
 @login_required
 def customer_edit(request, pk):
-    """Mijozni tahrirlash (boss yoki sotuvchi uchun)"""
-    if not (is_boss(request.user) or request.user.userprofile.role == 'seller'):
-        messages.error(request, "Sizda mijoz tahrirlash uchun ruxsat yo‘q!")
-        return redirect('shop:dashboard')
+    """Mijozni tahrirlash (faqat boss va finance uchun)"""
+    if not can_edit_customer(request.user):
+        messages.error(request, "Sizda mijoz tahrirlash uchun ruxsat yo'q!")
+        return redirect('shop:customer_list')
 
     customer = get_object_or_404(Customer, pk=pk)
     if request.method == 'POST':
@@ -217,15 +328,15 @@ def customer_edit(request, pk):
 
 @login_required
 def customer_delete(request, pk):
-    """Mijozni o'chirish (boss yoki sotuvchi uchun)"""
-    if not (is_boss(request.user) or request.user.userprofile.role == 'seller'):
-        messages.error(request, "Sizda mijoz o‘chirish uchun ruxsat yo‘q!")
-        return redirect('shop:dashboard')
+    """Mijozni o'chirish (faqat boss va finance uchun)"""
+    if not can_delete_customer(request.user):
+        messages.error(request, "Sizda mijoz o'chirish uchun ruxsat yo'q!")
+        return redirect('shop:customer_list')
 
     customer = get_object_or_404(Customer, pk=pk)
     if request.method == 'POST':
         customer_name = customer.name
         customer.delete()
-        messages.success(request, f"Mijoz {customer_name} o‘chirildi!")
+        messages.success(request, f"Mijoz {customer_name} o'chirildi!")
         return redirect('shop:customer_list')
-    return render(request, 'shop/form.html', {'form_title': f"Mijoz {customer.name} ni O‘chirish", 'is_delete': True, 'object': customer})
+    return render(request, 'shop/form.html', {'form_title': f"Mijoz {customer.name} ni O'chirish", 'is_delete': True, 'object': customer})

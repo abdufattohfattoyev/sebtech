@@ -5,7 +5,7 @@ from django.db.models import Sum
 from django.db import transaction
 from decimal import Decimal
 from .models import PhoneSale, PhoneExchange, Debt, DebtPayment, Expense, PhoneReturn, AccessorySale
-
+from django.db import models
 
 # ==================== PhoneSale Signals ====================
 
@@ -24,28 +24,53 @@ def handle_phone_sale_create_update(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=PhoneSale)
 def handle_phone_sale_delete(sender, instance, **kwargs):
-    """PhoneSale o'chirilganda"""
+    """PhoneSale o'chirilganda telefon va BARCHA bog'liq qarzlarni o'chirish"""
     try:
         with transaction.atomic():
+            # 1️⃣ Telefonni 'shop' holatiga qaytarish
             if instance.phone:
                 instance.phone.status = 'shop'
                 instance.phone.save(update_fields=['status'])
+                print(f"📱 Telefon {instance.phone.imei} 'shop' holatiga qaytarildi")
 
-            if instance.debt_amount > 0:
-                shop_owner = instance.phone.shop.owner if instance.phone else None
+            # 2️⃣ BARCHA BOG'LIQ QARZLARNI O'CHIRISH
+            if instance.customer and instance.phone:
+                # a) Mijoz → Sotuvchi qarz (har qanday holatda)
+                customer_debts_deleted = Debt.objects.filter(
+                    debt_type='customer_to_seller',
+                    customer=instance.customer,
+                    creditor=instance.salesman,
+                    currency='USD'
+                ).filter(
+                    models.Q(notes__icontains=instance.phone.imei) |
+                    models.Q(notes__icontains=str(instance.phone.phone_model)) |
+                    models.Q(notes__icontains=str(instance.id))
+                ).delete()
 
+                print(f"🗑️ Mijoz → Sotuvchi qarzlar o'chirildi: {customer_debts_deleted[0]} ta")
+
+                # b) Sotuvchi → Boss qarz (har qanday holatda)
+                shop_owner = instance.phone.shop.owner
                 if shop_owner:
-                    Debt.objects.filter(
-                        debt_type='customer_to_seller',
+                    seller_debts_deleted = Debt.objects.filter(
+                        debt_type='seller_to_boss',
+                        debtor=instance.salesman,
                         creditor=shop_owner,
-                        customer=instance.customer,
-                        currency='USD',
-                        status='active',
-                        notes__contains=instance.phone.imei
+                        currency='USD'
+                    ).filter(
+                        models.Q(notes__icontains=instance.phone.imei) |
+                        models.Q(notes__icontains=str(instance.phone.phone_model)) |
+                        models.Q(notes__icontains=str(instance.customer.name))
                     ).delete()
 
+                    print(f"🗑️ Sotuvchi → Boss qarzlar o'chirildi: {seller_debts_deleted[0]} ta")
+
+            print(f"✅ PhoneSale #{instance.id} o'chirildi va barcha qarzlar tozalandi")
+
     except Exception as e:
-        print(f"PhoneSale delete signal error: {e}")
+        print(f"❌ PhoneSale delete signal error: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 # ==================== PhoneExchange Signals ====================
