@@ -8,8 +8,8 @@ from django.db.models import Sum, F, DecimalField, Q
 from decimal import Decimal
 from django_filters import rest_framework as filters
 
-from .forms import PhoneForm, AccessoryForm, AccessoryAddQuantityForm
-from .models import Phone, Accessory, AccessoryPurchaseHistory, ExternalSeller, DailySeller, PhoneModel
+from .forms import PhoneForm, AccessoryForm, AccessoryAddQuantityForm, SupplierForm
+from .models import Phone, Accessory, AccessoryPurchaseHistory, ExternalSeller, DailySeller, PhoneModel, Supplier
 from shops.models import Shop
 
 
@@ -21,12 +21,27 @@ def can_edit_inventory(user):
 
 
 # Dekorator yaratish
+def get_redirect_url(request):
+    """URL yo'naltirish manzilini aniqlash"""
+    if "phone" in request.path:
+        return "inventory:phone_list"
+    elif "supplier" in request.path:
+        return 'inventory:supplier_list'
+
+    else:
+        return "inventory:accessory_list"
+
+
 def boss_or_finance_required(view_func):
     """Faqat boss yoki finance ruxsat beruvchi dekorator"""
     def wrapper(request, *args, **kwargs):
         if not can_edit_inventory(request.user):
-            messages.error(request, "Sizda bu amalni bajarish huquqi yo'q. Faqat rahbar va moliyachi tahrirlashi mumkin.")
-            return redirect('inventory:phone_list' if 'phone' in request.path else 'inventory:accessory_list')
+            messages.error(
+                request,
+                "Sizda bu amalni bajarish huquqi yo'q. "
+                "Faqat rahbar va moliyachi tahrirlashi mumkin."
+            )
+            return redirect(get_redirect_url(request))
         return view_func(request, *args, **kwargs)
     return wrapper
 
@@ -175,31 +190,26 @@ def _ajax_phone_search(request, phones_queryset):
 @login_required
 def phone_list(request):
     """Telefonlar ro'yxati"""
-    # Filtrlarni olish
     imei_query = request.GET.get('imei', '').strip()
     model_query = request.GET.get('model', '').strip()
     status_filter = request.GET.get('status', '').strip()
     shop_id = request.GET.get('shop_id', '').strip()
     page_number = request.GET.get('page', 1)
 
-    # Telefonlarni olish
     phones = Phone.objects.all().select_related('shop', 'phone_model', 'memory_size')
 
-    # Filtrlash
     if imei_query:
-        phones = phones.filter(imei__contains=imei_query)
+        phones = phones.filter(imei__icontains=imei_query)
     if model_query:
-        phones = phones.filter(phone_model__id=model_query)  # Model ID bo'yicha filtr
+        phones = phones.filter(phone_model__id=model_query)
     if status_filter:
         phones = phones.filter(status=status_filter)
     if shop_id:
         phones = phones.filter(shop_id=shop_id)
 
-    # Paginatsiya
-    paginator = Paginator(phones, 12)  # Har sahifada 12 ta telefon
+    paginator = Paginator(phones, 12)
     page_obj = paginator.get_page(page_number)
 
-    # Statistika
     stats = {
         'total_phones': phones.count(),
         'displayed': len(page_obj),
@@ -207,27 +217,27 @@ def phone_list(request):
         'phones_sold': phones.filter(status='sold').count(),
     }
 
-    # PhoneModel ro'yxatini olish
     phone_models = PhoneModel.objects.all().order_by('model_name')
 
-    # AJAX so'rovi
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        phones_data = [
-            {
-                'id': phone.id,
-                'phone_model': str(phone.phone_model),
-                'memory_size': str(phone.memory_size),
-                'shop_name': phone.shop.name,
-                'imei': phone.imei,
-                'condition_percentage': phone.condition_percentage,
-                'cost_price': float(phone.cost_price),
-                'sale_price': float(phone.sale_price) if phone.sale_price else None,
-                'status': phone.status,
-                'status_display': phone.get_status_display(),
-                'image': phone.image.url if phone.image else None,
-            } for phone in page_obj
-        ]
-        return JsonResponse({
+    # ✅ FAQAT AJAX
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if is_ajax:
+        phones_data = [{
+            'id': phone.id,
+            'phone_model': str(phone.phone_model),
+            'memory_size': str(phone.memory_size),
+            'shop_name': phone.shop.name,
+            'imei': phone.imei,
+            'condition_percentage': phone.condition_percentage,
+            'cost_price': float(phone.cost_price),
+            'sale_price': float(phone.sale_price) if phone.sale_price else None,
+            'status': phone.status,
+            'status_display': phone.get_status_display(),
+            'image': phone.image.url if phone.image else None,
+        } for phone in page_obj]
+
+        response = JsonResponse({
             'phones': phones_data,
             'stats': stats,
             'current_page': page_obj.number,
@@ -235,11 +245,15 @@ def phone_list(request):
             'has_previous': page_obj.has_previous(),
             'has_next': page_obj.has_next(),
         })
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        return response
 
-    # Kontekst
+    # ✅ HTML
     context = {
         'phones': page_obj,
-        'phone_models': phone_models,  # PhoneModel ro'yxati
+        'phone_models': phone_models,
         'shops': Shop.objects.all(),
         'status_choices': Phone.STATUS_CHOICES,
         'imei_query': imei_query,
@@ -250,7 +264,11 @@ def phone_list(request):
         'phones_sold': stats['phones_sold'],
     }
 
-    return render(request, 'inventory/phone_list.html', context)
+    response = render(request, 'inventory/phone_list.html', context)
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 
 @login_required
@@ -301,11 +319,29 @@ def phone_update(request, pk):
         form = PhoneForm(request.POST, request.FILES, instance=phone, user=request.user)
         if form.is_valid():
             try:
-                form.save()
+                # ✅ TO'G'RILANGAN - created_at ni saqlab qolish
+                updated_phone = form.save(commit=False)
+
+                # Agar formda yangi sana berilgan bo'lsa, uni ishlatamiz
+                # Aks holda, eski sanani saqlaymiz
+                if not form.cleaned_data.get('created_at'):
+                    updated_phone.created_at = phone.created_at
+
+                updated_phone.save()
                 messages.success(request, "Telefon ma'lumotlari yangilandi!")
                 return redirect('inventory:phone_list')
             except Exception as e:
                 messages.error(request, f"Yangilashda xatolik: {str(e)}")
+                # Xatolik formani qayta ko'rsatish uchun
+        else:
+            # Form xatolarini ko'rsatish
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                        messages.error(request, f"Xatolik: {error}")
+                    else:
+                        field_label = form[field].label or field
+                        messages.error(request, f"{field_label}: {error}")
     else:
         form = PhoneForm(instance=phone, user=request.user)
 
@@ -999,3 +1035,93 @@ def check_daily_seller_phone_api(request):
             'message': 'Telefon raqam mavjud emas. Yangi kunlik sotuvchi yaratiladi.'
         })
 
+
+@login_required
+def supplier_list(request):
+    """Taminotchilar ro'yxati"""
+    suppliers = Supplier.objects.all().order_by('-created_at')
+
+    # Qidiruv
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        suppliers = suppliers.filter(
+            Q(name__icontains=search_query) |
+            Q(phone_number__icontains=search_query) |
+            Q(notes__icontains=search_query)
+        )
+
+    # Pagination
+    paginator = Paginator(suppliers, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'total_suppliers': suppliers.count(),
+    }
+
+    return render(request, 'inventory/supplier_list.html', context)
+
+
+@login_required
+@boss_or_finance_required
+def supplier_create(request):
+    """Yangi taminotchi qo'shish"""
+    if request.method == 'POST':
+        form = SupplierForm(request.POST)
+        if form.is_valid():
+            supplier = form.save()
+            messages.success(request, f"✅ {supplier.name} muvaffaqiyatli qo'shildi!")
+            return redirect('inventory:supplier_list')
+    else:
+        form = SupplierForm()
+
+    context = {
+        'form': form,
+        'title': 'Yangi Taminotchi',
+        'is_edit': False
+    }
+    return render(request, 'inventory/supplier_form.html', context)
+
+
+@login_required
+@boss_or_finance_required
+def supplier_update(request, pk):
+    """Taminotchini tahrirlash"""
+    supplier = get_object_or_404(Supplier, pk=pk)
+
+    if request.method == 'POST':
+        form = SupplierForm(request.POST, instance=supplier)
+        if form.is_valid():
+            supplier = form.save()
+            messages.success(request, f"✅ {supplier.name} ma'lumotlari yangilandi!")
+            return redirect('inventory:supplier_list')
+    else:
+        form = SupplierForm(instance=supplier)
+
+    context = {
+        'form': form,
+        'supplier': supplier,
+        'title': 'Taminotchini Tahrirlash',
+        'is_edit': True
+    }
+    return render(request, 'inventory/supplier_form.html', context)
+
+
+@login_required
+@boss_or_finance_required
+def supplier_delete(request, pk):
+    """Taminotchini o'chirish"""
+    supplier = get_object_or_404(Supplier, pk=pk)
+
+    if request.method == 'POST':
+        supplier_name = supplier.name
+        supplier.delete()
+        messages.success(request, f"✅ {supplier_name} muvaffaqiyatli o'chirildi!")
+        return redirect('inventory:supplier_list')
+
+    context = {
+        'supplier': supplier
+    }
+    return render(request, 'inventory/supplier_confirm_delete.html', context)

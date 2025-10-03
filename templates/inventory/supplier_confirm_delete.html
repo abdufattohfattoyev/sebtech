@@ -1,0 +1,72 @@
+<!-- templates/inventory/supplier_confirm_delete.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Taminotchini O'chirish{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        O'chirishni Tasdiqlang
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-skull-crossbones me-2"></i>
+                            Diqqat!
+                        </h5>
+                        Bu harakatni ortga qaytarib bo'lmaydi!
+                    </div>
+
+                    <div class="text-center mb-4">
+                        <i class="fas fa-truck fa-4x text-muted mb-3"></i>
+                        <h5>"{{ supplier.name }}" ni o'chirmoqchimisiz?</h5>
+                        <p class="text-muted">
+                            Taminotchi: <strong>{{ supplier.name }}</strong><br>
+                            Telefon: <strong>{{ supplier.phone_number }}</strong>
+                        </p>
+                    </div>
+
+                    <!-- Bog'liq ma'lumotlar -->
+                    {% with phone_count=supplier.phone_set.count accessory_count=supplier.accessory_set.count %}
+                    {% if phone_count > 0 or accessory_count > 0 %}
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Bog'liq ma'lumotlar mavjud:
+                        </h6>
+                        <ul class="mb-0">
+                            {% if phone_count > 0 %}
+                            <li>Ushbu taminotchiga bog'langan {{ phone_count }} ta telefon mavjud</li>
+                            {% endif %}
+                            {% if accessory_count > 0 %}
+                            <li>Ushbu taminotchiga bog'langan {{ accessory_count }} ta aksessuar mavjud</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'inventory:supplier_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>Bekor qilish
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-1"></i>O'chirish
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

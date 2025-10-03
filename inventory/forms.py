@@ -4,7 +4,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
-from .models import Phone, Accessory, ExternalSeller, DailySeller, AccessoryPurchaseHistory
+from .models import Phone, Accessory, ExternalSeller, DailySeller, AccessoryPurchaseHistory, Supplier
 from shops.models import Shop
 
 
@@ -14,6 +14,37 @@ def round_to_thousands(value):
         return (int(value) // 1000) * 1000
     return value
 
+
+class SupplierForm(forms.ModelForm):
+    """Taminotchi formasi"""
+
+    class Meta:
+        model = Supplier
+        fields = ['name', 'phone_number', 'notes']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Taminotchi nomi'
+            }),
+            'phone_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Telefon raqami'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Qo\'shimcha izoh...'
+            }),
+        }
+
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number')
+        if phone_number:
+            # Faqat raqamlarni qoldirish
+            phone_number = ''.join(filter(str.isdigit, phone_number))
+            if len(phone_number) < 9:
+                raise forms.ValidationError("Telefon raqami noto'g'ri formatda")
+        return phone_number
 
 class PhoneForm(forms.ModelForm):
     """Telefon formasi - DOLLAR"""
@@ -40,7 +71,7 @@ class PhoneForm(forms.ModelForm):
         label="Tashqi sotuvchi telefoni"
     )
 
-    # Daily Seller maydonlari - FAQAT ISM VA TELEFON
+    # Daily Seller maydonlari
     daily_seller_name = forms.CharField(
         max_length=100,
         required=False,
@@ -62,13 +93,14 @@ class PhoneForm(forms.ModelForm):
         label="Kunlik sotuvchi telefoni"
     )
 
+    # ✅ SANA - foydalanuvchi majburiy kiritadi
     created_at = forms.DateField(
-        required=False,
+        required=True,
         widget=forms.DateInput(attrs={
             'class': 'form-control',
             'type': 'date'
         }),
-        label="Qo'shilgan sana"
+        label="Qo'shilgan sana *"
     )
 
     class Meta:
@@ -85,9 +117,11 @@ class PhoneForm(forms.ModelForm):
             'shop': forms.Select(attrs={'class': 'form-control'}),
             'phone_model': forms.Select(attrs={'class': 'form-control'}),
             'memory_size': forms.Select(attrs={'class': 'form-control'}),
+            # ✅ IMEI MAJBURIY
             'imei': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': '15 raqamli IMEI kiriting'
+                'placeholder': '15 raqamli IMEI kiriting *',
+                'required': 'required'
             }),
             'condition_percentage': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -130,8 +164,8 @@ class PhoneForm(forms.ModelForm):
                 'class': 'form-control',
                 'id': 'external_seller_select'
             }),
-            'daily_seller': forms.HiddenInput(),  # YASHIRILGAN - ishlatilmaydi
-            'daily_payment_amount': forms.HiddenInput(),  # YASHIRILGAN - avtomatik to'ldiriladi
+            'daily_seller': forms.HiddenInput(),
+            'daily_payment_amount': forms.HiddenInput(),
             'exchange_value': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'step': '0.01',
@@ -157,20 +191,28 @@ class PhoneForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        if self.user:
-            # ✅ BARCHA DO'KONLARNI KO'RSATISH
-            self.fields['shop'].queryset = Shop.objects.all()
+        # ✅ IMEI ni majburiy qilish
+        self.fields['imei'].required = True
 
-            # Agar faqat bitta do'kon bo'lsa, avtomatik tanlash
+        if self.user:
+            self.fields['shop'].queryset = Shop.objects.all()
             if self.fields['shop'].queryset.count() == 1:
                 self.fields['shop'].initial = self.fields['shop'].queryset.first()
 
         if not self.instance.pk:
+            # Yangi telefon
             self.fields['external_seller'].empty_label = "Mavjud tashqi sotuvchini tanlang"
             self.fields['supplier'].empty_label = "Taminotchini tanlang"
             self.fields['condition_percentage'].initial = 100
             self.fields['imei_cost'].initial = 0
             self.fields['repair_cost'].initial = 0
+        else:
+            # ✅ Tahrirlash - mavjud sanani TO'G'RI FORMATDA ko'rsatish
+            if self.instance.created_at:
+                # created_at allaqachon date obyekti, faqat initial ga o'rnatamiz
+                self.fields['created_at'].initial = self.instance.created_at
+                # Widget'ga to'g'ri format qo'yish
+                self.fields['created_at'].widget.format = '%Y-%m-%d'
 
         # Daily seller initial values for edit mode
         if self.instance.pk and self.instance.daily_seller:
@@ -178,25 +220,34 @@ class PhoneForm(forms.ModelForm):
             self.fields['daily_seller_phone'].initial = self.instance.daily_seller.phone_number
 
     def clean_imei(self):
+        """✅ IMEI MAJBURIY va 15 raqam"""
         imei = self.cleaned_data.get('imei')
-        if imei:
-            imei = ''.join(filter(str.isdigit, imei))
-            if len(imei) != 15:
-                raise ValidationError("IMEI 15 ta raqamdan iborat bo'lishi kerak")
 
-            # IMEI dublikat tekshiruvi
-            existing_phone = Phone.objects.filter(imei=imei)
-            if self.instance.pk:
-                existing_phone = existing_phone.exclude(pk=self.instance.pk)
+        # ✅ Bo'sh bo'lishi mumkin emas
+        if not imei or not imei.strip():
+            raise ValidationError("IMEI kiritilishi shart!")
 
-            if existing_phone.exists():
-                phone = existing_phone.first()
-                raise ValidationError(
-                    f"⚠️ Bu IMEI allaqachon mavjud!\n"
-                    f"Telefon: {phone.phone_model} {phone.memory_size}\n"
-                    f"Do'kon: {phone.shop.name}\n"
-                    f"Holat: {phone.get_status_display()}"
-                )
+        # Faqat raqamlarni qoldirish
+        imei = ''.join(filter(str.isdigit, imei))
+
+        # ✅ 15 raqam bo'lishi kerak
+        if len(imei) != 15:
+            raise ValidationError("IMEI 15 ta raqamdan iborat bo'lishi kerak!")
+
+        # IMEI dublikat tekshiruvi
+        existing_phone = Phone.objects.filter(imei=imei)
+        if self.instance.pk:
+            existing_phone = existing_phone.exclude(pk=self.instance.pk)
+
+        if existing_phone.exists():
+            phone = existing_phone.first()
+            raise ValidationError(
+                f"⚠️ Bu IMEI allaqachon mavjud!\n"
+                f"Telefon: {phone.phone_model} {phone.memory_size}\n"
+                f"Do'kon: {phone.shop.name}\n"
+                f"Holat: {phone.get_status_display()}"
+            )
+
         return imei
 
     def clean_purchase_price(self):
@@ -204,6 +255,13 @@ class PhoneForm(forms.ModelForm):
         if purchase_price is None or purchase_price < 0:
             raise ValidationError("Sotib olingan narx kiritilishi shart va 0 dan katta bo'lishi kerak")
         return purchase_price
+
+    def clean_created_at(self):
+        """✅ Sana majburiy"""
+        created_at = self.cleaned_data.get('created_at')
+        if not created_at:
+            raise ValidationError("Qo'shilgan sana kiritilishi shart!")
+        return created_at
 
     def clean(self):
         cleaned_data = super().clean()
@@ -237,9 +295,8 @@ class PhoneForm(forms.ModelForm):
                     'external_seller_phone': "Telefon raqami kiritilishi kerak."
                 })
 
-        # Daily Seller validatsiyasi - TO'G'IRLANGAN
+        # Daily Seller validatsiyasi
         elif source_type == 'daily_seller':
-            # FAQAT ISM VA TELEFON tekshiramiz
             if not daily_seller_name or not daily_seller_name.strip():
                 raise ValidationError({
                     'daily_seller_name': "Kunlik sotuvchi turi uchun ism kiritilishi kerak."
@@ -250,16 +307,12 @@ class PhoneForm(forms.ModelForm):
                     'daily_seller_phone': "Telefon raqami kiritilishi kerak."
                 })
 
-            # To'langan summa = Sotib olingan narx
             if not purchase_price or purchase_price <= 0:
                 raise ValidationError({
                     'purchase_price': "Kunlik sotuvchi uchun sotib olingan narx kiritilishi kerak."
                 })
 
-            # Avtomatik to'langan summani o'rnatish
             cleaned_data['daily_payment_amount'] = purchase_price
-
-            # daily_seller maydonini None qilib qo'yamiz (u kerak emas)
             cleaned_data['daily_seller'] = None
 
         # Exchange validatsiyasi
@@ -275,14 +328,8 @@ class PhoneForm(forms.ModelForm):
     def save(self, commit=True):
         phone = super().save(commit=False)
 
-        # Tahrirlash rejimida (instance mavjud bo'lsa) created_at ni saqlab qolish
-        if self.instance.pk and not self.cleaned_data.get('created_at'):
-            phone.created_at = self.instance.created_at  # Oldingi qiymatni saqlash
-
-        # Yangi telefon uchun created_at ni o'rnatish
-        if not phone.created_at:
-            from django.utils import timezone
-            phone.created_at = timezone.now().date()
+        # ✅ created_at formdan olinadi (majburiy maydon)
+        phone.created_at = self.cleaned_data['created_at']
 
         # External seller yaratish/yangilash
         if (phone.source_type == 'external_seller' and

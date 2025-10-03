@@ -1,786 +1,535 @@
 {% extends "base.html" %}
 
-{% block page_title %}{{ phone.phone_model }} {{ phone.memory_size }} - Batafsil{% endblock %}
+{% block page_title %}{{ phone.phone_model }} {{ phone.memory_size }}{% endblock %}
 
 {% block extra_css %}
 <style>
+/* Mobile-first minimal design */
 .phone-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 20px;
+    border-radius: 15px;
     color: white;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    position: relative;
-    overflow: hidden;
-}
-
-.phone-header::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 100%;
-    height: 100%;
-    background: rgba(255,255,255,0.1);
-    border-radius: 50%;
-    animation: float 8s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-20px) rotate(180deg); }
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
 }
 
 .phone-title {
-    font-size: 2.5rem;
+    font-size: 1.5rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
-    position: relative;
-    z-index: 2;
 }
 
 .phone-imei {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     opacity: 0.9;
-    position: relative;
-    z-index: 2;
+    margin-bottom: 1rem;
 }
 
 .status-badge {
-    position: relative;
-    z-index: 2;
-    padding: 0.6rem 1.2rem;
-    border-radius: 25px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.action-buttons {
-    position: relative;
-    z-index: 2;
-}
-
-.header-btn {
-    background: rgba(255,255,255,0.2);
-    border: 2px solid rgba(255,255,255,0.3);
-    color: white;
-    border-radius: 12px;
-    padding: 0.6rem 1.2rem;
-    margin: 0.3rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-}
-
-.header-btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    color: white;
-    transform: translateY(-2px);
-}
-
-.info-card {
-    background: white;
+    padding: 0.4rem 0.8rem;
     border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-    border: none;
-    overflow: hidden;
-    margin-bottom: 2rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
 }
 
-.card-header-custom {
-    background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
-    padding: 1.5rem;
+.action-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    margin: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.section-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.section-header {
+    background: #f8fafc;
+    padding: 1rem;
     border-bottom: 1px solid #e2e8f0;
 }
 
-.card-title-custom {
-    color: #2d3748;
-    font-weight: 700;
-    font-size: 1.2rem;
-    margin: 0;
-    display: flex;
-    align-items: center;
-}
-
-.info-table {
-    margin: 0;
-    font-size: 0.95rem;
-}
-
-.info-table td {
-    padding: 0.8rem 1.5rem;
-    border: none;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
-}
-
-.info-table td:first-child {
+.section-title {
+    font-size: 1rem;
     font-weight: 600;
-    color: #4a5568;
-    width: 40%;
-}
-
-.info-table td:last-child {
     color: #2d3748;
+    margin: 0;
 }
 
-.financial-card {
-    background: linear-gradient(135deg, #f0fff4 0%, #dcfce7 100%);
-    border-left: 4px solid #22c55e;
+.info-grid {
+    padding: 1rem;
 }
 
-.financial-card.sold {
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    border-left: 4px solid #3b82f6;
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f1f5f9;
 }
 
-.price-display {
-    font-size: 1.1rem;
-    font-weight: 700;
+.info-row:last-child {
+    border-bottom: none;
 }
 
-.price-positive {
-    color: #16a34a;
+.info-label {
+    font-weight: 500;
+    color: #4a5568;
+    font-size: 0.9rem;
 }
 
-.price-negative {
-    color: #dc2626;
+.info-value {
+    color: #2d3748;
+    font-size: 0.9rem;
+    text-align: right;
 }
 
-.price-neutral {
-    color: #6b7280;
+.price-positive { color: #22c55e; font-weight: 600; }
+.price-negative { color: #ef4444; font-weight: 600; }
+.price-neutral { color: #6b7280; }
+
+.financial-empty {
+    text-align: center;
+    padding: 2rem;
+    color: #9ca3af;
 }
 
-.timeline-container {
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-    overflow: hidden;
+.financial-empty i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
 }
 
 .timeline-item {
+    padding: 1rem;
     border-left: 3px solid #e2e8f0;
-    padding-left: 1.5rem;
-    margin-bottom: 2rem;
+    margin-left: 1rem;
     position: relative;
-    transition: all 0.3s ease;
 }
 
 .timeline-item::before {
     content: '';
     position: absolute;
-    left: -8px;
-    top: 8px;
-    width: 14px;
-    height: 14px;
+    left: -6px;
+    top: 1.2rem;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     background: #6b7280;
-    border: 3px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-.timeline-item.created {
-    border-left-color: #22c55e;
-}
-.timeline-item.created::before {
-    background: #22c55e;
-}
-
-.timeline-item.sold {
-    border-left-color: #3b82f6;
-}
-.timeline-item.sold::before {
-    background: #3b82f6;
-}
-
-.timeline-item.returned {
-    border-left-color: #f59e0b;
-}
-.timeline-item.returned::before {
-    background: #f59e0b;
-}
-
-.timeline-item.exchanged_new {
-    border-left-color: #06b6d4;
-}
-.timeline-item.exchanged_new::before {
-    background: #06b6d4;
-}
-
-.timeline-item.exchanged_old {
-    border-left-color: #8b5cf6;
-}
-.timeline-item.exchanged_old::before {
-    background: #8b5cf6;
-}
+.timeline-item.created::before { background: #22c55e; }
+.timeline-item.sold::before { background: #3b82f6; }
+.timeline-item.returned::before { background: #f59e0b; }
+.timeline-item.exchanged_new::before { background: #06b6d4; }
+.timeline-item.exchanged_old::before { background: #8b5cf6; }
 
 .timeline-event {
     font-weight: 600;
+    font-size: 0.9rem;
     color: #2d3748;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
 }
 
-.timeline-description {
+.timeline-desc {
+    font-size: 0.8rem;
     color: #6b7280;
-    margin-bottom: 0.5rem;
-    line-height: 1.5;
+    line-height: 1.4;
+    margin-bottom: 0.3rem;
 }
 
-.timeline-user {
+.timeline-meta {
+    font-size: 0.75rem;
     color: #9ca3af;
-    font-size: 0.85rem;
-}
-
-.timeline-date {
-    color: #9ca3af;
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-
-.phone-image-container {
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-    padding: 1.5rem;
-    text-align: center;
-    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
 }
 
 .phone-image {
-    max-width: 100%;
+    width: 100%;
+    max-width: 200px;
     height: auto;
-    border-radius: 15px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    border-radius: 10px;
+    margin: 1rem auto;
+    display: block;
 }
 
-.section-divider {
-    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-    height: 2px;
-    margin: 2rem 0;
-    border-radius: 2px;
+.debt-item {
+    background: #fef2f2;
+    border-left: 3px solid #ef4444;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0 8px 8px 0;
 }
 
-.empty-financial {
-    text-align: center;
-    padding: 2rem;
-    color: #9ca3af;
+.debt-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 0.5rem;
 }
 
-.empty-financial-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-    opacity: 0.5;
+.debt-amount {
+    font-weight: 600;
+    color: #dc2626;
 }
 
+.debt-payments {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #fecaca;
+}
+
+.payment-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 0;
+    font-size: 0.8rem;
+}
+
+.payment-amount {
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.payment-date {
+    color: #6b7280;
+}
+
+/* Hide unnecessary elements on mobile */
 @media (max-width: 768px) {
+    .d-md-none { display: none !important; }
+
+    .container {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    .info-value {
+        max-width: 60%;
+        word-break: break-word;
+    }
+}
+
+/* Desktop adjustments */
+@media (min-width: 769px) {
     .phone-header {
-        padding: 1.5rem;
-        text-align: center;
+        text-align: left;
+        padding: 2rem;
     }
 
     .phone-title {
-        font-size: 1.8rem;
+        font-size: 2rem;
+    }
+
+    .phone-imei {
+        font-size: 1rem;
     }
 
     .action-buttons {
-        flex-direction: column;
-        margin-top: 1rem;
-    }
-
-    .header-btn {
-        width: 100%;
-        margin: 0.2rem 0;
-    }
-
-    .info-table td {
-        padding: 0.6rem 1rem;
-        font-size: 0.9rem;
+        text-align: right;
     }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container py-3">
     <!-- Phone Header -->
     <div class="phone-header">
         <div class="row align-items-center">
             <div class="col-md-8">
                 <h1 class="phone-title">{{ phone.phone_model }} {{ phone.memory_size }}</h1>
-                <div class="phone-imei">
-                    <i class="fas fa-mobile-alt me-2"></i>IMEI: {{ phone.imei|default:"N/A" }}
+                <div class="phone-imei">IMEI: {{ phone.imei|default:"N/A" }}</div>
+                <span class="badge status-badge
+                    {% if phone.status == 'shop' %}bg-success
+                    {% elif phone.status == 'sold' %}bg-primary
+                    {% elif phone.status == 'master' %}bg-warning text-dark
+                    {% elif phone.status == 'returned' %}bg-secondary
+                    {% elif phone.status == 'exchanged_in' %}bg-info
+                    {% endif %}">
+                    {{ phone.get_status_display }}
+                </span>
+            </div>
+            <div class="col-md-4 action-buttons">
+                <a href="{% url 'inventory:phone_list' %}" class="btn action-btn">
+                    <i class="fas fa-arrow-left"></i> Orqaga
+                </a>
+                {% if can_edit %}
+                <a href="{% url 'inventory:phone_update' phone.pk %}" class="btn action-btn">
+                    <i class="fas fa-edit"></i> Tahrirlash
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Phone Image (Mobile first) -->
+    {% if phone.image %}
+    <div class="section-card text-center d-md-none">
+        <img src="{{ phone.image.url }}" alt="{{ phone }}" class="phone-image">
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Basic Info -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">
+                        <i class="fas fa-info-circle text-primary me-2"></i>Asosiy Ma'lumotlar
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-row">
+                        <span class="info-label">Model</span>
+                        <span class="info-value">{{ phone.phone_model }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Xotira</span>
+                        <span class="info-value">{{ phone.memory_size }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Holat</span>
+                        <span class="info-value">{{ phone.condition_percentage }}%</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Do'kon</span>
+                        <span class="info-value">{{ phone.shop.name }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Qo'shilgan</span>
+                        <span class="info-value">{{ phone.created_at|date:"d.m.Y" }}</span>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-4 text-md-end text-center">
-                <div class="mb-3">
-                    <span class="badge status-badge
-                        {% if phone.status == 'shop' %}bg-success
-                        {% elif phone.status == 'sold' %}bg-primary
-                        {% elif phone.status == 'master' %}bg-warning text-dark
-                        {% elif phone.status == 'returned' %}bg-secondary
-                        {% elif phone.status == 'exchanged_in' %}bg-info
-                        {% endif %}">
-                        {{ phone.get_status_display }}
-                    </span>
+
+            <!-- Financial Info -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">
+                        <i class="fas fa-calculator text-success me-2"></i>Moliyaviy
+                    </div>
                 </div>
-                <div class="action-buttons">
-                    <a href="{% url 'inventory:phone_list' %}" class="btn header-btn">
-                        <i class="fas fa-arrow-left me-2"></i>Orqaga
-                    </a>
-                    {% if can_edit %}
-                    <a href="{% url 'inventory:phone_update' phone.pk %}" class="btn header-btn">
-                        <i class="fas fa-edit me-2"></i>Tahrirlash
-                    </a>
+                <div class="info-grid">
+                    {% if phone.status == 'shop' %}
+                    <div class="info-row">
+                        <span class="info-label">Tan narx</span>
+                        <span class="info-value price-negative">${{ phone.cost_price }}</span>
+                    </div>
+                    {% if phone.sale_price %}
+                    <div class="info-row">
+                        <span class="info-label">Belgilangan narx</span>
+                        <span class="info-value price-neutral">${{ phone.sale_price }}</span>
+                    </div>
                     {% endif %}
+                    <div class="financial-empty">
+                        <i class="fas fa-store"></i>
+                        <div><strong>Hali sotilmagan</strong></div>
+                        <small>Foyda hisobi sotilgandan keyin</small>
+                    </div>
+                    {% else %}
+                    <div class="info-row">
+                        <span class="info-label">Tan narx</span>
+                        <span class="info-value price-negative">${{ phone.cost_price }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Sotish narxi</span>
+                        <span class="info-value price-positive">${{ financial_summary.sale_price }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Foyda</span>
+                        <span class="info-value {% if financial_summary.profit >= 0 %}price-positive{% else %}price-negative{% endif %}">
+                            ${{ financial_summary.profit }}
+                        </span>
+                    </div>
+                    {% if financial_summary.return_amount > 0 %}
+                    <div class="info-row">
+                        <span class="info-label">Qaytarilgan</span>
+                        <span class="info-value text-warning">${{ financial_summary.return_amount }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Yakuniy foyda</span>
+                        <span class="info-value {% if financial_summary.final_profit >= 0 %}price-positive{% else %}price-negative{% endif %}">
+                            ${{ financial_summary.final_profit }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Sale Info -->
+            {% if phone_sale %}
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">
+                        <i class="fas fa-shopping-cart text-success me-2"></i>Sotish
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-row">
+                        <span class="info-label">Mijoz</span>
+                        <span class="info-value">{{ phone_sale.customer.name }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Telefon</span>
+                        <span class="info-value">{{ phone_sale.customer.phone_number }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Sana</span>
+                        <span class="info-value">{{ phone_sale.sale_date|date:"d.m.Y" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Narx</span>
+                        <span class="info-value price-positive">${{ phone_sale.sale_price }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Naqd</span>
+                        <span class="info-value">${{ phone_sale.cash_amount }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Karta</span>
+                        <span class="info-value">${{ phone_sale.card_amount }}</span>
+                    </div>
+                    {% if phone_sale.debt_amount > 0 %}
+                    <div class="info-row">
+                        <span class="info-label">Qarz</span>
+                        <span class="info-value price-negative">${{ phone_sale.debt_amount }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Return Info -->
+            {% if phone_return %}
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">
+                        <i class="fas fa-undo text-warning me-2"></i>Qaytarilgan
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-row">
+                        <span class="info-label">Sana</span>
+                        <span class="info-value">{{ phone_return.return_date|date:"d.m.Y" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Summa</span>
+                        <span class="info-value text-warning">${{ phone_return.return_amount }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Sabab</span>
+                        <span class="info-value">{{ phone_return.reason|truncatechars:30 }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Active Debts with Payments -->
+            {% if customer_debts %}
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">
+                        <i class="fas fa-credit-card text-danger me-2"></i>Qarzlar
+                    </div>
+                </div>
+                <div style="padding: 1rem;">
+                    {% for debt in customer_debts %}
+                    <div class="debt-item">
+                        <div class="debt-header">
+                            <div>
+                                <div class="debt-amount">${{ debt.debt_amount }}</div>
+                                <small class="text-muted">{{ debt.created_at|date:"d.m.Y" }}</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="debt-amount">Qoldiq: ${{ debt.remaining_amount }}</div>
+                            </div>
+                        </div>
+
+                        {% if debt.payments.exists %}
+                        <div class="debt-payments">
+                            <small class="text-muted d-block mb-2">To'lovlar:</small>
+                            {% for payment in debt.payments.all|slice:":3" %}
+                            <div class="payment-item">
+                                <span class="payment-amount">${{ payment.payment_amount }}</span>
+                                <span class="payment-date">{{ payment.payment_date|date:"d.m.Y" }}</span>
+                            </div>
+                            {% endfor %}
+                            {% if debt.payments.count > 3 %}
+                            <small class="text-muted">va yana {{ debt.payments.count|add:"-3" }} ta to'lov...</small>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar for Desktop -->
+        <div class="col-lg-4 d-none d-lg-block">
+            <!-- Phone Image -->
+            {% if phone.image %}
+            <div class="section-card text-center">
+                <img src="{{ phone.image.url }}" alt="{{ phone }}" class="phone-image" style="max-width: 250px;">
+            </div>
+            {% endif %}
+
+            <!-- Timeline -->
+            <div class="section-card">
+                <div class="section-header">
+                    <div class="section-title">
+                        <i class="fas fa-history text-info me-2"></i>Tarix
+                    </div>
+                </div>
+                <div>
+                    {% for event in timeline %}
+                    <div class="timeline-item {{ event.type }}">
+                        <div class="timeline-event">{{ event.event }}</div>
+                        <div class="timeline-desc">{{ event.description }}</div>
+                        <div class="timeline-meta">
+                            <span>{{ event.user.username|default:"" }}</span>
+                            <span>{{ event.date|date:"d.m.Y" }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <!-- Main Content -->
-        <div class="col-lg-8">
-            <!-- Phone Information -->
-            <div class="info-card">
-                <div class="card-header-custom">
-                    <h5 class="card-title-custom">
-                        <i class="fas fa-info-circle text-primary me-2"></i>
-                        Telefon Ma'lumotlari
-                    </h5>
-                </div>
-                <div class="card-body p-0">
-                    <table class="info-table w-100">
-                        <tr>
-                            <td>Model:</td>
-                            <td>{{ phone.phone_model }}</td>
-                        </tr>
-                        <tr>
-                            <td>Xotira hajmi:</td>
-                            <td>{{ phone.memory_size }}</td>
-                        </tr>
-                        <tr>
-                            <td>IMEI:</td>
-                            <td>{{ phone.imei|default:"N/A" }}</td>
-                        </tr>
-                        <tr>
-                            <td>Holati:</td>
-                            <td>{{ phone.condition_percentage }}%</td>
-                        </tr>
-                        <tr>
-                            <td>Status:</td>
-                            <td>
-                                <span class="badge
-                                    {% if phone.status == 'shop' %}bg-success
-                                    {% elif phone.status == 'sold' %}bg-primary
-                                    {% elif phone.status == 'master' %}bg-warning text-dark
-                                    {% elif phone.status == 'returned' %}bg-secondary
-                                    {% elif phone.status == 'exchanged_in' %}bg-info
-                                    {% endif %}">
-                                    {{ phone.get_status_display }}
-                                </span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Do'kon:</td>
-                            <td>{{ phone.shop.name }}</td>
-                        </tr>
-                        <tr>
-                            <td>Manba:</td>
-                            <td>{{ phone.get_source_type_display }}</td>
-                        </tr>
-                        {% if phone.supplier %}
-                        <tr>
-                            <td>Taminotchi:</td>
-                            <td>{{ phone.supplier.name }}</td>
-                        </tr>
-                        {% endif %}
-                        {% if phone.client_name %}
-                        <tr>
-                            <td>Mijoz:</td>
-                            <td>{{ phone.client_name }} - {{ phone.client_phone_number }}</td>
-                        </tr>
-                        {% endif %}
-                        <tr>
-                            <td>Qo'shilgan:</td>
-                            <td>{{ phone.created_at|date:"d.m.Y" }} ({{ phone.created_by.username|default:"N/A" }})</td>
-                        </tr>
-                    </table>
-                </div>
+    <!-- Mobile Timeline -->
+    <div class="section-card d-lg-none">
+        <div class="section-header">
+            <div class="section-title">
+                <i class="fas fa-history text-info me-2"></i>Tarix
             </div>
-
-            <!-- Financial Information -->
-            <div class="info-card financial-card {% if phone.status == 'sold' %}sold{% endif %}">
-                <div class="card-header-custom">
-                    <h5 class="card-title-custom">
-                        <i class="fas fa-calculator text-success me-2"></i>
-                        Moliyaviy Ma'lumotlar
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% if phone.status == 'shop' %}
-                    <!-- Do'konda turgan telefon uchun faqat xarajatlar -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="info-table w-100">
-                                <tr>
-                                    <td>Sotib olingan narx:</td>
-                                    <td><span class="price-display price-negative">${{ phone.purchase_price }}</span></td>
-                                </tr>
-                                <tr>
-                                    <td>IMEI xarajati:</td>
-                                    <td><span class="price-display price-negative">${{ phone.imei_cost }}</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Ta'mirlash xarajati:</td>
-                                    <td><span class="price-display price-negative">${{ phone.repair_cost }}</span></td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="info-table w-100">
-                                <tr class="border-top">
-                                    <td><strong>Jami tan narx:</strong></td>
-                                    <td><span class="price-display price-negative"><strong>${{ phone.cost_price }}</strong></span></td>
-                                </tr>
-                                {% if phone.sale_price %}
-                                <tr>
-                                    <td>Belgilangan sotish narxi:</td>
-                                    <td><span class="price-display price-neutral">${{ phone.sale_price }}</span></td>
-                                </tr>
-                                {% endif %}
-                            </table>
-                        </div>
-                    </div>
-                    <div class="empty-financial">
-                        <div class="empty-financial-icon">
-                            <i class="fas fa-store"></i>
-                        </div>
-                        <p><strong>Telefon hali sotilmagan</strong></p>
-                        <small class="text-muted">Foyda va zarar hisobi sotilgandan keyin ko'rsatiladi</small>
-                    </div>
-
-                    {% else %}
-                    <!-- Sotilgan telefon uchun to'liq moliyaviy hisobot -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="info-table w-100">
-                                <tr>
-                                    <td>Sotib olingan narx:</td>
-                                    <td><span class="price-display price-negative">${{ phone.purchase_price }}</span></td>
-                                </tr>
-                                <tr>
-                                    <td>IMEI xarajati:</td>
-                                    <td><span class="price-display price-negative">${{ phone.imei_cost }}</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Ta'mirlash xarajati:</td>
-                                    <td><span class="price-display price-negative">${{ phone.repair_cost }}</span></td>
-                                </tr>
-                                <tr class="border-top">
-                                    <td><strong>Jami tan narx:</strong></td>
-                                    <td><span class="price-display price-negative"><strong>${{ phone.cost_price }}</strong></span></td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="info-table w-100">
-                                <tr>
-                                    <td>Sotish narxi:</td>
-                                    <td>
-                                        {% if financial_summary.sale_price %}
-                                            <span class="price-display price-positive">${{ financial_summary.sale_price }}</span>
-                                        {% else %}
-                                            <span class="text-muted">Belgilanmagan</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% if financial_summary.return_amount > 0 %}
-                                <tr>
-                                    <td>Qaytarilgan summa:</td>
-                                    <td><span class="price-display text-warning">${{ financial_summary.return_amount }}</span></td>
-                                </tr>
-                                {% endif %}
-                                {% if financial_summary.sale_price %}
-                                <tr>
-                                    <td>Foyda:</td>
-                                    <td>
-                                        <span class="price-display {% if financial_summary.profit >= 0 %}price-positive{% else %}price-negative{% endif %}">
-                                            ${{ financial_summary.profit }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% if financial_summary.return_amount > 0 %}
-                                <tr class="border-top">
-                                    <td><strong>Yakuniy foyda:</strong></td>
-                                    <td>
-                                        <span class="price-display {% if financial_summary.final_profit >= 0 %}price-positive{% else %}price-negative{% endif %}">
-                                            <strong>${{ financial_summary.final_profit }}</strong>
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endif %}
-                                {% endif %}
-                            </table>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Sale Information -->
-            {% if phone_sale %}
-            <div class="info-card">
-                <div class="card-header-custom">
-                    <h5 class="card-title-custom">
-                        <i class="fas fa-shopping-cart text-success me-2"></i>
-                        Sotish Ma'lumotlari
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="info-table w-100">
-                                <tr>
-                                    <td>Mijoz:</td>
-                                    <td>{{ phone_sale.customer.name }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Telefon:</td>
-                                    <td>{{ phone_sale.customer.phone_number }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Sotish sanasi:</td>
-                                    <td>{{ phone_sale.sale_date|date:"d.m.Y" }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Sotuvchi:</td>
-                                    <td>{{ phone_sale.salesman.get_full_name|default:phone_sale.salesman.username }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="info-table w-100">
-                                <tr>
-                                    <td>Umumiy narx:</td>
-                                    <td><span class="price-display price-positive">${{ phone_sale.sale_price }}</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Naqd:</td>
-                                    <td><span class="price-display price-neutral">${{ phone_sale.cash_amount }}</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Karta:</td>
-                                    <td><span class="price-display price-neutral">${{ phone_sale.card_amount }}</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Nasiya:</td>
-                                    <td><span class="price-display price-neutral">${{ phone_sale.credit_amount }}</span></td>
-                                </tr>
-                                {% if phone_sale.debt_amount > 0 %}
-                                <tr>
-                                    <td>Qarz:</td>
-                                    <td><span class="price-display price-negative">${{ phone_sale.debt_amount }}</span></td>
-                                </tr>
-                                {% endif %}
-                            </table>
-                        </div>
-                    </div>
-                    {% if phone_sale.notes %}
-                    <div class="section-divider"></div>
-                    <div class="mt-3">
-                        <strong>Izohlar:</strong>
-                        <p class="text-muted mt-2">{{ phone_sale.notes }}</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Return Information -->
-            {% if phone_return %}
-            <div class="info-card">
-                <div class="card-header-custom">
-                    <h5 class="card-title-custom">
-                        <i class="fas fa-undo text-warning me-2"></i>
-                        Qaytarish Ma'lumotlari
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <table class="info-table w-100">
-                        <tr>
-                            <td>Qaytarilgan sana:</td>
-                            <td>{{ phone_return.return_date|date:"d.m.Y" }}</td>
-                        </tr>
-                        <tr>
-                            <td>Qaytarilgan summa:</td>
-                            <td><span class="price-display text-warning">${{ phone_return.return_amount }}</span></td>
-                        </tr>
-                        <tr>
-                            <td>Qaytarish sababi:</td>
-                            <td>{{ phone_return.reason }}</td>
-                        </tr>
-                        <tr>
-                            <td>Amalga oshirgan:</td>
-                            <td>{{ phone_return.created_by.get_full_name|default:phone_return.created_by.username }}</td>
-                        </tr>
-                    </table>
-                    {% if phone_return.notes %}
-                    <div class="section-divider"></div>
-                    <div class="mt-3">
-                        <strong>Izohlar:</strong>
-                        <p class="text-muted mt-2">{{ phone_return.notes }}</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Exchange Information -->
-            {% if phone_exchange_new %}
-            <div class="info-card">
-                <div class="card-header-custom">
-                    <h5 class="card-title-custom">
-                        <i class="fas fa-exchange-alt text-info me-2"></i>
-                        Almashtirishda Berilgan
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <table class="info-table w-100">
-                        <tr>
-                            <td>Almashtirish sanasi:</td>
-                            <td>{{ phone_exchange_new.exchange_date|date:"d.m.Y" }}</td>
-                        </tr>
-                        <tr>
-                            <td>Mijoz:</td>
-                            <td>{{ phone_exchange_new.customer_name }} - {{ phone_exchange_new.customer_phone_number }}</td>
-                        </tr>
-                        <tr>
-                            <td>Eski telefon:</td>
-                            <td>{{ phone_exchange_new.old_phone_model }} {{ phone_exchange_new.old_phone_memory }}</td>
-                        </tr>
-                        <tr>
-                            <td>Eski telefon IMEI:</td>
-                            <td>{{ phone_exchange_new.old_phone_imei|default:"N/A" }}</td>
-                        </tr>
-                        <tr>
-                            <td>Baholangan narx:</td>
-                            <td><span class="price-display price-positive">${{ phone_exchange_new.old_phone_evaluated_price }}</span></td>
-                        </tr>
-                        <tr>
-                            <td>Almashtirish turi:</td>
-                            <td>{{ phone_exchange_new.get_exchange_type_display }}</td>
-                        </tr>
-                        <tr>
-                            <td>Sotuvchi:</td>
-                            <td>{{ phone_exchange_new.salesman.get_full_name|default:phone_exchange_new.salesman.username }}</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if phone_exchange_old %}
-            <div class="info-card">
-                <div class="card-header-custom">
-                    <h5 class="card-title-custom">
-                        <i class="fas fa-exchange-alt text-purple me-2"></i>
-                        Almashtirishda Qabul Qilingan
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <table class="info-table w-100">
-                        <tr>
-                            <td>Almashtirish sanasi:</td>
-                            <td>{{ phone_exchange_old.exchange_date|date:"d.m.Y" }}</td>
-                        </tr>
-                        <tr>
-                            <td>Mijoz:</td>
-                            <td>{{ phone_exchange_old.customer_name }} - {{ phone_exchange_old.customer_phone_number }}</td>
-                        </tr>
-                        <tr>
-                            <td>Yangi telefon:</td>
-                            <td>{{ phone_exchange_old.new_phone }}</td>
-                        </tr>
-                        <tr>
-                            <td>Yangi telefon narxi:</td>
-                            <td><span class="price-display price-positive">${{ phone_exchange_old.new_phone_price }}</span></td>
-                        </tr>
-                        <tr>
-                            <td>Almashtirish turi:</td>
-                            <td>{{ phone_exchange_old.get_exchange_type_display }}</td>
-                        </tr>
-                        <tr>
-                            <td>Sotuvchi:</td>
-                            <td>{{ phone_exchange_old.salesman.get_full_name|default:phone_exchange_old.salesman.username }}</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Active Debts -->
-            {% if customer_debts %}
-            <div class="info-card">
-                <div class="card-header-custom">
-                    <h5 class="card-title-custom">
-                        <i class="fas fa-credit-card text-danger me-2"></i>
-                        Faol Qarzlar
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% for debt in customer_debts %}
-                    <div class="d-flex justify-content-between align-items-center border-bottom py-3">
-                        <div>
-                            <div><strong>Qarz summasi:</strong> <span class="price-display price-negative">${{ debt.debt_amount }}</span></div>
-                            <small class="text-muted">{{ debt.created_at|date:"d.m.Y" }} - {{ debt.creditor.get_full_name|default:debt.creditor.username }}</small>
-                        </div>
-                        <div class="text-end">
-                            <strong class="price-display price-negative">Qoldiq: ${{ debt.remaining_amount }}</strong>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
         </div>
-
-        <!-- Sidebar -->
-        <div class="col-lg-4">
-            <!-- Phone Image -->
-            {% if phone.image %}
-            <div class="phone-image-container">
-                <img src="{{ phone.image.url }}" alt="{{ phone }}" class="phone-image">
-            </div>
-            {% endif %}
-
-            <!-- Timeline -->
-            <div class="timeline-container">
-                <div class="card-header-custom">
-                    <h5 class="card-title-custom">
-                        <i class="fas fa-history text-info me-2"></i>
-                        Telefon Tarixi
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% for event in timeline %}
-                    <div class="timeline-item {{ event.type }}">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <div class="timeline-event">{{ event.event }}</div>
-                                <div class="timeline-description">{{ event.description }}</div>
-                                {% if event.user %}
-                                <div class="timeline-user">{{ event.user.get_full_name|default:event.user.username }}</div>
-                                {% endif %}
-                            </div>
-                            <div class="timeline-date">{{ event.date|date:"d.m.Y" }}</div>
-                        </div>
-                    </div>
-                    {% endfor %}
+        <div>
+            {% for event in timeline %}
+            <div class="timeline-item {{ event.type }}">
+                <div class="timeline-event">{{ event.event }}</div>
+                <div class="timeline-desc">{{ event.description }}</div>
+                <div class="timeline-meta">
+                    <span>{{ event.user.username|default:"" }}</span>
+                    <span>{{ event.date|date:"d.m.Y" }}</span>
                 </div>
             </div>
+            {% endfor %}
         </div>
     </div>
 </div>

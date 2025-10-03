@@ -445,9 +445,14 @@ class Phone(models.Model):
         return f"{self.phone_model} {self.memory_size} - IMEI: {self.imei or 'N/A'}"
 
     def save(self, *args, **kwargs):
+        # Tan narxni hisoblash
         self.cost_price = self.purchase_price + self.imei_cost + self.repair_cost
+
+        # ✅ created_at bo'sh bo'lsa FAQAT o'sha paytda sana qo'yish
+        # Bu migration yoki admin orqali yaratilgan obyektlar uchun
         if not self.created_at:
             self.created_at = timezone.now().date()
+
         super().save(*args, **kwargs)
 
     # models.py da Phone modelida clean() metodini yangilash kerak:

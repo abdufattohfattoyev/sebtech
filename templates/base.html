@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- ✅ GLOBAL CACHE CONTROL -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <title>{% block title %}Do'kon Boshqaruv Tizimi{% endblock %}</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -573,6 +578,13 @@
        class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}">
         <i class="fas fa-chart-bar"></i>
         Hisobotlar
+    </a>
+
+    <!-- Taminotchilar -->
+    <a href="{% url 'inventory:supplier_list' %}"
+       class="nav-link {% if request.resolver_match.app_name == 'inventory' and 'supplier' in request.resolver_match.url_name %}active{% endif %}">
+        <i class="fas fa-users-cog"></i>
+        Taminotchilar
     </a>
 
     <hr style="margin: 1rem; border-color: var(--gray-200);">

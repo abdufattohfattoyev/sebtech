@@ -2,6 +2,12 @@
 
 {% block page_title %}{{ phone.phone_model }} {{ phone.memory_size }}{% endblock %}
 
+{% block extra_head %}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+{% endblock %}
+
 {% block extra_css %}
 <style>
 /* Mobile-first minimal design */
@@ -32,6 +38,7 @@
     font-weight: 600;
     font-size: 0.8rem;
     margin-bottom: 1rem;
+    display: inline-block;
 }
 
 .action-btn {
@@ -43,6 +50,13 @@
     margin: 0.2rem;
     font-size: 0.85rem;
     font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.action-btn:hover {
+    background: rgba(255,255,255,0.3);
+    color: white;
 }
 
 .section-card {
@@ -174,7 +188,7 @@
 
 .debt-header {
     display: flex;
-    justify-content: between;
+    justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
 }
@@ -207,10 +221,8 @@
     color: #6b7280;
 }
 
-/* Hide unnecessary elements on mobile */
+/* Responsive */
 @media (max-width: 768px) {
-    .d-md-none { display: none !important; }
-
     .container {
         padding-left: 0.5rem;
         padding-right: 0.5rem;
@@ -222,7 +234,6 @@
     }
 }
 
-/* Desktop adjustments */
 @media (min-width: 769px) {
     .phone-header {
         text-align: left;
@@ -312,6 +323,12 @@
                         <span class="info-label">Qo'shilgan</span>
                         <span class="info-value">{{ phone.created_at|date:"d.m.Y" }}</span>
                     </div>
+                    {% if phone.note %}
+                    <div class="info-row">
+                        <span class="info-label">Izoh</span>
+                        <span class="info-value">{{ phone.note }}</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -323,7 +340,7 @@
                     </div>
                 </div>
                 <div class="info-grid">
-                    {% if phone.status == 'shop' %}
+                    {% if phone.status == 'shop' or phone.status == 'master' or phone.status == 'returned' %}
                     <div class="info-row">
                         <span class="info-label">Tan narx</span>
                         <span class="info-value price-negative">${{ phone.cost_price }}</span>
@@ -438,7 +455,7 @@
             </div>
             {% endif %}
 
-            <!-- Active Debts with Payments -->
+            <!-- Active Debts -->
             {% if customer_debts %}
             <div class="section-card">
                 <div class="section-header">
@@ -502,7 +519,7 @@
                         <div class="timeline-event">{{ event.event }}</div>
                         <div class="timeline-desc">{{ event.description }}</div>
                         <div class="timeline-meta">
-                            <span>{{ event.user.username|default:"" }}</span>
+                            <span>{{ event.user.username|default:"Tizim" }}</span>
                             <span>{{ event.date|date:"d.m.Y" }}</span>
                         </div>
                     </div>
@@ -525,7 +542,7 @@
                 <div class="timeline-event">{{ event.event }}</div>
                 <div class="timeline-desc">{{ event.description }}</div>
                 <div class="timeline-meta">
-                    <span>{{ event.user.username|default:"" }}</span>
+                    <span>{{ event.user.username|default:"Tizim" }}</span>
                     <span>{{ event.date|date:"d.m.Y" }}</span>
                 </div>
             </div>

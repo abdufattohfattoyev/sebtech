@@ -30,6 +30,12 @@ urlpatterns = [
     # Shop detail
     path('shop/<int:shop_id>/', views.shop_detail, name='shop_detail'),
 
+    # Supplier URLs
+    path('suppliers/', views.supplier_list, name='supplier_list'),
+    path('suppliers/create/', views.supplier_create, name='supplier_create'),
+    path('suppliers/<int:pk>/edit/', views.supplier_update, name='supplier_update'),
+    path('suppliers/<int:pk>/delete/', views.supplier_delete, name='supplier_delete'),
+
     # API URLs
     path('search/', views.search, name='search'),
     path('search-seller/', views.search_external_seller_api, name='search_seller_api'),
