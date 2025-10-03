@@ -57,9 +57,11 @@
     border-radius: 8px;
     border: 1px solid #e5e7eb;
     overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .phone-card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 .phone-image {
     height: 120px;
@@ -67,11 +69,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+.phone-image:hover {
+    background: #f3f4f6;
+}
+.phone-image:hover img {
+    transform: scale(1.05);
 }
 .phone-image img {
     max-width: 80%;
     max-height: 80%;
     object-fit: contain;
+    transition: transform 0.3s ease;
 }
 .phone-placeholder {
     color: #9ca3af;
@@ -240,7 +253,118 @@
     grid-column: 1 / -1;
 }
 
-/* Responsive - simplified */
+/* Image Modal Styles - IMPROVED */
+.image-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    max-width: 90%;
+    max-height: 80%;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-content.loaded {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+.modal-close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    color: white;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10000;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.modal-close:hover {
+    background: rgba(239, 68, 68, 0.8);
+    border-color: rgba(255, 255, 255, 0.8);
+    transform: scale(1.1) rotate(90deg);
+}
+
+.modal-info {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+    color: white;
+    padding: 30px 20px;
+    text-align: center;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.modal-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.modal-subtitle {
+    font-size: 1rem;
+    opacity: 0.9;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Modal Loading */
+.modal-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    text-align: center;
+    z-index: 1000;
+}
+
+.modal-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+/* Mobile optimizations */
 @media (max-width: 768px) {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -256,6 +380,108 @@
     .phone-image {
         height: 100px;
     }
+
+    /* Mobile Modal */
+    .modal-content {
+        max-width: 95%;
+        max-height: 70%;
+        border-radius: 8px;
+    }
+
+    .modal-close {
+        top: 10px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
+        font-size: 24px;
+    }
+
+    .modal-info {
+        padding: 20px 15px;
+    }
+
+    .modal-title {
+        font-size: 1.2rem;
+    }
+
+    .modal-subtitle {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        max-width: 98%;
+        max-height: 60%;
+        border-radius: 6px;
+    }
+
+    .modal-close {
+        top: 5px;
+        right: 5px;
+        width: 35px;
+        height: 35px;
+        font-size: 20px;
+    }
+
+    .modal-info {
+        padding: 15px 10px;
+    }
+
+    .modal-title {
+        font-size: 1.1rem;
+    }
+
+    .modal-subtitle {
+        font-size: 0.85rem;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .phone-card:hover {
+        transform: none;
+    }
+
+    .phone-image:hover {
+        background: #f9fafb;
+    }
+
+    .phone-image:hover img {
+        transform: none;
+    }
+
+    .modal-close:hover {
+        transform: none;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .modal-close:active {
+        background: rgba(239, 68, 68, 0.8);
+        transform: scale(0.95);
+    }
+}
+
+/* Keyboard navigation support */
+.modal-close:focus {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+
+/* Zoom animation for image */
+@keyframes zoomIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.zoom-in {
+    animation: zoomIn 0.3s ease-out;
 }
 </style>
 {% endblock %}
@@ -294,8 +520,12 @@
                            value="{{ imei_query|default:'' }}" placeholder="IMEI" maxlength="15">
                 </div>
                 <div class="col-6 col-md-3">
-                    <input type="text" name="model" id="model" class="form-control form-control-sm"
-                           value="{{ model_query|default:'' }}" placeholder="Model">
+                    <select name="model" id="model" class="form-select form-select-sm">
+                        <option value="">Model</option>
+                        {% for model in phone_models %}
+                            <option value="{{ model.id }}" {% if model_query == model.id|stringformat:"s" %}selected{% endif %}>{{ model.model_name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="col-6 col-md-3">
                     <select name="status" id="status" class="form-select form-select-sm">
@@ -355,84 +585,101 @@
         <small class="text-muted d-block mt-2">Yuklanmoqda...</small>
     </div>
 
+    <!-- Image Modal -->
+    <div id="imageModal" class="image-modal">
+        <span class="modal-close" id="modalClose">&times;</span>
+        <div class="modal-loading" id="modalLoading">
+            <div class="modal-spinner"></div>
+            <div>Rasm yuklanmoqda...</div>
+        </div>
+        <img class="modal-content" id="modalImage">
+        <div class="modal-info" id="modalInfo">
+            <div class="modal-title" id="modalTitle"></div>
+            <div class="modal-subtitle" id="modalSubtitle"></div>
+        </div>
+    </div>
+
     <!-- Phones -->
     <div id="phones-container">
-        <div class="phones-grid" id="phones-grid">
-            {% for phone in phones %}
-                <div class="phone-card">
-                    <div class="phone-image">
-                        {% if phone.image %}
-                            <img src="{{ phone.image.url }}" alt="{{ phone.phone_model }}">
-                        {% else %}
-                            <div class="phone-placeholder"><i class="fas fa-mobile-alt"></i></div>
-                        {% endif %}
-                    </div>
-                    <div class="phone-info">
-                        <h6 class="phone-title">{{ phone.phone_model }}</h6>
-                        <div class="phone-specs">
-                            <span class="spec-badge primary">{{ phone.memory_size }}</span>
-                            <span class="spec-badge">{{ phone.shop.name }}</span>
-                        </div>
-                        <div class="phone-details">
-                            <div class="detail-row">
-                                <span class="detail-label">IMEI:</span>
-                                <span class="detail-value imei-code">{{ phone.imei|default:"—" }}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Holat:</span>
-                                <span class="detail-value">{{ phone.condition_percentage }}%</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Izoh:</span>
-                                <span class="detail-value">{{ phone.note|default:"—" }}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Narx:</span>
-                                <span class="detail-value">
-                                    {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
-                                        ${{ phone.cost_price|floatformat:0 }}
-                                    {% else %}
-                                        <i class="fas fa-lock"></i>
-                                    {% endif %}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="phone-footer">
-                            <div class="phone-price">${{ phone.sale_price|floatformat:0|default:"—" }}</div>
-                            <span class="phone-status {{ phone.status }}">{{ phone.get_status_display }}</span>
-                        </div>
-                        {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
-                            <div class="phone-actions">
-                                <a href="{% url 'inventory:phone_detail' phone.pk %}" class="action-btn primary" title="Ko'rish"><i class="fas fa-eye"></i></a>
-                                <a href="{% url 'inventory:phone_update' phone.pk %}" class="action-btn warning" title="Tahrirlash"><i class="fas fa-edit"></i></a>
-                                <a href="{% url 'inventory:phone_delete' phone.pk %}" class="action-btn danger" title="O'chirish"><i class="fas fa-trash"></i></a>
-                            </div>
-                        {% else %}
-                            <div class="phone-actions">
-                                <span class="action-btn primary disabled" title="Ruxsat yo'q">
-                                    <i class="fas fa-lock"></i>
-                                </span>
-                                <span class="action-btn warning disabled" title="Ruxsat yo'q">
-                                    <i class="fas fa-lock"></i>
-                                </span>
-                                <span class="action-btn danger disabled" title="Ruxsat yo'q">
-                                    <i class="fas fa-lock"></i>
-                                </span>
-                            </div>
-                        {% endif %}
-                    </div>
+    <div class="phones-grid" id="phones-grid">
+        {% for phone in phones %}
+            <div class="phone-card">
+                <div class="phone-image"
+                     {% if phone.image and phone.image.url %}
+                         onclick="openImageModal(this, '{{ phone.image.url }}', '{{ phone.phone_model }}', '{{ phone.memory_size }}', '{{ phone.imei|default:"—" }}')"
+                     {% endif %}>
+                    {% if phone.image and phone.image.url %}
+                        <img src="{{ phone.image.url }}" alt="{{ phone.phone_model }}" loading="lazy">
+                    {% else %}
+                        <div class="phone-placeholder"><i class="fas fa-mobile-alt"></i></div>
+                    {% endif %}
                 </div>
-            {% empty %}
-                <div class="empty-state">
-                    <i class="fas fa-mobile-alt fa-2x mb-2"></i>
-                    <h5 class="text-muted">Telefonlar topilmadi</h5>
-                    <p class="mb-2">Qidiruv bo'yicha natija yo'q</p>
-                    <a href="{% url 'inventory:phone_create' %}" class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus me-1"></i>Yangi qo'shish
-                    </a>
+                <div class="phone-info">
+                    <h6 class="phone-title">{{ phone.phone_model }}</h6>
+                    <div class="phone-specs">
+                        <span class="spec-badge primary">{{ phone.memory_size }}</span>
+                        <span class="spec-badge">{{ phone.shop.name }}</span>
+                    </div>
+                    <div class="phone-details">
+                        <div class="detail-row">
+                            <span class="detail-label">IMEI:</span>
+                            <span class="detail-value imei-code">{{ phone.imei|default:"—" }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Holat:</span>
+                            <span class="detail-value">{{ phone.condition_percentage }}%</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Izoh:</span>
+                            <span class="detail-value">{{ phone.note|default:"—" }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Narx:</span>
+                            <span class="detail-value">
+                                {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                                    ${{ phone.cost_price|floatformat:0 }}
+                                {% else %}
+                                    <i class="fas fa-lock"></i>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="phone-footer">
+                        <div class="phone-price">${{ phone.sale_price|floatformat:0|default:"—" }}</div>
+                        <span class="phone-status {{ phone.status }}">{{ phone.get_status_display }}</span>
+                    </div>
+                    {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                        <div class="phone-actions">
+                            <a href="{% url 'inventory:phone_detail' phone.pk %}" class="action-btn primary" title="Ko'rish"><i class="fas fa-eye"></i></a>
+                            <a href="{% url 'inventory:phone_update' phone.pk %}" class="action-btn warning" title="Tahrirlash"><i class="fas fa-edit"></i></a>
+                            <a href="{% url 'inventory:phone_delete' phone.pk %}" class="action-btn danger" title="O'chirish"><i class="fas fa-trash"></i></a>
+                        </div>
+                    {% else %}
+                        <div class="phone-actions">
+                            <span class="action-btn primary disabled" title="Ruxsat yo'q">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <span class="action-btn warning disabled" title="Ruxsat yo'q">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <span class="action-btn danger disabled" title="Ruxsat yo'q">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                        </div>
+                    {% endif %}
                 </div>
-            {% endfor %}
-        </div>
+            </div>
+        {% empty %}
+            <div class="empty-state">
+                <i class="fas fa-mobile-alt fa-2x mb-2"></i>
+                <h5 class="text-muted">Telefonlar topilmadi</h5>
+                <p class="mb-2">Qidiruv bo'yicha natija yo'q</p>
+                <a href="{% url 'inventory:phone_create' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i>Yangi qo'shish
+                </a>
+            </div>
+        {% endfor %}
+    </div>
     </div>
 
     <!-- Pagination -->
@@ -460,6 +707,106 @@
 
 {% block extra_js %}
 <script>
+// Image Modal functionality
+let currentModalImage = null;
+
+function openImageModal(clickedElement, imageUrl, model, memory, imei) {
+    if (!imageUrl || imageUrl === 'None') return;
+
+    const modal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    const modalLoading = document.getElementById('modalLoading');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalSubtitle = document.getElementById('modalSubtitle');
+
+    // Show modal immediately
+    modal.style.display = 'block';
+    modalLoading.style.display = 'block';
+    modalImage.style.display = 'none';
+    modalImage.classList.remove('loaded');
+
+    // Set modal content
+    modalTitle.textContent = model;
+    modalSubtitle.textContent = `${memory} | IMEI: ${imei}`;
+
+    // Load image
+    const img = new Image();
+    img.onload = function() {
+        modalImage.src = imageUrl;
+        modalImage.alt = model;
+        modalLoading.style.display = 'none';
+        modalImage.style.display = 'block';
+
+        // Add loaded class with slight delay for smooth animation
+        setTimeout(() => {
+            modalImage.classList.add('loaded');
+        }, 50);
+
+        currentModalImage = modalImage;
+    };
+
+    img.onerror = function() {
+        modalLoading.innerHTML = `
+            <div style="color: white; text-align: center;">
+                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                <div>Rasm yuklanmadi</div>
+            </div>
+        `;
+        setTimeout(() => {
+            closeImageModal();
+        }, 2000);
+    };
+
+    img.src = imageUrl;
+
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+    document.body.style.paddingRight = '15px'; // Prevent layout shift
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.body.style.paddingRight = '0';
+
+    if (currentModalImage) {
+        currentModalImage.classList.remove('loaded');
+        currentModalImage = null;
+    }
+}
+
+// Close modal on outside click
+function onClickOutsideModal(event) {
+    const modal = document.getElementById('imageModal');
+    if (event.target === modal) {
+        closeImageModal();
+    }
+}
+
+// Keyboard support
+function onKeyDown(event) {
+    if (event.key === 'Escape') {
+        closeImageModal();
+    }
+}
+
+// Initialize modal events
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('imageModal');
+    const modalClose = document.getElementById('modalClose');
+
+    if (modalClose) {
+        modalClose.addEventListener('click', closeImageModal);
+    }
+
+    if (modal) {
+        modal.addEventListener('click', onClickOutsideModal);
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+});
+
 // Foydalanuvchi roli
 const userRole = '{{ request.user.userprofile.role }}';
 const canEdit = userRole === 'boss' || userRole === 'finance';
@@ -544,9 +891,9 @@ const updateResults = (phones) => {
 
     container.innerHTML = phones.map(phone => `
         <div class="phone-card">
-            <div class="phone-image">
+            <div class="phone-image" onclick="openImageModal(this, '${phone.image || ''}', '${phone.phone_model}', '${phone.memory_size}', '${phone.imei || '—'}')">
                 ${phone.image ?
-                    `<img src="${phone.image}" alt="${phone.phone_model}">` :
+                    `<img src="${phone.image}" alt="${phone.phone_model}" loading="lazy">` :
                     `<div class="phone-placeholder"><i class="fas fa-mobile-alt"></i></div>`
                 }
             </div>
