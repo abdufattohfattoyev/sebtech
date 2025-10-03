@@ -9,7 +9,7 @@ from decimal import Decimal
 from django_filters import rest_framework as filters
 
 from .forms import PhoneForm, AccessoryForm, AccessoryAddQuantityForm
-from .models import Phone, Accessory, AccessoryPurchaseHistory, ExternalSeller, DailySeller
+from .models import Phone, Accessory, AccessoryPurchaseHistory, ExternalSeller, DailySeller, PhoneModel
 from shops.models import Shop
 
 
@@ -175,63 +175,81 @@ def _ajax_phone_search(request, phones_queryset):
 @login_required
 def phone_list(request):
     """Telefonlar ro'yxati"""
-    shops = Shop.objects.all()
-    phones = Phone.objects.select_related('phone_model', 'memory_size', 'shop', 'created_by')
-
-    # Qidiruv parametrlari
-    shop_id = request.GET.get('shop_id', '').strip()
-    status_filter = request.GET.get('status', '').strip()
+    # Filtrlarni olish
     imei_query = request.GET.get('imei', '').strip()
     model_query = request.GET.get('model', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    shop_id = request.GET.get('shop_id', '').strip()
+    page_number = request.GET.get('page', 1)
 
-    # Filterlar
-    selected_shop = None
-    if shop_id:
-        try:
-            selected_shop = Shop.objects.get(id=int(shop_id))
-            phones = phones.filter(shop=selected_shop)
-        except (Shop.DoesNotExist, ValueError):
-            pass
+    # Telefonlarni olish
+    phones = Phone.objects.all().select_related('shop', 'phone_model', 'memory_size')
 
+    # Filtrlash
+    if imei_query:
+        phones = phones.filter(imei__contains=imei_query)
+    if model_query:
+        phones = phones.filter(phone_model__id=model_query)  # Model ID bo'yicha filtr
     if status_filter:
         phones = phones.filter(status=status_filter)
+    if shop_id:
+        phones = phones.filter(shop_id=shop_id)
 
-    if imei_query:
-        # IMEI dan faqat raqamlar
-        clean_imei = ''.join(filter(str.isdigit, imei_query))
-        if clean_imei:
-            phones = phones.filter(imei__icontains=clean_imei)
+    # Paginatsiya
+    paginator = Paginator(phones, 12)  # Har sahifada 12 ta telefon
+    page_obj = paginator.get_page(page_number)
 
-    if model_query:
-        phones = phones.filter(phone_model__model_name__icontains=model_query)
+    # Statistika
+    stats = {
+        'total_phones': phones.count(),
+        'displayed': len(page_obj),
+        'phones_in_shop': phones.filter(status='shop').count(),
+        'phones_sold': phones.filter(status='sold').count(),
+    }
 
-    phones = phones.order_by('-created_at')
+    # PhoneModel ro'yxatini olish
+    phone_models = PhoneModel.objects.all().order_by('model_name')
 
-    # AJAX qidirish
+    # AJAX so'rovi
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return _ajax_phone_search(request, phones)
+        phones_data = [
+            {
+                'id': phone.id,
+                'phone_model': str(phone.phone_model),
+                'memory_size': str(phone.memory_size),
+                'shop_name': phone.shop.name,
+                'imei': phone.imei,
+                'condition_percentage': phone.condition_percentage,
+                'cost_price': float(phone.cost_price),
+                'sale_price': float(phone.sale_price) if phone.sale_price else None,
+                'status': phone.status,
+                'status_display': phone.get_status_display(),
+                'image': phone.image.url if phone.image else None,
+            } for phone in page_obj
+        ]
+        return JsonResponse({
+            'phones': phones_data,
+            'stats': stats,
+            'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
+            'has_previous': page_obj.has_previous(),
+            'has_next': page_obj.has_next(),
+        })
 
-    # Sahifalash
-    paginator = Paginator(phones, 10)
-    page_number = request.GET.get('page', 1)
-    phones_paginated = paginator.get_page(page_number)
-
-    # Statistikalar
-    all_phones = Phone.objects.all()
-    phones_in_shop = all_phones.filter(status='shop').count()
-    phones_sold = all_phones.filter(status='sold').count()
-
+    # Kontekst
     context = {
-        'phones': phones_paginated,
-        'shops': shops,
-        'selected_shop': selected_shop,
-        'status_filter': status_filter,
+        'phones': page_obj,
+        'phone_models': phone_models,  # PhoneModel ro'yxati
+        'shops': Shop.objects.all(),
+        'status_choices': Phone.STATUS_CHOICES,
         'imei_query': imei_query,
         'model_query': model_query,
-        'status_choices': Phone.STATUS_CHOICES,
-        'phones_in_shop': phones_in_shop,
-        'phones_sold': phones_sold,
+        'status_filter': status_filter,
+        'selected_shop': Shop.objects.filter(id=shop_id).first() if shop_id else None,
+        'phones_in_shop': stats['phones_in_shop'],
+        'phones_sold': stats['phones_sold'],
     }
+
     return render(request, 'inventory/phone_list.html', context)
 
 

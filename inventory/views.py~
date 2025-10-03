@@ -385,10 +385,7 @@ def accessory_list(request):
 @boss_or_finance_required
 def accessory_create(request):
     """Yangi aksessuar qo'shish - FAQAT boss/finance (SODDALASHTIRILGAN)"""
-    user_shops = Shop.objects.filter(owner=request.user)
-    if not user_shops.exists():
-        messages.error(request, "Sizda do'kon mavjud emas.")
-        return redirect('inventory:dashboard')
+
 
     if request.method == 'POST':
         form = AccessoryForm(request.POST, request.FILES, user=request.user)

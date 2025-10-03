@@ -286,48 +286,53 @@
     </div>
 
     <!-- Search Form -->
-    <div class="search-card">
-        <form method="GET" id="search-form">
-            <div class="row g-2">
-                <div class="col-6 col-md-3">
-                    <input type="text" name="imei" id="imei" class="form-control form-control-sm"
-                           value="{{ imei_query|default:'' }}" placeholder="IMEI" maxlength="15">
-                </div>
-                <div class="col-6 col-md-3">
-                    <input type="text" name="model" id="model" class="form-control form-control-sm"
-                           value="{{ model_query|default:'' }}" placeholder="Model">
-                </div>
-                <div class="col-6 col-md-3">
-                    <select name="status" id="status" class="form-select form-select-sm">
-                        <option value="">Holat</option>
-                        {% for status, label in status_choices %}
-                            <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-6 col-md-3">
-                    <select name="shop_id" id="shop_id" class="form-select form-select-sm">
-                        <option value="">Do'kon</option>
-                        {% for shop in shops %}
-                            <option value="{{ shop.id }}" {% if selected_shop.id == shop.id %}selected{% endif %}>{{ shop.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+    <!-- Search Form -->
+<div class="search-card">
+    <form method="GET" id="search-form">
+        <div class="row g-2">
+            <div class="col-6 col-md-3">
+                <input type="text" name="imei" id="imei" class="form-control form-control-sm"
+                       value="{{ imei_query|default:'' }}" placeholder="IMEI" maxlength="15">
             </div>
-            <div class="row g-1 mt-2">
-                <div class="col-6">
-                    <button type="submit" class="btn btn-primary btn-sm w-100">
-                        <i class="fas fa-search me-1"></i>Qidirish
-                    </button>
-                </div>
-                <div class="col-6">
-                    <button type="button" id="clear-filters" class="btn btn-outline-secondary btn-sm w-100">
-                        <i class="fas fa-times me-1"></i>Tozalash
-                    </button>
-                </div>
+            <div class="col-6 col-md-3">
+                <select name="model" id="model" class="form-select form-select-sm">
+                    <option value="">Model</option>
+                    {% for model in phone_models %}
+                        <option value="{{ model.id }}" {% if model_query == model.id|stringformat:"s" %}selected{% endif %}>{{ model.model_name }}</option>
+                    {% endfor %}
+                </select>
             </div>
-        </form>
-    </div>
+            <div class="col-6 col-md-3">
+                <select name="status" id="status" class="form-select form-select-sm">
+                    <option value="">Holat</option>
+                    {% for status, label in status_choices %}
+                        <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <select name="shop_id" id="shop_id" class="form-select form-select-sm">
+                    <option value="">Do'kon</option>
+                    {% for shop in shops %}
+                        <option value="{{ shop.id }}" {% if selected_shop.id == shop.id %}selected{% endif %}>{{ shop.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="row g-1 mt-2">
+            <div class="col-6">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="fas fa-search me-1"></i>Qidirish
+                </button>
+            </div>
+            <div class="col-6">
+                <button type="button" id="clear-filters" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="fas fa-times me-1"></i>Tozalash
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
 
     <!-- Stats -->
     <div class="stats-grid">
