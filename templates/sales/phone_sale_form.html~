@@ -324,6 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
         customerName: $('{{ form.customer_name.id_for_label }}'),
         customerPhone: $('{{ form.customer_phone.id_for_label }}'),
         salePrice: $('{{ form.sale_price.id_for_label }}'),
+        saleDate: $('{{ form.sale_date.id_for_label }}'),
         debtAmount: $('{{ form.debt_amount.id_for_label }}'),
         debtDueDate: $('{{ form.debt_due_date.id_for_label }}'),
         debtDueField: $('debtDueField'),
@@ -344,6 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializePhoneData();
 
     function initializePhoneData() {
+        // Telefon ma'lumotlarini yuklash
         {% if form.instance.phone %}
         const phoneData = {
             id: {{ form.instance.phone.id }},
@@ -359,19 +361,29 @@ document.addEventListener('DOMContentLoaded', function() {
         displaySelectedPhone(phoneData);
         {% endif %}
 
-        // Qarz maydonini ko'rsatish
+        // ✅ SALE DATE ni to'ldirish (EDIT paytida)
+        {% if editing and form.instance.sale_date %}
+        if (elements.saleDate && !elements.saleDate.value) {
+            elements.saleDate.value = '{{ form.instance.sale_date|date:"Y-m-d" }}';
+        }
+        {% endif %}
+
+        // Qarz maydonini ko'rsatish va sanani to'ldirish
         const debtAmount = parseFloat(elements.debtAmount.value) || 0;
         if (debtAmount > 0) {
             elements.debtDueField.classList.add('show');
             elements.debtDueDate.required = true;
 
-            // Agar sana yo'q bo'lsa va formda mavjud bo'lsa
+            // ✅ DEBT DUE DATE ni to'ldirish
             {% if form.debt_due_date.value %}
             if (!elements.debtDueDate.value) {
                 elements.debtDueDate.value = '{{ form.debt_due_date.value|date:"Y-m-d" }}';
             }
             {% endif %}
         }
+
+        // To'lovlar kalkulyatorini yangilash
+        calculatePayments();
     }
 
     function checkDebtDueField() {
@@ -382,6 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             elements.debtDueField.classList.remove('show');
             elements.debtDueDate.required = false;
+            elements.debtDueDate.value = '';
         }
     }
 
@@ -614,8 +627,6 @@ document.addEventListener('DOMContentLoaded', function() {
             hideResults();
         }
     });
-
-    calculatePayments();
 });
 </script>
 {% endblock %}

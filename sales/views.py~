@@ -902,10 +902,36 @@ def phone_exchange_edit(request, pk):
                 for error in errors:
                     messages.error(request, f'{field_name}: {error}')
     else:
+        # GET so'rovi - formni yaratish
         form = PhoneExchangeForm(instance=phone_exchange, user=request.user)
-        # Mijoz ma'lumotlarini initial qilish
-        form.fields['customer_name_input'].initial = phone_exchange.customer_name
-        form.fields['customer_phone_input'].initial = phone_exchange.customer_phone_number
+
+        # ✅ TELEFON ID NI INITIAL QILISH (ENG MUHIM!)
+        if phone_exchange.new_phone:
+            form.fields['new_phone'].initial = phone_exchange.new_phone.id
+
+        # ✅ SANALARNI TO'G'RI FORMATDA INITIAL QILISH
+        if phone_exchange.exchange_date:
+            form.fields['exchange_date'].initial = phone_exchange.exchange_date.strftime('%Y-%m-%d')
+
+        # ✅ MIJOZ MA'LUMOTLARINI INITIAL QILISH
+        if phone_exchange.customer_name:
+            form.fields['customer_name_input'].initial = phone_exchange.customer_name
+        if phone_exchange.customer_phone_number:
+            form.fields['customer_phone_input'].initial = phone_exchange.customer_phone_number
+
+        # ✅ QARZ SANASINI INITIAL QILISH (agar qarz mavjud bo'lsa)
+        if phone_exchange.debt_amount > 0 and phone_exchange.exchange_type == 'customer_pays':
+            # Mijoz → Sotuvchi qarzini topish
+            customer_debt = Debt.objects.filter(
+                debt_type='customer_to_seller',
+                customer=phone_exchange.customer,
+                creditor=phone_exchange.salesman,
+                currency='USD',
+                notes__icontains=phone_exchange.new_phone.imei if phone_exchange.new_phone else ''
+            ).first()
+
+            if customer_debt and customer_debt.due_date:
+                form.fields['debt_due_date'].initial = customer_debt.due_date.strftime('%Y-%m-%d')
 
     return render(request, 'sales/phone_exchange_form.html', {
         'form': form,
@@ -1514,7 +1540,7 @@ def search_phone_by_imei_api(request):
 
     phones = Phone.objects.filter(
         imei__icontains=query,
-        status='shop'
+        status__in=['shop','returned']
     ).select_related('phone_model', 'memory_size', 'shop')[:10]
 
     data = [

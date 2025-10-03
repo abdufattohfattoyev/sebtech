@@ -25,50 +25,57 @@
 
         <div class="row g-3">
             <div class="col-lg-8">
-                <!-- Basic Info -->
-                <div class="card mb-3">
-                    <div class="card-header"><h6 class="mb-0">Asosiy Ma'lumotlar</h6></div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Do'kon *</label>
-                                {{ form.shop }}
-                                {% if form.shop.errors %}<div class="text-danger small mt-1">{% for error in form.shop.errors %}{{ error }}{% endfor %}</div>{% endif %}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Sana</label>
-                                {{ form.created_at }}
-                                {% if form.created_at.errors %}<div class="text-danger small mt-1">{% for error in form.created_at.errors %}{{ error }}{% endfor %}</div>{% endif %}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Model *</label>
-                                {{ form.phone_model }}
-                                {% if form.phone_model.errors %}<div class="text-danger small mt-1">{% for error in form.phone_model.errors %}{{ error }}{% endfor %}</div>{% endif %}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Xotira *</label>
-                                {{ form.memory_size }}
-                                {% if form.memory_size.errors %}<div class="text-danger small mt-1">{% for error in form.memory_size.errors %}{{ error }}{% endfor %}</div>{% endif %}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">IMEI</label>
-                                {{ form.imei }}
-                                {% if form.imei.errors %}<div class="text-danger small mt-1">{% for error in form.imei.errors %}{{ error }}{% endfor %}</div>{% endif %}
-                                <small class="text-muted">15 raqamli IMEI (ixtiyoriy)</small>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Holat % *</label>
-                                {{ form.condition_percentage }}
-                                {% if form.condition_percentage.errors %}<div class="text-danger small mt-1">{% for error in form.condition_percentage.errors %}{{ error }}{% endfor %}</div>{% endif %}
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label">Status</label>
-                                {{ form.status }}
-                                {% if form.status.errors %}<div class="text-danger small mt-1">{% for error in form.status.errors %}{{ error }}{% endfor %}</div>{% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
+            <div class="card mb-3">
+    <div class="card-header"><h6 class="mb-0">Asosiy Ma'lumotlar</h6></div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Do'kon *</label>
+                {{ form.shop }}
+                {% if form.shop.errors %}<div class="text-danger small mt-1">{% for error in form.shop.errors %}{{ error }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Sana</label>
+                {{ form.created_at }}
+                {% if form.created_at.errors %}<div class="text-danger small mt-1">{% for error in form.created_at.errors %}{{ error }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Model *</label>
+                {{ form.phone_model }}
+                {% if form.phone_model.errors %}<div class="text-danger small mt-1">{% for error in form.phone_model.errors %}{{ error }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Xotira *</label>
+                {{ form.memory_size }}
+                {% if form.memory_size.errors %}<div class="text-danger small mt-1">{% for error in form.memory_size.errors %}{{ error }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">IMEI</label>
+                {{ form.imei }}
+                {% if form.imei.errors %}<div class="text-danger small mt-1">{% for error in form.imei.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                <small class="text-muted">15 raqamli IMEI (ixtiyoriy)</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Holat % *</label>
+                {{ form.condition_percentage }}
+                {% if form.condition_percentage.errors %}<div class="text-danger small mt-1">{% for error in form.condition_percentage.errors %}{{ error }}{% endfor %}</div>{% endif %}
+            </div>
+            <div class="col-md-12">
+                <label class="form-label">Status</label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="text-danger small mt-1">{% for error in form.status.errors %}{{ error }}{% endfor %}</div>{% endif %}
+            </div>
+            <!-- Izoh maydonini qo'shish -->
+            <div class="col-md-12">
+                <label class="form-label">Izoh</label>
+                {{ form.note }}
+                {% if form.note.errors %}<div class="text-danger small mt-1">{% for error in form.note.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                <small class="text-muted">Telefon haqida qo‘shimcha ma'lumot (ixtiyoriy)</small>
+            </div>
+        </div>
+    </div>
+</div>
 
                 <!-- Price Info -->
                 <div class="card mb-3">

@@ -61,61 +61,49 @@ def daily_report(request):
     daily_data = calculator.get_daily_report(selected_date)
 
     # Sotuvchilar statistikasi
-    phone_sellers = PhoneSale.objects.filter(
+    phone_sellers = list(PhoneSale.objects.filter(
         phone__shop=selected_shop,
         sale_date=selected_date
-    ).values_list('salesman_id', flat=True).distinct()
+    ).values_list('salesman_id', flat=True).distinct())
 
-    accessory_sellers = AccessorySale.objects.filter(
+    accessory_sellers = list(AccessorySale.objects.filter(
         accessory__shop=selected_shop,
         sale_date=selected_date
-    ).values_list('salesman_id', flat=True).distinct()
+    ).values_list('salesman_id', flat=True).distinct())
 
-    exchange_sellers = PhoneExchange.objects.filter(
+    exchange_sellers = list(PhoneExchange.objects.filter(
         new_phone__shop=selected_shop,
         exchange_date=selected_date
-    ).values_list('salesman_id', flat=True).distinct()
+    ).values_list('salesman_id', flat=True).distinct())
 
     seller_ids = set(phone_sellers) | set(accessory_sellers) | set(exchange_sellers)
-    sellers = User.objects.filter(id__in=seller_ids)
+    sellers = User.objects.filter(id__in=seller_ids).order_by('id')
 
     seller_stats = []
     profit_calc = ProfitCalculator()
 
     for seller in sellers:
-        seller_data = calculator.get_seller_daily_report(seller, selected_date)
+        # ✅ HAR BIR SOTUVCHI UCHUN YANGI CALCULATOR YARATISH
+        seller_calculator = ReportCalculator(selected_shop)
+        seller_data = seller_calculator.get_seller_daily_report(seller, selected_date)
 
-        if 'sales' not in seller_data:
-            seller_data['sales'] = {
-                'phone_total_usd': 0,
-                'accessory_total_uzs': 0,
-                'total': 0
-            }
-        if 'counts' not in seller_data:
-            seller_data['counts'] = {'total': 0}
-        if 'sales_data' not in seller_data:
-            seller_data['sales_data'] = {
-                'phone_sales': [],
-                'accessory_sales': [],
-                'exchanges': []
-            }
+        # Telefon uchun foyda
+        for sale in seller_data['sales_data']['phone_sales']:
+            sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
 
+        # Aksessuar uchun foyda
+        for sale in seller_data['sales_data']['accessory_sales']:
+            sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
+
+        # Almashtirish uchun foyda
+        for exchange in seller_data['sales_data']['exchanges']:
+            exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
+
+        # Faqat savdosi bo'lgan sotuvchilarni qo'shish
         if seller_data['counts']['total'] > 0:
-            # ✅ Telefon uchun foyda
-            for sale in seller_data['sales_data']['phone_sales']:
-                sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
-
-            # ✅ Aksessuar uchun foyda
-            for sale in seller_data['sales_data']['accessory_sales']:
-                sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
-
-            # ✅ Almashtirish uchun foyda
-            for exchange in seller_data['sales_data']['exchanges']:
-                exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
-
             seller_stats.append(seller_data)
 
-    # ✅ ASOSIY DAILY DATA uchun ham foyda hisoblash
+    # ASOSIY DAILY DATA uchun ham foyda hisoblash
     for sale in daily_data['sales_data']['phone_sales']:
         sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
 
@@ -125,7 +113,8 @@ def daily_report(request):
     for exchange in daily_data['sales_data']['exchanges']:
         exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
 
-    seller_stats.sort(key=lambda x: x['sales']['total'], reverse=True)
+    # Telefon savdosi bo'yicha tartiblash
+    seller_stats.sort(key=lambda x: x['sales']['phone_total_usd'], reverse=True)
 
     return render(request, 'reports/daily_report.html', {
         'shops': shops,
@@ -604,7 +593,7 @@ def seller_detail_modal(request, seller_id):
 
 @login_required
 def seller_salary_report(request, seller_id):
-    """Sotuvchi OYLIK maoshi"""
+    """Sotuvchi OYLIK maoshi - TO'LIQ ANIQ"""
     seller = get_object_or_404(User, id=seller_id)
     shops = ReportMixin.get_user_shops(request.user)
 
@@ -620,12 +609,16 @@ def seller_salary_report(request, seller_id):
 
     profit_calc = ProfitCalculator()
 
+    # Har bir kunlik ma'lumotga foyda qo'shish
     for day_data in salary_data.get('daily_data', []):
         for sale in day_data['sales_data']['phone_sales']:
             sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
 
         for exchange in day_data['sales_data']['exchanges']:
             exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
+
+        for sale in day_data['sales_data']['accessory_sales']:
+            sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
 
     return render(request, 'reports/seller_salary.html', {
         'seller': seller,

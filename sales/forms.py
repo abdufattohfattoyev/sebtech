@@ -77,9 +77,6 @@ class DebtPaymentForm(forms.ModelForm):
         return instance
 
 
-
-
-
 class PhoneSaleForm(forms.ModelForm):
     """Telefon sotish formi - ikki tomonlama qarz bilan"""
     customer_name = forms.CharField(
@@ -178,13 +175,29 @@ class PhoneSaleForm(forms.ModelForm):
             self.fields['sale_date'].initial = timezone.now().date()
             self.fields['debt_due_date'].initial = timezone.now().date() + timedelta(days=30)
         else:
-            # Edit paytida sanalarni to'g'ri formatda initial qilish
             if self.instance.sale_date:
                 self.fields['sale_date'].initial = self.instance.sale_date.strftime('%Y-%m-%d')
 
             if self.instance.customer:
                 self.fields['customer_name'].initial = self.instance.customer.name
                 self.fields['customer_phone'].initial = self.instance.customer.phone_number
+
+    def clean_phone(self):
+        """✅ Telefon validatsiyasi"""
+        phone = self.cleaned_data.get('phone')
+
+        if not phone:
+            raise ValidationError("Telefon tanlanishi kerak!")
+
+        # Yangi yaratishda - faqat 'shop' va 'returned' statusli telefonlar
+        if not self.instance.pk:
+            if phone.status not in ['shop', 'returned']:
+                raise ValidationError(
+                    f"Bu telefon {phone.get_status_display()} holatida! "
+                    f"Faqat do'kondagi yoki qaytarilgan telefonlarni sotish mumkin."
+                )
+
+        return phone
 
     def clean(self):
         cleaned_data = super().clean()
@@ -240,27 +253,22 @@ class PhoneSaleForm(forms.ModelForm):
                 old_debt_amount = self.initial.get('debt_amount', Decimal('0'))
                 if phone_sale.debt_amount != old_debt_amount:
                     # Mijoz → Sotuvchi qarzni o'chirish
-                    old_customer_debt = Debt.objects.filter(
+                    Debt.objects.filter(
                         debt_type='customer_to_seller',
                         customer=self.instance.customer,
                         currency='USD',
                         notes__contains=phone_sale.phone.imei
-                    ).first()
+                    ).delete()
 
                     # Sotuvchi → Boss qarzni o'chirish
                     shop_owner = phone_sale.phone.shop.owner
-                    old_seller_debt = Debt.objects.filter(
+                    Debt.objects.filter(
                         debt_type='seller_to_boss',
                         debtor=self.user,
                         creditor=shop_owner,
                         currency='USD',
                         notes__contains=phone_sale.phone.imei
-                    ).first()
-
-                    if old_customer_debt:
-                        old_customer_debt.delete()
-                    if old_seller_debt:
-                        old_seller_debt.delete()
+                    ).delete()
 
             # Yangi qarzlarni yaratish (agar qarz mavjud bo'lsa)
             if phone_sale.debt_amount > 0:

@@ -31,11 +31,11 @@ def handle_phone_sale_delete(sender, instance, **kwargs):
             if instance.phone:
                 instance.phone.status = 'shop'
                 instance.phone.save(update_fields=['status'])
-                print(f"📱 Telefon {instance.phone.imei} 'shop' holatiga qaytarildi")
+                print(f"Telefon {instance.phone.imei} 'shop' holatiga qaytarildi")
 
             # 2️⃣ BARCHA BOG'LIQ QARZLARNI O'CHIRISH
             if instance.customer and instance.phone:
-                # a) Mijoz → Sotuvchi qarz (har qanday holatda)
+                # a) Mijoz → Sotuvchi qarz
                 customer_debts_deleted = Debt.objects.filter(
                     debt_type='customer_to_seller',
                     customer=instance.customer,
@@ -47,9 +47,9 @@ def handle_phone_sale_delete(sender, instance, **kwargs):
                     models.Q(notes__icontains=str(instance.id))
                 ).delete()
 
-                print(f"🗑️ Mijoz → Sotuvchi qarzlar o'chirildi: {customer_debts_deleted[0]} ta")
+                print(f"Mijoz → Sotuvchi qarzlar o'chirildi: {customer_debts_deleted[0]} ta")
 
-                # b) Sotuvchi → Boss qarz (har qanday holatda)
+                # b) Sotuvchi → Boss qarz
                 shop_owner = instance.phone.shop.owner
                 if shop_owner:
                     seller_debts_deleted = Debt.objects.filter(
@@ -63,12 +63,12 @@ def handle_phone_sale_delete(sender, instance, **kwargs):
                         models.Q(notes__icontains=str(instance.customer.name))
                     ).delete()
 
-                    print(f"🗑️ Sotuvchi → Boss qarzlar o'chirildi: {seller_debts_deleted[0]} ta")
+                    print(f"Sotuvchi → Boss qarzlar o'chirildi: {seller_debts_deleted[0]} ta")
 
-            print(f"✅ PhoneSale #{instance.id} o'chirildi va barcha qarzlar tozalandi")
+            print(f"PhoneSale #{instance.id} o'chirildi va barcha qarzlar tozalandi")
 
     except Exception as e:
-        print(f"❌ PhoneSale delete signal error: {e}")
+        print(f"PhoneSale delete signal error: {e}")
         import traceback
         traceback.print_exc()
 

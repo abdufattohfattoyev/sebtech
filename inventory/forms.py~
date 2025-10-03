@@ -78,7 +78,7 @@ class PhoneForm(forms.ModelForm):
             'status', 'purchase_price', 'imei_cost', 'repair_cost', 'sale_price',
             'image', 'source_type', 'supplier', 'external_seller', 'daily_seller',
             'daily_payment_amount', 'exchange_value',
-            'original_owner_name', 'original_owner_phone', 'created_at'
+            'original_owner_name', 'original_owner_phone', 'created_at','note'
         ]
         widgets = {
             'shop': forms.Select(attrs={'class': 'form-control'}),
@@ -399,7 +399,9 @@ class AccessoryForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if self.user:
-            self.fields['shop'].queryset = Shop.objects.filter(owner=self.user)
+            self.fields['shop'].queryset = Shop.objects.all()
+            if self.fields['shop'].queryset.count() == 1:
+                self.fields['shop'].initial = self.fields['shop'].queryset.first()
 
         # TAHRIRLASH REJIMI
         if self.instance.pk:

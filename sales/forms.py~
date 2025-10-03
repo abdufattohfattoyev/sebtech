@@ -580,6 +580,7 @@ class AccessorySaleForm(forms.ModelForm):
 
         return accessory_sale
 
+
 class PhoneExchangeForm(forms.ModelForm):
     """Telefon almashtirish formi - ikki tomonlama qarz bilan"""
     customer_name_input = forms.CharField(
@@ -625,7 +626,7 @@ class PhoneExchangeForm(forms.ModelForm):
         ]
 
         widgets = {
-            'new_phone': forms.Select(attrs={'class': 'form-control'}),
+            'new_phone': forms.HiddenInput(attrs={'id': 'id_new_phone'}),
             'new_phone_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
             'old_phone_model': forms.Select(attrs={'class': 'form-control'}),
             'old_phone_memory': forms.Select(attrs={'class': 'form-control'}),
@@ -725,8 +726,10 @@ class PhoneExchangeForm(forms.ModelForm):
         if commit:
             exchange.save()
 
-            # ✅ IKKI TOMONLAMA QARZ YARATISH (Exchange uchun)
-            if exchange.debt_amount > 0 and exchange.exchange_type == 'customer_pays':
+            # FAQAT YANGI YARATISHDA QARZ YARATISH
+            is_new = not self.instance.pk
+
+            if is_new and exchange.debt_amount > 0 and exchange.exchange_type == 'customer_pays':
                 shop_owner = exchange.new_phone.shop.owner
                 debt_due_date = self.cleaned_data.get('debt_due_date')
 

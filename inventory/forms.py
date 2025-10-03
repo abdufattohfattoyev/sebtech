@@ -78,7 +78,8 @@ class PhoneForm(forms.ModelForm):
             'status', 'purchase_price', 'imei_cost', 'repair_cost', 'sale_price',
             'image', 'source_type', 'supplier', 'external_seller', 'daily_seller',
             'daily_payment_amount', 'exchange_value',
-            'original_owner_name', 'original_owner_phone', 'created_at'
+            'original_owner_name', 'original_owner_phone', 'created_at',
+            'note'
         ]
         widgets = {
             'shop': forms.Select(attrs={'class': 'form-control'}),
@@ -145,6 +146,11 @@ class PhoneForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Asl egasi telefon raqami'
             }),
+            'note': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Izoh...'
+            })
         }
 
     def __init__(self, *args, **kwargs):

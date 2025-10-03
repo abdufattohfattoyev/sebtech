@@ -383,6 +383,10 @@
                                 <span class="detail-value">{{ phone.condition_percentage }}%</span>
                             </div>
                             <div class="detail-row">
+                                <span class="detail-label">Izoh:</span>
+                                <span class="detail-value">{{ phone.note|default:"—" }}</span>
+                            </div>
+                            <div class="detail-row">
                                 <span class="detail-label">Narx:</span>
                                 <span class="detail-value">
                                     {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}

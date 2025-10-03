@@ -345,8 +345,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .seller-right { text-align: right; }
 .seller-amount { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
 .seller-amount.usd { color: #10b981; }
+.seller-count { font-size: 12px; color: #6b7280; font-weight: 500; }
 
-/* Yangi: Sotuvchi detallari */
+/* Sotuvchi detallari */
 .seller-details {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -742,11 +743,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 </div>
                 <div class="payment-badge">
                   <span class="payment-label">NASIYA</span>
-                  <div class="payment-value installment">${{ exchange.credit_amount|default:0|floatformat:0|intcomma }}</div>
+                  <div class="payment-value installment">{{ exchange.credit_amount|default:0|floatformat:0|intcomma }}</div>
                 </div>
                 <div class="payment-badge">
                   <span class="payment-label">QARZ</span>
-                  <div class="payment-value debt">${{ exchange.debt_amount|default:0|floatformat:0|intcomma }}</div>
+                  <div class="payment-value debt">{{ exchange.debt_amount|default:0|floatformat:0|intcomma }}</div>
                 </div>
                 <div class="payment-badge">
                   <span class="payment-label">FOYDA</span>
@@ -767,39 +768,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="card-body">
         <div class="sellers">
           {% if seller_stats %}
-            {% for seller in seller_stats %}
-            <div class="seller" onclick="goToSeller({{ seller.seller.id }})">
+            {% for seller_data in seller_stats %}
+            <div class="seller" onclick="goToSeller({{ seller_data.seller.id }})">
               <div class="seller-header">
                 <div class="seller-left">
                   <div class="seller-rank {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% elif forloop.counter == 3 %}bronze{% endif %}">
                     {{ forloop.counter }}
                   </div>
                   <div>
-                    <div class="seller-name">{{ seller.seller.get_full_name|default:seller.seller.username }}</div>
+                    <div class="seller-name">{{ seller_data.seller.get_full_name|default:seller_data.seller.username }}</div>
                   </div>
                 </div>
                 <div class="seller-right">
-                  <div class="seller-amount usd">${{ seller.sales.phone_total_usd|floatformat:0|intcomma }}</div>
+                  <div class="seller-amount usd">${{ seller_data.sales.phone_total_usd|floatformat:0|intcomma }}</div>
+                  <div class="seller-count">{{ seller_data.counts.phone|default:0 }} dona telefon</div>
                 </div>
               </div>
 
-              <!-- YANGI: Aniq statistika -->
+              <!-- ✅ HAR BIR SOTUVCHINING O'Z STATISTIKASI -->
               <div class="seller-details">
                 <div class="seller-detail-item">
                   <div class="seller-detail-label">Telefonlar</div>
-                  <div class="seller-detail-value phone">{{ seller.counts.phone|default:0 }}</div>
+                  <div class="seller-detail-value phone">{{ seller_data.counts.phone|default:0 }}</div>
                 </div>
                 <div class="seller-detail-item">
                   <div class="seller-detail-label">Aksessuarlar</div>
-                  <div class="seller-detail-value accessory">{{ seller.counts.accessory|default:0 }}</div>
+                  <div class="seller-detail-value accessory">{{ seller_data.counts.accessory|default:0 }}</div>
                 </div>
                 <div class="seller-detail-item">
                   <div class="seller-detail-label">Almashtirishlar</div>
-                  <div class="seller-detail-value exchange">{{ seller.counts.exchange|default:0 }}</div>
+                  <div class="seller-detail-value exchange">{{ seller_data.counts.exchange|default:0 }}</div>
                 </div>
                 <div class="seller-detail-item">
                   <div class="seller-detail-label">Qaytarishlar</div>
-                  <div class="seller-detail-value return">{{ seller.counts.returns|default:0 }}</div>
+                  <div class="seller-detail-value return">{{ seller_data.counts.returns|default:0 }}</div>
                 </div>
               </div>
             </div>

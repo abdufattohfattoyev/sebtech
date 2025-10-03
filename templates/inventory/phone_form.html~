@@ -6,7 +6,6 @@
 
 {% block content %}
 <div class="container-fluid px-2 px-md-3">
-    <!-- Messages -->
     {% if messages %}
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }} alert-dismissible mb-3" role="alert">
@@ -16,89 +15,56 @@
         {% endfor %}
     {% endif %}
 
-    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">{% if is_edit %}Tahrirlash{% else %}Yangi Telefon{% endif %}</h4>
         <a href="{% url 'inventory:phone_list' %}" class="btn btn-outline-secondary btn-sm">Orqaga</a>
     </div>
 
-    <!-- Form -->
     <form method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
 
         <div class="row g-3">
-            <!-- Left Column -->
             <div class="col-lg-8">
                 <!-- Basic Info -->
                 <div class="card mb-3">
-                    <div class="card-header">
-                        <h6 class="mb-0">Asosiy Ma'lumotlar</h6>
-                    </div>
+                    <div class="card-header"><h6 class="mb-0">Asosiy Ma'lumotlar</h6></div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Do'kon *</label>
                                 {{ form.shop }}
-                                {% if form.shop.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.shop.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.shop.errors %}<div class="text-danger small mt-1">{% for error in form.shop.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Sana</label>
                                 {{ form.created_at }}
-                                {% if form.created_at.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.created_at.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.created_at.errors %}<div class="text-danger small mt-1">{% for error in form.created_at.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Model *</label>
                                 {{ form.phone_model }}
-                                {% if form.phone_model.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.phone_model.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.phone_model.errors %}<div class="text-danger small mt-1">{% for error in form.phone_model.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Xotira *</label>
                                 {{ form.memory_size }}
-                                {% if form.memory_size.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.memory_size.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.memory_size.errors %}<div class="text-danger small mt-1">{% for error in form.memory_size.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">IMEI</label>
                                 {{ form.imei }}
-                                {% if form.imei.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.imei.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.imei.errors %}<div class="text-danger small mt-1">{% for error in form.imei.errors %}{{ error }}{% endfor %}</div>{% endif %}
                                 <small class="text-muted">15 raqamli IMEI (ixtiyoriy)</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Holat % *</label>
                                 {{ form.condition_percentage }}
-                                {% if form.condition_percentage.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.condition_percentage.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.condition_percentage.errors %}<div class="text-danger small mt-1">{% for error in form.condition_percentage.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
                             <div class="col-md-12">
                                 <label class="form-label">Status</label>
                                 {{ form.status }}
-                                {% if form.status.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.status.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.status.errors %}<div class="text-danger small mt-1">{% for error in form.status.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
                         </div>
                     </div>
@@ -106,46 +72,31 @@
 
                 <!-- Price Info -->
                 <div class="card mb-3">
-                    <div class="card-header">
-                        <h6 class="mb-0">Narx Ma'lumotlari</h6>
-                    </div>
+                    <div class="card-header"><h6 class="mb-0">Narx Ma'lumotlari</h6></div>
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Sotib olingan $ *</label>
                                 {{ form.purchase_price }}
-                                {% if form.purchase_price.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.purchase_price.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.purchase_price.errors %}<div class="text-danger small mt-1">{% for error in form.purchase_price.errors %}{{ error }}{% endfor %}</div>{% endif %}
+                                <small class="text-muted" id="daily_payment_info" style="display:none; color:#28a745;">
+                                    <i class="fas fa-info-circle"></i> Bu summa kunlik sotuvchiga naqd to'lanadi
+                                </small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">IMEI xarajat $</label>
                                 {{ form.imei_cost }}
-                                {% if form.imei_cost.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.imei_cost.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.imei_cost.errors %}<div class="text-danger small mt-1">{% for error in form.imei_cost.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Ta'mirlash $</label>
                                 {{ form.repair_cost }}
-                                {% if form.repair_cost.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.repair_cost.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.repair_cost.errors %}<div class="text-danger small mt-1">{% for error in form.repair_cost.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Sotish narxi $</label>
                                 {{ form.sale_price }}
-                                {% if form.sale_price.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.sale_price.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.sale_price.errors %}<div class="text-danger small mt-1">{% for error in form.sale_price.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
                         </div>
                     </div>
@@ -153,41 +104,27 @@
 
                 <!-- Source Info -->
                 <div class="card mb-3">
-                    <div class="card-header">
-                        <h6 class="mb-0">Manba Ma'lumotlari</h6>
-                    </div>
+                    <div class="card-header"><h6 class="mb-0">Manba Ma'lumotlari</h6></div>
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label">Manba turi *</label>
                             {{ form.source_type }}
-                            {% if form.source_type.errors %}
-                                <div class="text-danger small mt-1">
-                                    {% for error in form.source_type.errors %}{{ error }}{% endfor %}
-                                </div>
-                            {% endif %}
+                            {% if form.source_type.errors %}<div class="text-danger small mt-1">{% for error in form.source_type.errors %}{{ error }}{% endfor %}</div>{% endif %}
                         </div>
 
-                        <!-- Supplier Field -->
+                        <!-- Supplier -->
                         <div id="supplier_field" style="display: none;">
                             <label class="form-label">Taminotchi *</label>
                             {{ form.supplier }}
-                            {% if form.supplier.errors %}
-                                <div class="text-danger small mt-1">
-                                    {% for error in form.supplier.errors %}{{ error }}{% endfor %}
-                                </div>
-                            {% endif %}
+                            {% if form.supplier.errors %}<div class="text-danger small mt-1">{% for error in form.supplier.errors %}{{ error }}{% endfor %}</div>{% endif %}
                         </div>
 
-                        <!-- External Seller Field -->
+                        <!-- External Seller -->
                         <div id="external_seller_field" style="display: none;">
                             <div class="mb-3">
                                 <label class="form-label">Mavjud tashqi sotuvchi</label>
                                 {{ form.external_seller }}
-                                {% if form.external_seller.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.external_seller.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                                {% if form.external_seller.errors %}<div class="text-danger small mt-1">{% for error in form.external_seller.errors %}{{ error }}{% endfor %}</div>{% endif %}
                             </div>
 
                             <div class="border rounded p-3 bg-light">
@@ -196,103 +133,70 @@
                                     <div class="col-md-6">
                                         <label class="form-label">Ism</label>
                                         {{ form.external_seller_name }}
-                                        {% if form.external_seller_name.errors %}
-                                            <div class="text-danger small mt-1">
-                                                {% for error in form.external_seller_name.errors %}{{ error }}{% endfor %}
-                                            </div>
-                                        {% endif %}
+                                        {% if form.external_seller_name.errors %}<div class="text-danger small mt-1">{% for error in form.external_seller_name.errors %}{{ error }}{% endfor %}</div>{% endif %}
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">Telefon</label>
                                         {{ form.external_seller_phone }}
                                         <div id="external_phone_check" class="mt-1"></div>
-                                        {% if form.external_seller_phone.errors %}
-                                            <div class="text-danger small mt-1">
-                                                {% for error in form.external_seller_phone.errors %}{{ error }}{% endfor %}
-                                            </div>
-                                        {% endif %}
+                                        {% if form.external_seller_phone.errors %}<div class="text-danger small mt-1">{% for error in form.external_seller_phone.errors %}{{ error }}{% endfor %}</div>{% endif %}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Daily Seller Field -->
+                        <!-- Daily Seller - YANGI DIZAYN -->
                         <div id="daily_seller_field" style="display: none;">
-                            <div class="mb-3">
-                                <label class="form-label">Mavjud kunlik sotuvchi</label>
-                                {{ form.daily_seller }}
-                                {% if form.daily_seller.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.daily_seller.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Eslatma:</strong> Kunlik sotuvchiga sotib olingan narx ($) naqd to'lanadi
                             </div>
 
-                            <div class="border rounded p-3 bg-light mb-3">
-                                <h6 class="mb-3">Yoki yangi kunlik sotuvchi qo'shing</h6>
-                                <div class="row g-2">
+                            <div class="border rounded p-3 bg-light">
+                                <h6 class="mb-3">Kunlik sotuvchi ma'lumotlari</h6>
+                                <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label class="form-label">Ism</label>
+                                        <label class="form-label">Ism *</label>
                                         {{ form.daily_seller_name }}
-                                        {% if form.daily_seller_name.errors %}
-                                            <div class="text-danger small mt-1">
-                                                {% for error in form.daily_seller_name.errors %}{{ error }}{% endfor %}
-                                            </div>
-                                        {% endif %}
+                                        {% if form.daily_seller_name.errors %}<div class="text-danger small mt-1">{% for error in form.daily_seller_name.errors %}{{ error }}{% endfor %}</div>{% endif %}
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">Telefon</label>
+                                        <label class="form-label">Telefon *</label>
                                         {{ form.daily_seller_phone }}
                                         <div id="daily_phone_check" class="mt-1"></div>
-                                        {% if form.daily_seller_phone.errors %}
-                                            <div class="text-danger small mt-1">
-                                                {% for error in form.daily_seller_phone.errors %}{{ error }}{% endfor %}
-                                            </div>
-                                        {% endif %}
+                                        {% if form.daily_seller_phone.errors %}<div class="text-danger small mt-1">{% for error in form.daily_seller_phone.errors %}{{ error }}{% endfor %}</div>{% endif %}
                                     </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-lightbulb"></i>
+                                        Telefon raqami mavjud bo'lsa, ma'lumotlari avtomatik yangilanadi
+                                    </small>
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label">To'langan summa $ *</label>
-                                {{ form.daily_payment_amount }}
-                                {% if form.daily_payment_amount.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.daily_payment_amount.errors %}{{ error }}{% endfor %}
-                                    </div>
-                                {% endif %}
-                            </div>
+                            <!-- Hidden fields -->
+                            {{ form.daily_seller }}
+                            {{ form.daily_payment_amount }}
                         </div>
 
-                        <!-- Exchange Field -->
+                        <!-- Exchange -->
                         <div id="exchange_field" style="display: none;">
                             <div class="row g-2">
                                 <div class="col-md-4">
                                     <label class="form-label">Qiymat $</label>
                                     {{ form.exchange_value }}
-                                    {% if form.exchange_value.errors %}
-                                        <div class="text-danger small mt-1">
-                                            {% for error in form.exchange_value.errors %}{{ error }}{% endfor %}
-                                        </div>
-                                    {% endif %}
+                                    {% if form.exchange_value.errors %}<div class="text-danger small mt-1">{% for error in form.exchange_value.errors %}{{ error }}{% endfor %}</div>{% endif %}
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Egasi *</label>
                                     {{ form.original_owner_name }}
-                                    {% if form.original_owner_name.errors %}
-                                        <div class="text-danger small mt-1">
-                                            {% for error in form.original_owner_name.errors %}{{ error }}{% endfor %}
-                                        </div>
-                                    {% endif %}
+                                    {% if form.original_owner_name.errors %}<div class="text-danger small mt-1">{% for error in form.original_owner_name.errors %}{{ error }}{% endfor %}</div>{% endif %}
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label">Telefon *</label>
                                     {{ form.original_owner_phone }}
-                                    {% if form.original_owner_phone.errors %}
-                                        <div class="text-danger small mt-1">
-                                            {% for error in form.original_owner_phone.errors %}{{ error }}{% endfor %}
-                                        </div>
-                                    {% endif %}
+                                    {% if form.original_owner_phone.errors %}<div class="text-danger small mt-1">{% for error in form.original_owner_phone.errors %}{{ error }}{% endfor %}</div>{% endif %}
                                 </div>
                             </div>
                         </div>
@@ -302,7 +206,6 @@
 
             <!-- Right Column -->
             <div class="col-lg-4">
-                <!-- Image -->
                 <div class="card mb-3">
                     <div class="card-body text-center">
                         <label class="form-label">Rasm</label>
@@ -314,15 +217,10 @@
                             </div>
                         {% endif %}
                         {{ form.image }}
-                        {% if form.image.errors %}
-                            <div class="text-danger small mt-1">
-                                {% for error in form.image.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
+                        {% if form.image.errors %}<div class="text-danger small mt-1">{% for error in form.image.errors %}{{ error }}{% endfor %}</div>{% endif %}
                     </div>
                 </div>
 
-                <!-- Actions -->
                 <div class="card">
                     <div class="card-body">
                         <div class="d-grid gap-2">
@@ -357,42 +255,39 @@ document.addEventListener('DOMContentLoaded', function() {
     const externalSellerField = document.getElementById('external_seller_field');
     const dailySellerField = document.getElementById('daily_seller_field');
     const exchangeField = document.getElementById('exchange_field');
+    const dailyPaymentInfo = document.getElementById('daily_payment_info');
 
-    // External Seller elements
+    // External Seller
     const externalSellerSelect = document.getElementById('id_external_seller');
     const externalSellerName = document.getElementById('id_external_seller_name');
     const externalSellerPhone = document.getElementById('id_external_seller_phone');
     const externalPhoneCheck = document.getElementById('external_phone_check');
 
-    // Daily Seller elements
-    const dailySellerSelect = document.getElementById('id_daily_seller');
+    // Daily Seller
     const dailySellerName = document.getElementById('id_daily_seller_name');
     const dailySellerPhone = document.getElementById('id_daily_seller_phone');
     const dailyPhoneCheck = document.getElementById('daily_phone_check');
 
-    // Toggle fields based on source type
+    // Toggle fields
     function toggleFields() {
         const value = sourceType.value;
 
-        // Hide all fields
         supplierField.style.display = 'none';
         externalSellerField.style.display = 'none';
         dailySellerField.style.display = 'none';
         exchangeField.style.display = 'none';
+        dailyPaymentInfo.style.display = 'none';
 
-        // Show relevant field
-        if (value === 'supplier') {
-            supplierField.style.display = 'block';
-        } else if (value === 'external_seller') {
-            externalSellerField.style.display = 'block';
-        } else if (value === 'daily_seller') {
+        if (value === 'supplier') supplierField.style.display = 'block';
+        else if (value === 'external_seller') externalSellerField.style.display = 'block';
+        else if (value === 'daily_seller') {
             dailySellerField.style.display = 'block';
-        } else if (value === 'exchange') {
-            exchangeField.style.display = 'block';
+            dailyPaymentInfo.style.display = 'block';
         }
+        else if (value === 'exchange') exchangeField.style.display = 'block';
     }
 
-    // Phone validation for External Seller
+    // External Seller phone check
     let externalPhoneTimeout;
     function checkExternalPhone() {
         const phone = externalSellerPhone.value.trim();
@@ -422,11 +317,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(() => {
-                externalPhoneCheck.innerHTML = '<small class="text-danger">Tekshirishda xatolik</small>';
+                externalPhoneCheck.innerHTML = '<small class="text-danger">Xatolik</small>';
             });
     }
 
-    // Phone validation for Daily Seller
+    // Daily Seller phone check
     let dailyPhoneTimeout;
     function checkDailyPhone() {
         const phone = dailySellerPhone.value.trim();
@@ -438,31 +333,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
         dailyPhoneCheck.innerHTML = '<small class="text-muted">Tekshirilmoqda...</small>';
 
-        // You'll need to create a similar API endpoint for daily sellers
-        // For now, using the same endpoint
-        fetch(`/inventory/check-seller-phone/?phone=${encodeURIComponent(phone)}`)
+        fetch(`/inventory/check-daily-seller-phone/?phone=${encodeURIComponent(phone)}`)
             .then(r => r.json())
             .then(data => {
                 if (data.exists) {
                     dailyPhoneCheck.innerHTML = `
-                        <div class="alert alert-warning py-1 px-2 mt-1">
-                            <small><strong>Mavjud:</strong> ${data.seller.name}</small>
-                            <button type="button" class="btn btn-sm btn-primary ms-2"
-                                    onclick="selectDailySeller(${data.seller.id}, '${data.seller.name}')">
-                                Tanlash
-                            </button>
+                        <div class="alert alert-success py-1 px-2 mt-1">
+                            <small><i class="fas fa-check-circle"></i> <strong>Mavjud:</strong> ${data.seller.name}</small>
+                            <div class="mt-1"><small class="text-muted">Ism avtomatik yangilanadi</small></div>
                         </div>
                     `;
                 } else {
-                    dailyPhoneCheck.innerHTML = '<small class="text-success">Yangi sotuvchi yaratiladi</small>';
+                    dailyPhoneCheck.innerHTML = '<small class="text-info"><i class="fas fa-plus-circle"></i> Yangi sotuvchi yaratiladi</small>';
                 }
             })
             .catch(() => {
-                dailyPhoneCheck.innerHTML = '<small class="text-danger">Tekshirishda xatolik</small>';
+                dailyPhoneCheck.innerHTML = '<small class="text-danger">Xatolik</small>';
             });
     }
 
-    // Select existing external seller
+    // Select external seller
     window.selectExternalSeller = function(id, name) {
         externalSellerSelect.value = id;
         externalSellerName.value = '';
@@ -470,15 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
         externalPhoneCheck.innerHTML = `<small class="text-success">Tanlandi: ${name}</small>`;
     };
 
-    // Select existing daily seller
-    window.selectDailySeller = function(id, name) {
-        dailySellerSelect.value = id;
-        dailySellerName.value = '';
-        dailySellerPhone.value = '';
-        dailyPhoneCheck.innerHTML = `<small class="text-success">Tanlandi: ${name}</small>`;
-    };
-
-    // Clear selection when typing new info
+    // Clear selections
     function clearExternalSelection() {
         if (externalSellerName && externalSellerPhone) {
             if (externalSellerName.value || externalSellerPhone.value) {
@@ -487,21 +369,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function clearDailySelection() {
-        if (dailySellerName && dailySellerPhone) {
-            if (dailySellerName.value || dailySellerPhone.value) {
-                dailySellerSelect.value = '';
-            }
-        }
-    }
-
     // Event listeners
     if (sourceType) {
         sourceType.addEventListener('change', toggleFields);
-        toggleFields(); // Initialize on load
+        toggleFields();
     }
 
-    // External Seller events
     if (externalSellerPhone) {
         externalSellerPhone.addEventListener('input', function() {
             clearExternalSelection();
@@ -524,52 +397,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Daily Seller events
     if (dailySellerPhone) {
         dailySellerPhone.addEventListener('input', function() {
-            clearDailySelection();
             clearTimeout(dailyPhoneTimeout);
             dailyPhoneTimeout = setTimeout(checkDailyPhone, 800);
-        });
-    }
-
-    if (dailySellerName) {
-        dailySellerName.addEventListener('input', clearDailySelection);
-    }
-
-    if (dailySellerSelect) {
-        dailySellerSelect.addEventListener('change', function() {
-            if (dailySellerSelect.value) {
-                if (dailySellerName) dailySellerName.value = '';
-                if (dailySellerPhone) dailySellerPhone.value = '';
-                if (dailyPhoneCheck) dailyPhoneCheck.innerHTML = '';
-            }
         });
     }
 });
 </script>
 
 <style>
-.is-invalid {
-    border-color: #dc3545 !important;
-}
-
-.alert {
-    font-size: 0.875rem;
-}
-
-.card-header h6 {
-    color: #495057;
-}
-
-.form-label {
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-}
-
+.is-invalid { border-color: #dc3545 !important; }
+.alert { font-size: 0.875rem; }
+.card-header h6 { color: #495057; }
+.form-label { font-weight: 500; margin-bottom: 0.5rem; }
 #external_phone_check .alert,
-#daily_phone_check .alert {
-    margin-bottom: 0;
-}
+#daily_phone_check .alert { margin-bottom: 0; }
 </style>
 {% endblock %}

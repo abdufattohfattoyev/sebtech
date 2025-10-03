@@ -346,7 +346,7 @@ class PhoneSale(models.Model):
         return f"{self.phone} - {self.customer.name} - ${self.sale_price}"
 
     def clean(self):
-        """Validatsiya"""
+        """Validatsiya - do'kon va qaytarilgan telefonlar"""
         if hasattr(self, 'phone') and hasattr(self, 'salesman') and hasattr(self, 'customer'):
             if not all([self.phone, self.salesman, self.customer]):
                 raise ValidationError("Telefon, sotuvchi va mijoz tanlanishi shart!")
@@ -361,8 +361,13 @@ class PhoneSale(models.Model):
             if abs(total_payments - self.sale_price) > Decimal('0.01'):
                 raise ValidationError("To'lovlar yig'indisi sotish narxiga teng bo'lishi kerak!")
 
-        if not self.pk and hasattr(self, 'phone') and self.phone and self.phone.status != 'shop':
-            raise ValidationError(f"Bu telefon allaqachon sotilgan!")
+        # ✅ YANGI: Do'kon va qaytarilgan telefonlarni qabul qilish
+        if not self.pk and hasattr(self, 'phone') and self.phone:
+            if self.phone.status not in ['shop', 'returned']:
+                raise ValidationError(
+                    f"Bu telefon {self.phone.get_status_display()} holatida! "
+                    f"Faqat do'kondagi yoki qaytarilgan telefonlarni sotish mumkin."
+                )
 
     def save(self, *args, **kwargs):
         """Saqlash"""

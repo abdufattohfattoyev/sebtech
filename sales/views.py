@@ -1532,15 +1532,16 @@ def search_customer_api(request):
 
 @login_required
 def search_phone_by_imei_api(request):
-    """AJAX orqali IMEI bo'yicha telefon qidirish"""
+    """AJAX orqali IMEI bo'yicha telefon qidirish - do'kon va qaytarilganlar"""
     query = request.GET.get("q", "").strip()
 
     if len(query) < 3:
         return JsonResponse([], safe=False)
 
+    # ✅ Do'kon va qaytarilgan telefonlarni qidirish
     phones = Phone.objects.filter(
         imei__icontains=query,
-        status='shop'
+        status__in=['shop', 'returned']  # Faqat ikki holat
     ).select_related('phone_model', 'memory_size', 'shop')[:10]
 
     data = [
@@ -1552,7 +1553,9 @@ def search_phone_by_imei_api(request):
             "memory": str(phone.memory_size.size),
             "condition": phone.condition_percentage,
             "sale_price": str(phone.sale_price) if phone.sale_price else "",
-            "shop": phone.shop.name
+            "shop": phone.shop.name,
+            "status": phone.status,
+            "status_display": "Qaytarilgan" if phone.status == 'returned' else "Do'konda"
         }
         for phone in phones
     ]

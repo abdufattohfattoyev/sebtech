@@ -467,4 +467,433 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="stat">
           <div class="stat-label">Nasiya</div>
           <div class="stat-value installment">${{ daily_stats.sales.phone_credit_usd|floatformat:0|intcomma }}</div>
-          
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Qarz</div>
+          <div class="stat-value expense">${{ daily_stats.sales.phone_debt_usd|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Soni</div>
+          <div class="stat-value usd">{{ daily_stats.counts.phone|default:0 }}</div>
+          <div class="stat-currency">dona</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Almashtirish</div>
+          <div class="stat-value usd">{{ daily_stats.counts.exchange|default:0 }}</div>
+          <div class="stat-currency">dona</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Foyda</div>
+          <div class="stat-value usd">${{ daily_stats.profits.phone_profit_usd|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-section">
+      <div class="stats-section-title uzs">AKSESSUAR (So'm)</div>
+      <div class="stats-grid">
+        <div class="stat">
+          <div class="stat-label">Jami Savdo</div>
+          <div class="stat-value uzs">{{ daily_stats.sales.accessory_total_uzs|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Naqd</div>
+          <div class="stat-value uzs">{{ daily_stats.sales.accessory_cash_uzs|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Karta</div>
+          <div class="stat-value uzs">{{ daily_stats.sales.accessory_card_uzs|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Nasiya</div>
+          <div class="stat-value installment">{{ daily_stats.sales.accessory_credit_uzs|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Qarz</div>
+          <div class="stat-value expense">{{ daily_stats.sales.accessory_debt_uzs|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Soni</div>
+          <div class="stat-value uzs">{{ daily_stats.counts.accessory|default:0 }}</div>
+          <div class="stat-currency">dona</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Xarajat</div>
+          <div class="stat-value expense">{{ daily_stats.expenses|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Foyda</div>
+          <div class="stat-value uzs">{{ daily_stats.profits.accessory_profit_uzs|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CASH FLOW -->
+  <div class="stats-container">
+    <div class="stats-section cashflow-section">
+      <div class="stats-section-title cashflow">CASH FLOW - DOLLAR</div>
+      <div class="cashflow-grid">
+        <div class="stat">
+          <div class="stat-label">Kirim</div>
+          <div class="stat-value income">${{ daily_stats.cashflow.usd.income|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Chiqim</div>
+          <div class="stat-value expense">${{ daily_stats.cashflow.usd.expense|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Sof Balans</div>
+          <div class="stat-value net">${{ daily_stats.cashflow.usd.net|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-section cashflow-section">
+      <div class="stats-section-title cashflow">CASH FLOW - SO'M</div>
+      <div class="cashflow-grid">
+        <div class="stat">
+          <div class="stat-label">Kirim</div>
+          <div class="stat-value income">{{ daily_stats.cashflow.uzs.income|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Chiqim</div>
+          <div class="stat-value expense">{{ daily_stats.cashflow.uzs.expense|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Sof Balans</div>
+          <div class="stat-value net">{{ daily_stats.cashflow.uzs.net|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KASSADA NAQD -->
+  <div class="stats-container">
+    <div class="stats-section kassa-section">
+      <div class="stats-section-title kassa-title">KASSADA NAQD</div>
+      <div class="kassa-grid">
+        <div class="kassa-stat highlight">
+          <div class="stat-label">Dollar (Naqd)</div>
+          <div class="stat-value usd">${{ daily_stats.sales.phone_cash_usd|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="kassa-stat highlight">
+          <div class="stat-label">So'm (Naqd - Xarajat)</div>
+          <div class="stat-value uzs">{{ daily_stats.net_cash_uzs|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+        <div class="kassa-stat">
+          <div class="stat-label">Teng Almashtirish</div>
+          <div class="stat-value" style="color: #f59e0b; font-size: 24px;">{{ daily_stats.cashflow.details.exchange_equal|default:0 }}</div>
+          <div class="stat-currency">dona</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="card">
+      <div class="card-header">Sotuvlar Tafsiloti</div>
+      <div class="card-body">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="showTab('phones')">Telefonlar ({{ daily_stats.counts.phone|default:0 }})</button>
+          <button class="tab-btn" onclick="showTab('accessories')">Aksessuarlar ({{ daily_stats.counts.accessory|default:0 }})</button>
+          <button class="tab-btn" onclick="showTab('exchanges')">Almashtirish ({{ daily_stats.counts.exchange|default:0 }})</button>
+        </div>
+
+        <div id="phones-tab" class="tab-pane active">
+          {% if daily_stats.sales_data.phone_sales %}
+            {% for sale in daily_stats.sales_data.phone_sales %}
+            <div class="sale-item phone">
+              <div class="sale-header">
+                <div>
+                  <div class="sale-title">{{ sale.phone.phone_model }} {{ sale.phone.memory_size }}</div>
+                  <div class="sale-time">{{ sale.created_at|date:"H:i" }}</div>
+                </div>
+                <div class="sale-price usd">${{ sale.sale_price|floatformat:0|intcomma }}</div>
+              </div>
+              <div class="sale-details">
+                  <div class="detail-row">
+                      <span class="detail-label">Mijoz:</span> {{ sale.customer.name }}
+                  </div>
+                  <div class="detail-row">
+                      <span class="detail-label">Sotuvchi:</span> {{ sale.salesman.get_full_name|default:sale.salesman.username }}
+                  </div>
+                  <div class="detail-row">
+                      <span class="detail-label">IMEI:</span> {{ sale.phone.imei|default:"N/A" }}
+                  </div>
+              </div>
+
+              <div class="sale-payment">
+                <div class="payment-badge">
+                  <span class="payment-label">NAQD</span>
+                  <div class="payment-value cash">${{ sale.cash_amount|floatformat:0|intcomma }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">KARTA</span>
+                  <div class="payment-value card">${{ sale.card_amount|floatformat:0|intcomma }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">NASIYA</span>
+                  <div class="payment-value installment">${{ sale.credit_amount|default:0|floatformat:0|intcomma }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">QARZ</span>
+                  <div class="payment-value debt">${{ sale.debt_amount|floatformat:0|intcomma }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">FOYDA</span>
+                  <div class="payment-value profit">${{ sale.calculated_profit|floatformat:0|intcomma }}</div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty">Bu kunda telefon sotilmagan</div>
+          {% endif %}
+        </div>
+
+        <div id="accessories-tab" class="tab-pane">
+          {% if daily_stats.sales_data.accessory_sales %}
+            {% for sale in daily_stats.sales_data.accessory_sales %}
+            <div class="sale-item accessory">
+              <div class="sale-header">
+                <div>
+                  <div class="sale-title">{{ sale.accessory.name }} × {{ sale.quantity }}</div>
+                  <div class="sale-time">{{ sale.created_at|date:"H:i" }}</div>
+                </div>
+                <div class="sale-price uzs">{{ sale.total_price|floatformat:0 }} so'm</div>
+              </div>
+              <div class="sale-details">
+                <div class="detail-row"><span class="detail-label">Mijoz:</span> {{ sale.customer.name }}</div>
+                <div class="detail-row"><span class="detail-label">Sotuvchi:</span> {{ sale.salesman.get_full_name|default:sale.salesman.username }}</div>
+              </div>
+              <div class="sale-payment">
+                <div class="payment-badge">
+                  <span class="payment-label">NAQD</span>
+                  <div class="payment-value cash">{{ sale.cash_amount|floatformat:0 }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">KARTA</span>
+                  <div class="payment-value card">{{ sale.card_amount|floatformat:0 }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">NASIYA</span>
+                  <div class="payment-value installment">{{ sale.credit_amount|default:0|floatformat:0 }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">QARZ</span>
+                  <div class="payment-value debt">{{ sale.debt_amount|floatformat:0 }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">FOYDA</span>
+                  <div class="payment-value profit">{{ sale.calculated_profit|floatformat:0|default:"0" }}</div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty">Bu kunda aksessuar sotilmagan</div>
+          {% endif %}
+        </div>
+
+        <div id="exchanges-tab" class="tab-pane">
+          {% if daily_stats.sales_data.exchanges %}
+            {% for exchange in daily_stats.sales_data.exchanges %}
+            <div class="sale-item exchange">
+              <div class="sale-header">
+                <div>
+                  <div class="sale-title">{{ exchange.old_phone_model }} → {{ exchange.new_phone.phone_model }}</div>
+                  <div class="sale-time">{{ exchange.created_at|date:"H:i" }}</div>
+                </div>
+                <div class="sale-price usd">${{ exchange.additional_payment|floatformat:0|intcomma }}</div>
+              </div>
+              <div class="sale-details">
+                <div class="detail-row"><span class="detail-label">Mijoz:</span> {{ exchange.customer_name }}</div>
+                <div class="detail-row"><span class="detail-label">Sotuvchi:</span> {{ exchange.salesman.get_full_name|default:exchange.salesman.username }}</div>
+                <div class="detail-row"><span class="detail-label">Eski qiymati:</span> ${{ exchange.old_phone_value|floatformat:0|intcomma }}</div>
+                <div class="detail-row"><span class="detail-label">Yangi narxi:</span> ${{ exchange.new_phone_price|floatformat:0|intcomma }}</div>
+              </div>
+              <div class="sale-payment">
+                <div class="payment-badge">
+                  <span class="payment-label">NAQD</span>
+                  <div class="payment-value cash">${{ exchange.cash_amount|default:0|floatformat:0|intcomma }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">KARTA</span>
+                  <div class="payment-value card">${{ exchange.card_amount|default:0|floatformat:0|intcomma }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">NASIYA</span>
+                  <div class="payment-value installment">${{ exchange.credit_amount|default:0|floatformat:0|intcomma }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">QARZ</span>
+                  <div class="payment-value debt">${{ exchange.debt_amount|default:0|floatformat:0|intcomma }}</div>
+                </div>
+                <div class="payment-badge">
+                  <span class="payment-label">FOYDA</span>
+                  <div class="payment-value profit">${{ exchange.calculated_profit|floatformat:0|intcomma }}</div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty">Bu kunda almashtirish bo'lmagan</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Sotuvchilar ({{ seller_stats|length }})</div>
+      <div class="card-body">
+        <div class="sellers">
+          {% if seller_stats %}
+            {% for seller in seller_stats %}
+            <div class="seller" onclick="goToSeller({{ seller.seller.id }})">
+              <div class="seller-header">
+                <div class="seller-left">
+                  <div class="seller-rank {% if forloop.counter == 1 %}gold{% elif forloop.counter == 2 %}silver{% elif forloop.counter == 3 %}bronze{% endif %}">
+                    {{ forloop.counter }}
+                  </div>
+                  <div>
+                    <div class="seller-name">{{ seller.seller.get_full_name|default:seller.seller.username }}</div>
+                  </div>
+                </div>
+                <div class="seller-right">
+                  <div class="seller-amount usd">${{ seller.sales.phone_total_usd|floatformat:0|intcomma }}</div>
+                </div>
+              </div>
+
+              <!-- YANGI: Aniq statistika -->
+              <div class="seller-details">
+                <div class="seller-detail-item">
+                  <div class="seller-detail-label">Telefonlar</div>
+                  <div class="seller-detail-value phone">{{ seller.counts.phone|default:0 }}</div>
+                </div>
+                <div class="seller-detail-item">
+                  <div class="seller-detail-label">Aksessuarlar</div>
+                  <div class="seller-detail-value accessory">{{ seller.counts.accessory|default:0 }}</div>
+                </div>
+                <div class="seller-detail-item">
+                  <div class="seller-detail-label">Almashtirishlar</div>
+                  <div class="seller-detail-value exchange">{{ seller.counts.exchange|default:0 }}</div>
+                </div>
+                <div class="seller-detail-item">
+                  <div class="seller-detail-label">Qaytarishlar</div>
+                  <div class="seller-detail-value return">{{ seller.counts.returns|default:0 }}</div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty">Sotuvchilar yo'q</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CASH FLOW TAFSILOTLARI -->
+  <div class="card" style="margin-bottom: 20px;">
+    <div class="card-header">Cash Flow Tafsilotlari</div>
+    <div class="card-body">
+      <div class="stats-grid-5">
+        <div class="stat">
+          <div class="stat-label">Telefon Savdo</div>
+          <div class="stat-value income">${{ daily_stats.cashflow.details.phone_sales|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Aksessuar Savdo</div>
+          <div class="stat-value income">{{ daily_stats.cashflow.details.accessory_sales|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Almashtirish (Kirim)</div>
+          <div class="stat-value income">${{ daily_stats.cashflow.details.exchange_income|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Olingan Telefon</div>
+          <div class="stat-value expense">${{ daily_stats.cashflow.details.exchange_old_phone_value|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD (Chiqim)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Teng Almashtirish</div>
+          <div class="stat-value" style="color: #f59e0b;">{{ daily_stats.cashflow.details.exchange_equal|default:0 }}</div>
+          <div class="stat-currency">dona</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Kunlik Sotuvchi</div>
+          <div class="stat-value expense">${{ daily_stats.cashflow.details.daily_seller_payments|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Almashtirish (Chiqim)</div>
+          <div class="stat-value expense">${{ daily_stats.cashflow.details.exchange_expenses|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Qaytarish</div>
+          <div class="stat-value expense">${{ daily_stats.cashflow.details.phone_returns|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Harajatlar</div>
+          <div class="stat-value expense">{{ daily_stats.cashflow.details.daily_expenses|floatformat:0 }}</div>
+          <div class="stat-currency">UZS</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(tabName) {
+  document.querySelectorAll('.tab-pane').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(tabName + '-tab').classList.add('active');
+  event.target.classList.add('active');
+}
+
+function goToSeller(sellerId) {
+  const params = new URLSearchParams(window.location.search);
+  const baseUrl = "{% url 'reports:seller_detail_page' 999 %}".replace('999', sellerId);
+  location.href = baseUrl + '?' + params;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.stat-value.uzs, .seller-amount.uzs, .payment-value, .sale-price.uzs').forEach(function(elem) {
+    let text = elem.textContent.trim();
+    let number = text.replace(/[^\d]/g, '');
+    if (number) {
+      let formatted = number.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      if (text.includes('so\'m')) {
+        elem.textContent = formatted + ' so\'m';
+      } else {
+        elem.textContent = formatted;
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

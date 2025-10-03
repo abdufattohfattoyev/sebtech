@@ -537,6 +537,13 @@ class PhoneExchange(models.Model):
     def __str__(self):
         return f"{self.customer_name} — {self.old_phone_model} → {self.new_phone}"
 
+    # ✅ __init__ ENG BIRINCHI BO'LISHI KERAK!
+    def __init__(self, *args, **kwargs):
+        """Asl qiymatlarni saqlash"""
+        super().__init__(*args, **kwargs)
+        # Asl telefon ID ni saqlash
+        self._original_new_phone_id = self.new_phone_id if self.pk else None
+
     def calculate_price_difference(self):
         """Narx farqini hisoblash"""
         self.price_difference = self.new_phone_price - self.old_phone_accepted_price
@@ -557,11 +564,13 @@ class PhoneExchange(models.Model):
 
         # IMEI dublikat tekshiruvi
         if self.old_phone_imei and self.old_phone_imei.strip():
-            # Faqat 15 raqamli IMEI ni tekshirish
             imei = self.old_phone_imei.strip()
             if len(imei) == 15 and imei.isdigit():
-                # Shu IMEI bilan telefon mavjudmi?
+                # ✅ O'ZINI CHIQARIB TASHLASH
                 existing_phones = Phone.objects.filter(imei=imei)
+                if self.created_old_phone:
+                    existing_phones = existing_phones.exclude(pk=self.created_old_phone.pk)
+
                 if existing_phones.exists():
                     raise ValidationError(
                         f"IMEI {imei} raqami bilan telefon allaqachon mavjud! "
@@ -588,28 +597,27 @@ class PhoneExchange(models.Model):
                     "Teng almashtirish yoki do'kon to'laydigan holatda to'lov summalari 0 bo'lishi kerak."
                 )
 
-        # Yangi telefon tekshiruvi
         if not self.new_phone_id:
             raise ValidationError("Yangi telefon tanlanishi kerak!")
 
-        # Qabul narxi tekshiruvi
         if self.old_phone_accepted_price < 0:
             raise ValidationError("Qabul narxi manfiy bo'lishi mumkin emas!")
-
-    def __init__(self, *args, **kwargs):
-        """Asl qiymatlarni saqlash"""
-        super().__init__(*args, **kwargs)
-        # ✅ Asl telefon ID ni saqlash
-        self._original_new_phone_id = self.new_phone_id if self.pk else None
 
     def save(self, *args, **kwargs):
         """Saqlash - yangi va update holatlarini ajratish"""
         is_new = not self.pk
 
-        # Yangi telefonni "sotilgan" qilish
+        # ✅ Yangi telefonni "sotilgan" qilish (faqat zarurat bo'lganda)
         if self.new_phone:
-            # ✅ FAQAT yangi yaratishda yoki telefon almashtirilganda
-            if is_new or (self._original_new_phone_id and self._original_new_phone_id != self.new_phone_id):
+            # FAQAT yangi yaratishda yoki telefon almashtirilganda
+            should_update_status = (
+                    is_new or
+                    (hasattr(self, '_original_new_phone_id') and
+                     self._original_new_phone_id and
+                     self._original_new_phone_id != self.new_phone_id)
+            )
+
+            if should_update_status:
                 self.new_phone.status = 'sold'
                 self.new_phone.save(update_fields=['status'])
 
