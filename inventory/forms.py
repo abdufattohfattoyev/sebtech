@@ -275,12 +275,20 @@ class PhoneForm(forms.ModelForm):
     def save(self, commit=True):
         phone = super().save(commit=False)
 
+        # Tahrirlash rejimida (instance mavjud bo'lsa) created_at ni saqlab qolish
+        if self.instance.pk and not self.cleaned_data.get('created_at'):
+            phone.created_at = self.instance.created_at  # Oldingi qiymatni saqlash
+
+        # Yangi telefon uchun created_at ni o'rnatish
+        if not phone.created_at:
+            from django.utils import timezone
+            phone.created_at = timezone.now().date()
+
         # External seller yaratish/yangilash
         if (phone.source_type == 'external_seller' and
                 not self.cleaned_data.get('external_seller') and
                 self.cleaned_data.get('external_seller_name') and
                 self.cleaned_data.get('external_seller_phone')):
-
             external_seller, created = ExternalSeller.objects.get_or_create(
                 phone_number=self.cleaned_data['external_seller_phone'],
                 defaults={
@@ -288,18 +296,15 @@ class PhoneForm(forms.ModelForm):
                     'created_by': self.user
                 }
             )
-
             if not created:
                 external_seller.name = self.cleaned_data['external_seller_name']
                 external_seller.save(update_fields=['name'])
-
             phone.external_seller = external_seller
 
         # Daily seller yaratish/yangilash
         if (phone.source_type == 'daily_seller' and
                 self.cleaned_data.get('daily_seller_name') and
                 self.cleaned_data.get('daily_seller_phone')):
-
             daily_seller, created = DailySeller.objects.get_or_create(
                 phone_number=self.cleaned_data['daily_seller_phone'],
                 defaults={
@@ -307,20 +312,15 @@ class PhoneForm(forms.ModelForm):
                     'created_by': self.user
                 }
             )
-
             if not created:
                 daily_seller.name = self.cleaned_data['daily_seller_name']
                 daily_seller.save(update_fields=['name'])
-
             phone.daily_seller = daily_seller
             phone.daily_payment_amount = self.cleaned_data.get('daily_payment_amount') or self.cleaned_data.get(
                 'purchase_price')
 
         if commit:
             phone.save()
-            # ❌ XARAJAT YARATISH QISMINI BUTUNLAY O'CHIRISH KERAK!
-            # Signal o'zi hal qiladi
-
         return phone
 
 
