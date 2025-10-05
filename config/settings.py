@@ -108,7 +108,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Auth redirects
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'shop:dashboard'
+LOGIN_REDIRECT_URL = 'inventory:dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
 # Cache
