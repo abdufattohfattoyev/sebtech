@@ -401,6 +401,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   font-size: 13px;
 }
 
+/* Expense Details */
+.expense-detail {
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #e5e7eb;
+}
+
 /* Print */
 @media print {
   .filter, .nav, .btn { display: none !important; }
@@ -634,10 +643,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <!-- KASSADA NAQD -->
   <div class="stats-container">
     <div class="stats-section kassa-section">
-      <div class="stats-section-title kassa-title">KASSADA NAQD</div>
+      <div class="stats-section-title kassa-title">KASSADA NAQD (Kirim)</div>
       <div class="kassa-grid">
         <div class="kassa-stat highlight">
-          <div class="stat-label">Dollar (Naqd)</div>
+          <div class="stat-label">Dollar (Naqd + Olingan Tel)</div>
           <div class="stat-value usd">${{ daily_stats.sales.phone_cash_usd|floatformat:0|intcomma }}</div>
           <div class="stat-currency">USD</div>
         </div>
@@ -652,28 +661,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div class="stat-currency">dona</div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <div class="main">
-    <div class="card">
-      <div class="card-header">Sotuvlar Tafsiloti</div>
-      <div class="card-body">
-        <div class="tabs">
-          <button class="tab-btn active" onclick="showTab('phones')">Telefonlar ({{ daily_stats.counts.phone|default:0 }})</button>
-          <button class="tab-btn" onclick="showTab('accessories')">Aksessuarlar ({{ daily_stats.counts.accessory|default:0 }})</button>
-          <button class="tab-btn" onclick="showTab('exchanges')">Almashtirish ({{ daily_stats.counts.exchange|default:0 }})</button>
-        </div>
-
-        <div id="phones-tab" class="tab-pane active">
-          {% if daily_stats.sales_data.phone_sales %}
-            {% for sale in daily_stats.sales_data.phone_sales %}
-            <div class="sale-item phone">
-              <div class="sale-header">
-                <div>
-                  <div class="sale-title">{{ sale.phone.phone_model }} {{ sale.phone.memory_size }}</div>
-                  <div class="sale-time">{{ sale.created_at|date:"H:i" }}</div>
-                </div>
-                <div class="sale-price usd">${{ sale.sale_price|floatformat:0|intcomma }}</div>
-              </div>
-              <div class="sale-details">
+      <!-- CHIQIMLAR -->
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #10b981;">
+        <div style="font-size: 12px; font-weight: 700; color: #dc2626; margin-bottom: 12px; text-transform: uppercase;">CHIQIMLAR (Dollar)</div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+          <div class="kassa-stat" style="border: 2px solid #dc2626;">
+            <div class="stat-label" style="color: #dc2626;">Kunlik Sotuvchi</div>
+            <div class="stat-value expense">${{ daily_stats.cashflow.details.daily_seller_payments|floatformat:0|intcomma }}</div>
+            <div class="stat-currency">USD</div>
+          </div>
+          <div class="kassa-stat" style="border: 2px solid #dc2626;">
+            <div class="stat-label" style="color: #dc2626;">Olingan Telefon</div>
+            <div class="stat-value expense">${{ daily_stats.

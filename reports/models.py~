@@ -471,7 +471,6 @@ class ReportCalculator:
 
         exchange_totals = exchanges.aggregate(
             total=Sum('new_phone_price'),
-            old_phone_value=Sum('old_phone_accepted_price'),  # ← QOSHISH
             count=Count('id'),
             cash=Sum('cash_amount'),
             card=Sum('card_amount'),
@@ -506,21 +505,15 @@ class ReportCalculator:
 
         # TELEFON + ALMASHTIRISH JAMI
         total_phone_sales_usd = (phone_totals.get('total') or Decimal('0')) + (
-                exchange_totals.get('total') or Decimal('0'))
-
-        # ✅ NAQD = Telefon + Almashtirish + Olingan telefon qiymati
-        total_phone_cash_usd = (
-                (phone_totals.get('cash') or Decimal('0')) +
-                (exchange_totals.get('cash') or Decimal('0')) +
-                (exchange_totals.get('old_phone_value') or Decimal('0'))  # ← QOSHISH
-        )
-
+                    exchange_totals.get('total') or Decimal('0'))
+        total_phone_cash_usd = (phone_totals.get('cash') or Decimal('0')) + (
+                    exchange_totals.get('cash') or Decimal('0'))
         total_phone_card_usd = (phone_totals.get('card') or Decimal('0')) + (
-                exchange_totals.get('card') or Decimal('0'))
+                    exchange_totals.get('card') or Decimal('0'))
         total_phone_debt_usd = (phone_totals.get('debt') or Decimal('0')) + (
-                exchange_totals.get('debt') or Decimal('0'))
+                    exchange_totals.get('debt') or Decimal('0'))
         total_phone_credit_usd = (phone_totals.get('credit') or Decimal('0')) + (
-                exchange_totals.get('credit') or Decimal('0'))
+                    exchange_totals.get('credit') or Decimal('0'))
 
         # AKSESSUAR JAMI
         total_accessory_sales_uzs = accessory_totals.get('total') or Decimal('0')
@@ -547,12 +540,12 @@ class ReportCalculator:
                 'exchange': exchange_totals.get('count') or 0,
                 'returns': phone_returns.count(),
                 'total': (phone_totals.get('count') or 0) + (accessory_totals.get('count') or 0) + (
-                        exchange_totals.get('count') or 0)
+                            exchange_totals.get('count') or 0)
             },
             'sales': {
                 'total': total_phone_sales_usd + total_accessory_sales_uzs,
                 'phone_total_usd': total_phone_sales_usd,
-                'phone_cash_usd': total_phone_cash_usd,  # ← YANGI HISOB
+                'phone_cash_usd': total_phone_cash_usd,
                 'phone_card_usd': total_phone_card_usd,
                 'phone_debt_usd': total_phone_debt_usd,
                 'phone_credit_usd': total_phone_credit_usd,
