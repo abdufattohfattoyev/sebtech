@@ -3,7 +3,7 @@
 from django.db.models import Sum, Count, Q
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
@@ -14,6 +14,25 @@ from calendar import monthrange
 from sales.models import PhoneSale, PhoneExchange, PhoneReturn, AccessorySale
 from shops.models import Shop
 from .models import ReportCalculator, ProfitCalculator
+
+
+def is_boss_or_finance(user):
+    """Faqat boshliq yoki moliyachi ekanligini tekshirish"""
+    if hasattr(user, 'userprofile'):
+        return user.userprofile.role in ['boss', 'finance']
+    return False
+
+def check_report_access(view_func):
+    """Hisobot sahifalariga kirish huquqini tekshirish"""
+    @login_required
+    @user_passes_test(is_boss_or_finance, login_url='reports:no_access')
+    def wrapper(request, *args, **kwargs):
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+def no_access(request):
+    """Kirish rad etildi sahifasi"""
+    return render(request, 'reports/no_access.html')
 
 
 class ReportMixin:
@@ -46,6 +65,7 @@ class ReportMixin:
 
 
 @login_required
+@check_report_access
 def daily_report(request):
     """KUNLIK HISOBOT - Barcha sotuvchilar umumiy va alohida"""
     shops = ReportMixin.get_user_shops(request.user)
@@ -296,6 +316,11 @@ def yearly_report(request):
         total_exchange_count = 0
         total_returns_count = 0
 
+        # OYLIK MA'LUMOTLAR UCHUN MASSIVLAR
+        monthly_phone_data = []
+        monthly_accessory_data = []
+        working_days_count = 0
+
         for month in range(1, 13):
             monthly_salary = calculator.get_seller_monthly_salary(seller, year, month)
 
@@ -308,6 +333,14 @@ def yearly_report(request):
             total_accessory_count += monthly_salary['sales']['accessory_count']
             total_exchange_count += monthly_salary['sales']['exchange_count']
             total_returns_count += monthly_salary['sales']['returns_count']
+
+            # OYLIK DIAGRAMMA UCHUN MA'LUMOTLAR
+            net_phones = monthly_salary['sales']['phone_count'] + monthly_salary['sales']['exchange_count']
+            monthly_phone_data.append(net_phones)
+            monthly_accessory_data.append(monthly_salary['sales']['accessory_count'])
+
+            if len(monthly_salary.get('daily_data', [])) > 0:
+                working_days_count += len(monthly_salary['daily_data'])
 
         total_phone_exchange_profit = total_phone_profit + total_exchange_profit
         net_phone_count = total_phone_count + total_exchange_count
@@ -327,7 +360,10 @@ def yearly_report(request):
                 'exchange_profit': total_exchange_profit,
                 'total_phone_exchange_profit': total_phone_exchange_profit,
                 'total_sales': total_phone_sales + total_accessory_sales,
-                'total_transactions': total_phone_count + total_accessory_count + total_exchange_count
+                'total_transactions': total_phone_count + total_accessory_count + total_exchange_count,
+                'monthly_phone_data': monthly_phone_data,
+                'monthly_accessory_data': monthly_accessory_data,
+                'working_days': working_days_count
             })
 
     yearly_sellers_stats.sort(

@@ -3,7 +3,7 @@
 from django.db.models import Sum, Count, Q
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
@@ -16,6 +16,25 @@ from shops.models import Shop
 from .models import ReportCalculator, ProfitCalculator
 
 
+def is_boss_or_finance(user):
+    """Faqat boshliq yoki moliyachi ekanligini tekshirish"""
+    if hasattr(user, 'userprofile'):
+        return user.userprofile.role in ['boss', 'finance']
+    return False
+
+def check_report_access(view_func):
+    """Hisobot sahifalariga kirish huquqini tekshirish"""
+    @login_required
+    @user_passes_test(is_boss_or_finance, login_url='reports:no_access')
+    def wrapper(request, *args, **kwargs):
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+def no_access(request):
+    """Kirish rad etildi sahifasi"""
+    return render(request, 'reports/no_access.html')
+
+
 class ReportMixin:
     """Hisobot view'lari uchun mixin"""
 
@@ -23,8 +42,12 @@ class ReportMixin:
     def get_user_shops(user):
         """Foydalanuvchiga tegishli do'konlarni olish"""
         shops = Shop.objects.all()
-        if hasattr(user, 'userprofile') and user.userprofile.role != 'boss':
+
+        # Faqat sotuvchilar uchun filtrlash
+        if hasattr(user, 'userprofile') and user.userprofile.role == 'seller':
             shops = shops.filter(owner=user)
+
+        # Boss va Finance barcha do'konlarni ko'radi
         return shops
 
     @staticmethod
@@ -46,6 +69,7 @@ class ReportMixin:
 
 
 @login_required
+@check_report_access
 def daily_report(request):
     """KUNLIK HISOBOT - Barcha sotuvchilar umumiy va alohida"""
     shops = ReportMixin.get_user_shops(request.user)

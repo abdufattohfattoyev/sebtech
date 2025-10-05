@@ -14,7 +14,6 @@ urlpatterns = [
 
     # Taqqoslash
     path('comparison/', views.comparison_report, name='comparison'),
-    path('no-access/', views.no_access, name='no_access'),
 
     # Sotuvchi hisobotlari
     path('seller/<int:seller_id>/', views.seller_detail_page, name='seller_detail_page'),

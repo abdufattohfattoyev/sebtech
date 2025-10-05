@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block page_title %}Kirish Taqiqlangan{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 100px auto; text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  <div style="font-size: 72px; margin-bottom: 20px;">🚫</div>
+  <h2 style="color: #dc2626; margin-bottom: 15px;">Kirish taqiqlangan</h2>
+  <p style="color: #6b7280; margin-bottom: 10px;">Hisobotlar bo'limiga faqat boshliq va moliyachilar kira oladi.</p>
+  <p style="color: #9ca3af; font-size: 14px; margin-bottom: 30px;">Sizning rolingiz: <strong>{{ request.user.userprofile.get_role_display }}</strong></p>
+  
+  <div style="display: flex; gap: 15px; justify-content: center;">
+    <a href="{% url 'sales:dashboard' %}" class="btn btn-primary" style="display: inline-block; padding: 12px 24px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+      Bosh sahifaga
+    </a>
+    <a href="javascript:history.back()" class="btn btn-secondary" style="display: inline-block; padding: 12px 24px; background: #6b7280; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+      Orqaga
+    </a>
+  </div>
+</div>
+{% endblock %}
