@@ -283,14 +283,9 @@ class ReportCalculator:
         }
 
     def _calculate_profits(self, phone_sales, accessory_sales, exchanges):
-        """Foyda hisoblash - QuerySet uchun"""
-        from sales.models import PhoneReturn
-
-        returned_sale_ids = list(PhoneReturn.objects.filter(
-            phone_sale__in=phone_sales
-        ).values_list('phone_sale_id', flat=True))
-
-        valid_phone_sales = phone_sales.exclude(id__in=returned_sale_ids)
+        """Foyda hisoblash - QuerySet uchun - ✅ YANGI USUL"""
+        # ✅ is_returned flag ishlatish
+        valid_phone_sales = phone_sales.filter(is_returned=False)
 
         phone_profit = sum(
             self.profit_calc.calculate_phone_profit(sale)
@@ -313,18 +308,13 @@ class ReportCalculator:
             'exchange_profit': exchange_profit,
             'total_profit': phone_profit + accessory_profit + exchange_profit,
             'valid_phone_count': valid_phone_sales.count(),
-            'returned_count': len(returned_sale_ids)
+            'returned_count': phone_sales.filter(is_returned=True).count()
         }
 
     def _calculate_profits_from_list(self, phone_sales, accessory_sales, exchanges):
-        """Foyda hisoblash - List uchun"""
-        from sales.models import PhoneReturn
-
-        returned_sale_ids = list(PhoneReturn.objects.filter(
-            phone_sale__id__in=[s.id for s in phone_sales]
-        ).values_list('phone_sale_id', flat=True))
-
-        valid_phone_sales = [s for s in phone_sales if s.id not in returned_sale_ids]
+        """Foyda hisoblash - List uchun - ✅ YANGI USUL"""
+        # ✅ is_returned attribute ishlatish
+        valid_phone_sales = [s for s in phone_sales if not s.is_returned]
 
         phone_profit = sum(
             self.profit_calc.calculate_phone_profit(sale)
@@ -347,7 +337,7 @@ class ReportCalculator:
             'exchange_profit': exchange_profit,
             'total_profit': phone_profit + accessory_profit + exchange_profit,
             'valid_phone_count': len(valid_phone_sales),
-            'returned_count': len(returned_sale_ids)
+            'returned_count': len([s for s in phone_sales if s.is_returned])
         }
 
     def _get_daily_cashflow(self, target_date):
@@ -357,22 +347,18 @@ class ReportCalculator:
             transaction_date=target_date
         )
 
-        # USD KIRIM
         usd_income = transactions.filter(
             amount_usd__gt=0
         ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
 
-        # OLINGAN TELEFON QIYMATI (absolute qiymat)
         old_phone_value = abs(
             transactions.filter(
                 transaction_type='exchange_old_phone_value'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        # UMUMIY KIRIM = oddiy kirimlar + olingan telefon
         total_usd_income = usd_income + old_phone_value
 
-        # USD CHIQIM - BARCHA CHIQIMLAR (olingan telefon CHIQARILGAN)
         usd_expense_without_old_phone = abs(
             transactions.filter(
                 amount_usd__lt=0
@@ -381,10 +367,8 @@ class ReportCalculator:
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        # UMUMIY CHIQIM = boshqa chiqimlar + olingan telefon
         total_usd_expense = usd_expense_without_old_phone + old_phone_value
 
-        # UZS
         uzs_income = transactions.filter(
             amount_uzs__gt=0
         ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
@@ -441,9 +425,9 @@ class ReportCalculator:
 
         return {
             'usd': {
-                'income': total_usd_income,  # $14,166
-                'expense': total_usd_expense,  # $5,470 ($3,100 + $2,370)
-                'net': total_usd_income - total_usd_expense  # $8,696
+                'income': total_usd_income,
+                'expense': total_usd_expense,
+                'net': total_usd_income - total_usd_expense
             },
             'uzs': {
                 'income': uzs_income,
@@ -455,7 +439,7 @@ class ReportCalculator:
         }
 
     def get_daily_report(self, target_date=None):
-        """Kunlik hisobot - BARCHA SOTUVCHILAR UCHUN"""
+        """Kunlik hisobot - BARCHA SOTUVCHILAR UCHUN - ✅ YANGI USUL"""
         if not target_date:
             target_date = timezone.now().date()
 
@@ -467,45 +451,37 @@ class ReportCalculator:
             sale_date=target_date
         ).select_related('phone', 'customer', 'salesman')
 
-        # BU KUNDA SOTILGAN AKSESSUARLAR
         accessory_sales = AccessorySale.objects.filter(
             accessory__shop=self.shop,
             sale_date=target_date
         ).select_related('accessory', 'customer', 'salesman')
 
-        # BU KUNDA BO'LGAN ALMASHTIRISHLAR
         exchanges = PhoneExchange.objects.filter(
             new_phone__shop=self.shop,
             exchange_date=target_date
         ).select_related('new_phone', 'salesman')
 
-        # BU KUNDA QAYTARILGAN TELEFONLAR
         phone_returns = PhoneReturn.objects.filter(
             phone_sale__phone__shop=self.shop,
             return_date=target_date
         ).select_related('phone_sale__phone', 'phone_sale')
 
-        # BU KUNDA SOTILGAN VA BU KUNDA QAYTARILGAN (dublikat oldini olish)
-        returned_sale_ids_today = set(phone_returns.filter(
-            phone_sale__sale_date=target_date
-        ).values_list('phone_sale_id', flat=True))
-
-        # SOF TELEFON SOTUVLARI (faqat bu kunda sotilgan va qaytarilganlar ayriladi)
-        net_phone_sales = phone_sales.exclude(id__in=returned_sale_ids_today)
+        # ✅ YANGI USUL - is_returned flag
+        net_phone_sales = phone_sales.filter(is_returned=False)
 
         # BU KUNDA QAYTARILGAN LEKIN OLDINGI KUNLARDA SOTILGAN
-        previous_day_returns = phone_returns.exclude(
+        previous_day_returns = phone_returns.filter(
+            phone_sale__is_returned=True
+        ).exclude(
             phone_sale__sale_date=target_date
         )
 
-        # HARAJATLAR
         expenses = Expense.objects.filter(
             shop=self.shop,
             expense_date=target_date
         )
         total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0')
 
-        # AGGREGATSIYALAR
         phone_totals = net_phone_sales.aggregate(
             total=Sum('sale_price'),
             count=Count('id'),
@@ -526,7 +502,7 @@ class ReportCalculator:
 
         exchange_totals = exchanges.aggregate(
             total=Sum('new_phone_price'),
-            old_phone_value=Sum('old_phone_accepted_price'),  # ← QOSHISH
+            old_phone_value=Sum('old_phone_accepted_price'),
             count=Count('id'),
             cash=Sum('cash_amount'),
             card=Sum('card_amount'),
@@ -534,7 +510,6 @@ class ReportCalculator:
             credit=Sum('credit_amount')
         )
 
-        # FOYDA HISOBLASH
         phone_profit_from_sales = sum(
             self.profit_calc.calculate_phone_profit(sale)
             for sale in net_phone_sales
@@ -559,15 +534,13 @@ class ReportCalculator:
 
         total_phone_exchange_profit = net_phone_profit + exchange_profit
 
-        # TELEFON + ALMASHTIRISH JAMI
         total_phone_sales_usd = (phone_totals.get('total') or Decimal('0')) + (
                 exchange_totals.get('total') or Decimal('0'))
 
-        # ✅ NAQD = Telefon + Almashtirish + Olingan telefon qiymati
         total_phone_cash_usd = (
                 (phone_totals.get('cash') or Decimal('0')) +
                 (exchange_totals.get('cash') or Decimal('0')) +
-                (exchange_totals.get('old_phone_value') or Decimal('0'))  # ← QOSHISH
+                (exchange_totals.get('old_phone_value') or Decimal('0'))
         )
 
         total_phone_card_usd = (phone_totals.get('card') or Decimal('0')) + (
@@ -577,17 +550,14 @@ class ReportCalculator:
         total_phone_credit_usd = (phone_totals.get('credit') or Decimal('0')) + (
                 exchange_totals.get('credit') or Decimal('0'))
 
-        # AKSESSUAR JAMI
         total_accessory_sales_uzs = accessory_totals.get('total') or Decimal('0')
         total_accessory_cash_uzs = accessory_totals.get('cash') or Decimal('0')
         total_accessory_card_uzs = accessory_totals.get('card') or Decimal('0')
         total_accessory_debt_uzs = accessory_totals.get('debt') or Decimal('0')
         total_accessory_credit_uzs = accessory_totals.get('credit') or Decimal('0')
 
-        # CASH FLOW
         cashflow = self._get_daily_cashflow(target_date)
 
-        # PROFIT MARGIN
         total_sales = total_phone_sales_usd + total_accessory_sales_uzs
         profit_margin = Decimal('0.00')
         if total_sales > 0:
@@ -607,7 +577,7 @@ class ReportCalculator:
             'sales': {
                 'total': total_phone_sales_usd + total_accessory_sales_uzs,
                 'phone_total_usd': total_phone_sales_usd,
-                'phone_cash_usd': total_phone_cash_usd,  # ← YANGI HISOB
+                'phone_cash_usd': total_phone_cash_usd,
                 'phone_card_usd': total_phone_card_usd,
                 'phone_debt_usd': total_phone_debt_usd,
                 'phone_credit_usd': total_phone_credit_usd,
@@ -637,14 +607,13 @@ class ReportCalculator:
         }
 
     def get_monthly_report(self, year, month):
-        """Oylik hisobot - QAYTARISH BU OYGA TA'SIR QILADI"""
+        """Oylik hisobot - ✅ YANGI USUL"""
         from sales.models import PhoneReturn
 
         start_date = date(year, month, 1)
         _, last_day = monthrange(year, month)
         end_date = date(year, month, last_day)
 
-        # KUNLIK STATISTIKA
         daily_stats = []
         working_days = 0
         current_date = start_date
@@ -656,32 +625,27 @@ class ReportCalculator:
                 working_days += 1
             current_date += timedelta(days=1)
 
-        # BU OYDA SOTILGAN TELEFONLAR
+        # ✅ YANGI USUL
         all_phone_sales = PhoneSale.objects.filter(
             phone__shop=self.shop,
             sale_date__range=[start_date, end_date]
         ).select_related('phone', 'customer', 'salesman')
 
-        # BU OYDA QAYTARILGAN TELEFONLAR
         phone_returns = PhoneReturn.objects.filter(
             phone_sale__phone__shop=self.shop,
             return_date__range=[start_date, end_date]
         ).select_related('phone_sale__phone', 'phone_sale')
 
-        # BU OYDA SOTILGAN VA BU OYDA QAYTARILGAN (dublikat oldini olish)
-        returned_sale_ids_this_month = set(phone_returns.filter(
-            phone_sale__sale_date__range=[start_date, end_date]
-        ).values_list('phone_sale_id', flat=True))
+        # ✅ SOF TELEFON SOTUVLARI
+        net_phone_sales = all_phone_sales.filter(is_returned=False)
 
-        # SOF TELEFON SOTUVLARI
-        net_phone_sales = all_phone_sales.exclude(id__in=returned_sale_ids_this_month)
-
-        # BU OYDA QAYTARILGAN LEKIN OLDINGI OYDA SOTILGAN
-        previous_month_returns = phone_returns.exclude(
+        # ✅ BU OYDA QAYTARILGAN LEKIN OLDINGI OYDA SOTILGAN
+        previous_month_returns = phone_returns.filter(
+            phone_sale__is_returned=True
+        ).exclude(
             phone_sale__sale_date__range=[start_date, end_date]
         )
 
-        # AKSESSUAR VA ALMASHTIRISH
         accessory_sales = AccessorySale.objects.filter(
             accessory__shop=self.shop,
             sale_date__range=[start_date, end_date]
@@ -692,7 +656,6 @@ class ReportCalculator:
             exchange_date__range=[start_date, end_date]
         ).select_related('new_phone', 'salesman')
 
-        # TELEFON AGGREGATSIYALAR (SOF)
         phone_totals = net_phone_sales.aggregate(
             total=Sum('sale_price'),
             count=Count('id'),
@@ -702,7 +665,6 @@ class ReportCalculator:
             credit=Sum('credit_amount')
         )
 
-        # AKSESSUAR AGGREGATSIYALAR
         accessory_totals = accessory_sales.aggregate(
             total=Sum('total_price'),
             count=Count('id'),
@@ -712,10 +674,9 @@ class ReportCalculator:
             credit=Sum('credit_amount')
         )
 
-        # ALMASHTIRISH AGGREGATSIYALAR
         exchange_totals = exchanges.aggregate(
             total=Sum('new_phone_price'),
-            old_phone_value=Sum('old_phone_accepted_price'),  # ✅ QO'SHISH
+            old_phone_value=Sum('old_phone_accepted_price'),
             count=Count('id'),
             cash=Sum('cash_amount'),
             card=Sum('card_amount'),
@@ -723,25 +684,20 @@ class ReportCalculator:
             credit=Sum('credit_amount')
         )
 
-        # HARAJATLAR
         total_expenses = sum([d['expenses'] for d in daily_stats])
 
-        # BU OYDA SOTILGAN TELEFON FOYDASI
         phone_profit_from_sales = sum(
             self.profit_calc.calculate_phone_profit(sale)
             for sale in net_phone_sales
         )
 
-        # BU OYDA QAYTARILGAN (oldingi oyda sotilgan) YO'QOLGAN FOYDA
         phone_profit_loss_from_returns = sum(
             self.profit_calc.calculate_phone_profit(ret.phone_sale)
             for ret in previous_month_returns
         )
 
-        # SOF TELEFON FOYDA
         net_phone_profit = phone_profit_from_sales - phone_profit_loss_from_returns
 
-        # AKSESSUAR VA ALMASHTIRISH FOYDASI
         accessory_profit = sum(
             self.profit_calc.calculate_accessory_profit(sale)
             for sale in accessory_sales
@@ -752,18 +708,15 @@ class ReportCalculator:
             for exchange in exchanges
         )
 
-        # TELEFON + ALMASHTIRISH FOYDA
         total_phone_exchange_profit = net_phone_profit + exchange_profit
 
-        # JAMI SONLAR (SOF)
         total_phone_sales_usd = (phone_totals.get('total') or Decimal('0')) + (
                 exchange_totals.get('total') or Decimal('0'))
 
-        # ✅ NAQD = Telefon + Almashtirish + Olingan telefon
         total_phone_cash_usd = (
                 (phone_totals.get('cash') or Decimal('0')) +
                 (exchange_totals.get('cash') or Decimal('0')) +
-                (exchange_totals.get('old_phone_value') or Decimal('0'))  # ✅ QO'SHISH
+                (exchange_totals.get('old_phone_value') or Decimal('0'))
         )
 
         total_phone_card_usd = (phone_totals.get('card') or Decimal('0')) + (
@@ -779,9 +732,7 @@ class ReportCalculator:
         total_accessory_debt_uzs = accessory_totals.get('debt') or Decimal('0')
         total_accessory_credit_uzs = accessory_totals.get('credit') or Decimal('0')
 
-        # SOF TELEFON SONI
-        net_phone_count = (phone_totals.get('count') or 0) + (
-                exchange_totals.get('count') or 0)
+        net_phone_count = (phone_totals.get('count') or 0) + (exchange_totals.get('count') or 0)
 
         total_sales = total_phone_sales_usd + total_accessory_sales_uzs
         profit_margin = Decimal('0.00')
@@ -800,7 +751,7 @@ class ReportCalculator:
             'daily_stats': daily_stats,
             'totals': {
                 'phone_sales_usd': total_phone_sales_usd,
-                'phone_cash_usd': total_phone_cash_usd,  # ✅ TO'G'RILANGAN
+                'phone_cash_usd': total_phone_cash_usd,
                 'phone_card_usd': total_phone_card_usd,
                 'phone_debt_usd': total_phone_debt_usd,
                 'phone_credit_usd': total_phone_credit_usd,
@@ -836,7 +787,7 @@ class ReportCalculator:
                 'accessory': accessory_totals.get('count') or 0,
                 'exchange': exchange_totals.get('count') or 0,
                 'returns': phone_returns.count(),
-                'returns_this_month': len(returned_sale_ids_this_month),
+                'returns_this_month': all_phone_sales.filter(is_returned=True).count(),
                 'returns_previous_months': previous_month_returns.count(),
                 'net_phone': net_phone_count,
                 'total': net_phone_count + (accessory_totals.get('count') or 0)
@@ -844,7 +795,7 @@ class ReportCalculator:
         }
 
     def get_seller_daily_report(self, seller, target_date=None):
-        """Sotuvchi kunlik hisobot - TO'LIQ FOYDA BILAN"""
+        """Sotuvchi kunlik hisobot - ✅ YANGI USUL"""
         if not target_date:
             target_date = timezone.now().date()
 
@@ -874,8 +825,8 @@ class ReportCalculator:
             return_date=target_date
         ).select_related('phone_sale__phone', 'phone_sale__customer')
 
-        returned_sale_ids = set(phone_returns.values_list('phone_sale_id', flat=True))
-        net_phone_sales_qs = phone_sales_qs.exclude(id__in=returned_sale_ids)
+        # ✅ YANGI USUL
+        net_phone_sales_qs = phone_sales_qs.filter(is_returned=False)
 
         phone_sales_list = list(net_phone_sales_qs)
         accessory_sales_list = list(accessory_sales_qs)
@@ -891,7 +842,6 @@ class ReportCalculator:
             'debt_usd': totals['phone']['debt'] + totals['exchange']['debt'],
         }
 
-        # ✅ TO'LIQ FOYDA
         total_phone_exchange_profit = profits['phone_profit'] + profits['exchange_profit']
         net_total_profit = total_phone_exchange_profit + profits['accessory_profit']
 
@@ -924,7 +874,7 @@ class ReportCalculator:
                 'phone_profit': profits['phone_profit'],
                 'accessory_profit': profits['accessory_profit'],
                 'exchange_profit': profits['exchange_profit'],
-                'total_phone_exchange_profit': total_phone_exchange_profit,  # ✅ YANGI
+                'total_phone_exchange_profit': total_phone_exchange_profit,
                 'total_profit': net_total_profit,
             },
             'profit_margin': profit_margin,
@@ -954,7 +904,6 @@ class ReportCalculator:
         total_exchange_profit = Decimal('0')
         working_days = 0
 
-        # Oylik sonlar
         total_phone_count = 0
         total_accessory_count = 0
         total_exchange_count = 0
@@ -964,19 +913,16 @@ class ReportCalculator:
             monthly_report = self.get_monthly_report(year, month)
             monthly_stats.append(monthly_report)
 
-            # Jami pullar
             total_phone_sales += monthly_report['totals']['phone_sales_usd']
             total_accessory_sales += monthly_report['totals']['accessory_sales_uzs']
             total_phone_cash += monthly_report['totals']['phone_cash_usd']
             total_accessory_cash += monthly_report['totals']['accessory_cash_uzs']
             total_expenses += monthly_report['totals']['expenses']
 
-            # Jami foydalar
             total_phone_profit += monthly_report['profits']['phone_profit']
             total_accessory_profit += monthly_report['profits']['accessory_profit']
             total_exchange_profit += monthly_report['profits']['exchange_profit']
 
-            # Jami sonlar (OYLIK HISOBOTLARDAN)
             total_phone_count += monthly_report['counts']['phone']
             total_accessory_count += monthly_report['counts']['accessory']
             total_exchange_count += monthly_report['counts']['exchange']
@@ -984,7 +930,6 @@ class ReportCalculator:
 
             working_days += monthly_report['period']['working_days']
 
-        # TELEFON + ALMASHTIRISH FOYDA
         total_phone_exchange_profit = total_phone_profit + total_exchange_profit
 
         total_sales = total_phone_sales + total_accessory_sales
@@ -992,7 +937,6 @@ class ReportCalculator:
         if total_sales > 0:
             profit_margin = (total_phone_exchange_profit / total_sales * 100).quantize(Decimal('0.01'))
 
-        # SOF TELEFON SONI (oylik hisobotlardan)
         net_phone_count = total_phone_count + total_exchange_count
 
         return {
@@ -1032,16 +976,14 @@ class ReportCalculator:
             }
         }
 
-
     def get_seller_monthly_salary(self, seller, year, month):
-        """Sotuvchi oylik maoshi - QAYTARISH BU OYGA TA'SIR QILADI"""
+        """Sotuvchi oylik maoshi - ✅ YANGI USUL"""
         from sales.models import PhoneReturn
 
         start_date = date(year, month, 1)
         _, last_day = monthrange(year, month)
         end_date = date(year, month, last_day)
 
-        # KUNLIK MA'LUMOTLAR
         daily_data = []
         current_date = start_date
 
@@ -1062,49 +1004,38 @@ class ReportCalculator:
 
             current_date += timedelta(days=1)
 
-        # BU OYDA SOTILGAN TELEFONLAR
         phone_sales = self.query_helper.get_phone_sales(self.shop, start_date, end_date, seller)
-
-        # AKSESSUAR VA ALMASHTIRISH
         accessory_sales = self.query_helper.get_accessory_sales(self.shop, start_date, end_date, seller)
         exchanges = self.query_helper.get_exchanges(self.shop, start_date, end_date, seller)
 
-        # BU OYDA QAYTARILGAN TELEFONLAR (qachon sotilgani muhim emas!)
         phone_returns = PhoneReturn.objects.filter(
             phone_sale__phone__shop=self.shop,
             phone_sale__salesman=seller,
-            return_date__range=[start_date, end_date]  # ← QAYTARILGAN SANA!
+            return_date__range=[start_date, end_date]
         ).select_related('phone_sale__phone', 'phone_sale')
 
-        # BU OYDA SOTILGAN VA BU OYDA QAYTARILGAN (dublikat oldini olish)
-        returned_sale_ids_this_month = set(phone_returns.filter(
-            phone_sale__sale_date__range=[start_date, end_date]
-        ).values_list('phone_sale_id', flat=True))
+        # ✅ YANGI USUL
+        net_phone_sales = phone_sales.filter(is_returned=False)
 
-        # SOF TELEFON SOTUVLARI (faqat bu oyda sotilgan va qaytarilganlar ayriladi)
-        net_phone_sales = phone_sales.exclude(id__in=returned_sale_ids_this_month)
-
-        # BU OYDA SOTILGAN TELEFON FOYDASI
         phone_profit_from_sales = sum(
             self.profit_calc.calculate_phone_profit(sale)
             for sale in net_phone_sales
         )
 
-        # BU OYDA QAYTARILGAN LEKIN OLDINGI OYDA SOTILGAN TELEFONLAR
-        previous_month_returns = phone_returns.exclude(
+        # ✅ YANGI USUL
+        previous_month_returns = phone_returns.filter(
+            phone_sale__is_returned=True
+        ).exclude(
             phone_sale__sale_date__range=[start_date, end_date]
         )
 
-        # QAYTARILGAN TELEFONLAR UCHUN YO'QOLGAN FOYDA (manfiy)
         phone_profit_loss_from_returns = sum(
             self.profit_calc.calculate_phone_profit(ret.phone_sale)
             for ret in previous_month_returns
         )
 
-        # SOF TELEFON FOYDA = Bu oyda sotilganlar - Oldingi oyda sotilgan qaytarilganlar
         net_phone_profit = phone_profit_from_sales - phone_profit_loss_from_returns
 
-        # AKSESSUAR VA ALMASHTIRISH FOYDASI
         accessory_profit = sum(
             self.profit_calc.calculate_accessory_profit(sale)
             for sale in accessory_sales
@@ -1118,10 +1049,8 @@ class ReportCalculator:
         total_phone_exchange_profit = net_phone_profit + exchange_profit
         total_profit = total_phone_exchange_profit + accessory_profit
 
-        # AGGREGATSIYALAR
         totals = self._calculate_sales_totals(net_phone_sales, accessory_sales, exchanges)
 
-        # KOMISSIYA HISOBLASH (KUN BO'YICHA)
         phone_commission_usd = Decimal('0')
         accessory_commission_uzs = Decimal('0')
         exchange_commission_usd = Decimal('0')
@@ -1139,7 +1068,6 @@ class ReportCalculator:
                     'base_salary_uzs': Decimal('0')
                 }
 
-            # BU KUNDA SOTILGAN TELEFONLAR FOYDASI
             day_phone_sales = net_phone_sales.filter(sale_date=current_date)
             day_phone_profit = sum(
                 self.profit_calc.calculate_phone_profit(sale)
@@ -1147,16 +1075,13 @@ class ReportCalculator:
             )
             phone_commission_usd += (day_phone_profit * rates['phone_rate'] / 100).quantize(Decimal('0.01'))
 
-            # BU KUNDA QAYTARILGAN (oldingi oyda sotilgan) TELEFONLAR
             day_returns = previous_month_returns.filter(return_date=current_date)
             day_return_loss = sum(
                 self.profit_calc.calculate_phone_profit(ret.phone_sale)
                 for ret in day_returns
             )
-            # Komissiyadan ayirish (manfiy)
             phone_commission_usd -= (day_return_loss * rates['phone_rate'] / 100).quantize(Decimal('0.01'))
 
-            # AKSESSUAR
             day_accessory_sales = accessory_sales.filter(sale_date=current_date)
             day_accessory_profit = sum(
                 self.profit_calc.calculate_accessory_profit(sale)
@@ -1164,7 +1089,6 @@ class ReportCalculator:
             )
             accessory_commission_uzs += (day_accessory_profit * rates['accessory_rate'] / 100).quantize(Decimal('0.01'))
 
-            # ALMASHTIRISH
             day_exchanges = exchanges.filter(exchange_date=current_date)
             day_exchange_profit = sum(
                 self.profit_calc.calculate_exchange_profit(exchange)
@@ -1174,7 +1098,6 @@ class ReportCalculator:
 
             current_date += timedelta(days=1)
 
-        # OXIRGI KUN TARIFI
         if hasattr(seller, 'userprofile') and hasattr(seller.userprofile, 'get_commission_rates_for_date'):
             final_rates = seller.userprofile.get_commission_rates_for_date(end_date)
         else:
@@ -1186,7 +1109,6 @@ class ReportCalculator:
                 'base_salary_uzs': Decimal('0')
             }
 
-        # JAMI MAOSH
         total_commission_usd = phone_commission_usd + exchange_commission_usd
         total_salary_usd = final_rates['base_salary_usd'] + total_commission_usd
         total_salary_uzs = final_rates['base_salary_uzs'] + accessory_commission_uzs
@@ -1208,9 +1130,9 @@ class ReportCalculator:
             },
 
             'profits': {
-                'phone_profit': net_phone_profit,  # Qaytarilganlar ayrilgan
-                'phone_profit_from_sales': phone_profit_from_sales,  # Faqat sotilganlar
-                'phone_profit_loss': phone_profit_loss_from_returns,  # Faqat qaytarilganlar
+                'phone_profit': net_phone_profit,
+                'phone_profit_from_sales': phone_profit_from_sales,
+                'phone_profit_loss': phone_profit_loss_from_returns,
                 'accessory_profit': accessory_profit,
                 'exchange_profit': exchange_profit,
                 'total_phone_exchange_profit': total_phone_exchange_profit,

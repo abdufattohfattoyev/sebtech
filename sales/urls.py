@@ -27,6 +27,7 @@ urlpatterns = [
     path('phone-returns/create/', views.phone_return_create, name='phone_return_create'),
     path('phone-returns/<int:pk>/', views.phone_return_detail, name='phone_return_detail'),
     path('phone-returns/<int:pk>/delete/', views.phone_return_delete, name='phone_return_delete'),
+    path('phone-return/<int:pk>/edit/', views.phone_return_edit, name='phone_return_edit'),
 
     # Accessory Sales
     path('accessory-sales/', views.accessory_sale_list, name='accessory_sale_list'),

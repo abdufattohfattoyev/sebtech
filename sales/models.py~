@@ -409,16 +409,20 @@ class PhoneReturn(models.Model):
         if not kwargs.pop('skip_validation', False):
             self.full_clean()
 
+        # ✅ AVVAL PhoneReturn ni saqlash
         super().save(*args, **kwargs)
 
+        # ✅ KEYIN PhoneSale va Phone statusini yangilash
         if self.phone_sale_id:
-            print(f"🔍 Updating PhoneSale {self.phone_sale_id} to is_returned=True")
-            updated = PhoneSale.objects.filter(id=self.phone_sale_id).update(is_returned=True)
-            print(f"✅ Updated {updated} rows")
+            # Direct update ishlatish
+            from sales.models import PhoneSale
+            PhoneSale.objects.filter(id=self.phone_sale_id).update(is_returned=True)
 
-            if self.phone_sale.phone_id:
-                print(f"🔍 Updating Phone {self.phone_sale.phone_id} to status='returned'")
-                Phone.objects.filter(id=self.phone_sale.phone_id).update(status='returned')
+            # Phone statusini ham yangilash
+            phone_sale = PhoneSale.objects.get(id=self.phone_sale_id)
+            if phone_sale.phone_id:
+                from inventory.models import Phone
+                Phone.objects.filter(id=phone_sale.phone_id).update(status='returned')
 
 
 class PhoneExchange(models.Model):

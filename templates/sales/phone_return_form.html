@@ -245,6 +245,12 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     displaySelectedPhoneSale(currentPhoneSaleData);
     elements.imeiSearch.value = currentPhoneSaleData.imei;
+
+    // KRITIK: return_date ni to'g'ri formatda o'rnatish (yyyy-MM-dd)
+    {% if form.instance.return_date %}
+    elements.returnDate.value = "{{ form.instance.return_date|date:'Y-m-d' }}";
+    {% endif %}
+
     calculateReturn();
     {% endif %}
 

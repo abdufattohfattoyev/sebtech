@@ -1039,7 +1039,6 @@ class PhoneReturnForm(forms.ModelForm):
 
         return cleaned_data
 
-
 class DebtForm(forms.ModelForm):
     """Qarz formi"""
     customer_name = forms.CharField(
