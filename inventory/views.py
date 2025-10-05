@@ -986,14 +986,11 @@ def supplier_payment_create(request, supplier_id):
                     payment.created_by = request.user
                     payment.save()
 
-                    # To'lovni telefonlarga tarqatish
                     amount_remaining = payment.amount
 
                     if payment.payment_type == 'general':
-                        # FIFO - eng eski qarzli telefonlardan boshlanadi
                         phones = supplier.get_debt_phones()
                     else:
-                        # Tanlangan telefonlar
                         phones = form.cleaned_data['selected_phones']
 
                     for phone in phones:
@@ -1005,7 +1002,7 @@ def supplier_payment_create(request, supplier_id):
 
                         # Telefon qarzini kamaytirish
                         phone.paid_amount += payment_for_phone
-                        phone.save()  # save() metodida debt_balance va payment_status avtomatik yangilanadi
+                        phone.save()
 
                         # To'lov tafsilotini saqlash
                         SupplierPaymentDetail.objects.create(
@@ -1021,6 +1018,9 @@ def supplier_payment_create(request, supplier_id):
                     # Taminotchining to'langan summasi
                     supplier.total_paid += payment.amount
                     supplier.save(update_fields=['total_paid'])
+
+                    # ✅ BU QATORNI QO'SHING - Taminotchining umumiy qarzini yangilash
+                    supplier.update_total_debt()
 
                     messages.success(
                         request,

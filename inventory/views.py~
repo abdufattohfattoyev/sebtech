@@ -933,8 +933,14 @@ def supplier_detail(request, pk):
     # Qarzda turgan telefonlar
     debt_phones = supplier.get_debt_phones()
 
-    # To'langan telefonlar
-    paid_phones = supplier.get_paid_phones()
+    # To'langan telefonlar (pagination)
+    paid_phones_all = supplier.get_paid_phones()
+
+    # Pagination - har sahifada 20 ta
+    from django.core.paginator import Paginator
+    paginator = Paginator(paid_phones_all, 20)
+    page_number = request.GET.get('page')
+    paid_phones_page = paginator.get_page(page_number)
 
     # To'lov tarixi
     payments = SupplierPayment.objects.filter(
@@ -950,7 +956,8 @@ def supplier_detail(request, pk):
     context = {
         'supplier': supplier,
         'debt_phones': debt_phones,
-        'paid_phones': paid_phones,
+        'paid_phones': paid_phones_page,
+        'paid_phones_total': paid_phones_all.count(),
         'payments': payments,
         'total_phones': total_phones,
         'balance': supplier.balance,

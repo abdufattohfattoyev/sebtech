@@ -15,125 +15,94 @@ def get_current_date():
 
 class Supplier(models.Model):
     """Taminotchi - telefon/aksessuar yetkazib beruvchi tashkilot"""
-    name = models.CharField(
-        max_length=100,
-        verbose_name="Taminotchi nomi"
+    name = models.CharField(max_length=100, verbose_name="Taminotchi nomi")
+    phone_number = models.CharField(max_length=15, verbose_name="Telefon raqami")
+    notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
+    created_at = models.DateField(default=get_current_date, verbose_name="Yaratilgan sana")
+
+    # Qarz maydonlari
+    total_debt = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Umumiy qarz ($)",
+        help_text="Taminotchiga umumiy qarz miqdori"
     )
-    phone_number = models.CharField(
-        max_length=15,
-        verbose_name="Telefon raqami"
-    )
-    notes = models.TextField(
-        null=True,
-        blank=True,
-        verbose_name="Izoh"
-    )
-    created_at = models.DateField(
-        default=get_current_date,
-        verbose_name="Yaratilgan sana"
+    total_paid = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="To'langan ($)",
+        help_text="Taminotchiga to'langan umumiy summa"
     )
 
     class Meta:
         verbose_name = "Taminotchi"
         verbose_name_plural = "Taminotchilar"
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['name'], name='supplier_name_idx'),
-            models.Index(fields=['phone_number'], name='supplier_phone_idx'),
-        ]
+        ordering = ['name']
 
     def __str__(self):
         return f"{self.name} - {self.phone_number}"
 
     @property
-    def total_debt(self):
-        """Umumiy qarz - barcha qarzli telefonlar tan narxi yig'indisi"""
-        from .models import Phone  # Circular import oldini olish
+    def balance(self):
+        """Qoldiq qarz"""
+        return self.total_debt
 
-        debt_sum = Phone.objects.filter(
-            supplier=self,
+    def update_total_debt(self):
+        """Taminotchining umumiy qarzini hisoblash"""
+        total = self.phone_set.filter(
             source_type='supplier',
             payment_status__in=['debt', 'partial']
         ).aggregate(
-            total=Sum('cost_price')
-        )['total'] or Decimal('0')
+            total=Sum('debt_balance', output_field=DecimalField(max_digits=15, decimal_places=2))
+        )['total'] or Decimal('0.00')
 
-        return debt_sum
+        self.total_debt = total
+        self.save(update_fields=['total_debt'])
+        return total
 
-    @property
-    def total_paid(self):
-        """To'langan - barcha to'lovlar yig'indisi"""
-        from .models import SupplierPayment  # Circular import oldini olish
-
-        paid_sum = SupplierPayment.objects.filter(
-            supplier=self
+    def recalculate_debt_and_payments(self):
+        """Taminotchining qarz va to'lovlarini qayta hisoblash"""
+        # 1. Haqiqiy umumiy qarz (barcha qarzda turgan telefonlar)
+        total_debt = self.phone_set.filter(
+            source_type='supplier',
+            payment_status__in=['debt', 'partial']
         ).aggregate(
-            total=Sum('amount')
-        )['total'] or Decimal('0')
+            total=Sum('debt_balance', output_field=DecimalField(max_digits=15, decimal_places=2))
+        )['total'] or Decimal('0.00')
 
-        return paid_sum
+        # 2. Haqiqiy umumiy to'langan (barcha telefonlar bo'yicha)
+        total_paid = self.phone_set.filter(
+            source_type='supplier'
+        ).aggregate(
+            total=Sum('paid_amount', output_field=DecimalField(max_digits=15, decimal_places=2))
+        )['total'] or Decimal('0.00')
 
-    @property
-    def balance(self):
-        """Qoldiq qarz - haqiqiy qarz balans"""
-        debt_sum = self.get_debt_phones().aggregate(
-            total=Sum('debt_balance')
-        )['total'] or Decimal('0')
+        # 3. Yangilash
+        self.total_debt = total_debt
+        self.total_paid = total_paid
+        self.save(update_fields=['total_debt', 'total_paid'])
 
-        return debt_sum
+        return {
+            'total_debt': total_debt,
+            'total_paid': total_paid,
+            'balance': total_debt
+        }
 
     def get_debt_phones(self):
         """Qarzda turgan telefonlar"""
-        from .models import Phone  # Circular import oldini olish
-
-        return Phone.objects.filter(
-            supplier=self,
+        return self.phone_set.filter(
             source_type='supplier',
             payment_status__in=['debt', 'partial']
-        ).select_related(
-            'phone_model',
-            'memory_size'
         ).order_by('created_at')
 
     def get_paid_phones(self):
         """To'langan telefonlar"""
-        from .models import Phone  # Circular import oldini olish
-
-        return Phone.objects.filter(
-            supplier=self,
+        return self.phone_set.filter(
             source_type='supplier',
             payment_status='paid'
-        ).select_related(
-            'phone_model',
-            'memory_size'
         ).order_by('-created_at')
-
-    def get_total_phones_count(self):
-        """Jami telefonlar soni"""
-        from .models import Phone  # Circular import oldini olish
-
-        return Phone.objects.filter(
-            supplier=self,
-            source_type='supplier'
-        ).count()
-
-    def clean(self):
-        """Validatsiya"""
-        super().clean()
-
-        # Telefon raqamini tozalash
-        if self.phone_number:
-            self.phone_number = ''.join(filter(str.isdigit, self.phone_number))
-            if len(self.phone_number) < 9:
-                raise ValidationError({
-                    'phone_number': "Telefon raqami kamida 9 ta raqamdan iborat bo'lishi kerak"
-                })
-
-        # Ismni tekshirish
-        if not self.name or not self.name.strip():
-            raise ValidationError({
-                'name': "Taminotchi nomi kiritilishi shart"
-            })
 
 
 class ExternalSeller(models.Model):
@@ -186,6 +155,7 @@ class PhoneModel(models.Model):
     class Meta:
         verbose_name = "iPhone modeli"
         verbose_name_plural = "iPhone modellari"
+        ordering = ['-created_at']  # Eng yangi birinchi
 
     def __str__(self):
         return self.model_name
@@ -384,8 +354,8 @@ class Phone(models.Model):
     ]
 
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="phones", verbose_name="Do'kon")
-    phone_model = models.ForeignKey(PhoneModel, on_delete=models.CASCADE, verbose_name="iPhone modeli")
-    memory_size = models.ForeignKey(MemorySize, on_delete=models.CASCADE, verbose_name="Xotira hajmi")
+    phone_model = models.ForeignKey('PhoneModel', on_delete=models.CASCADE, verbose_name="iPhone modeli")
+    memory_size = models.ForeignKey('MemorySize', on_delete=models.CASCADE, verbose_name="Xotira hajmi")
     imei = models.CharField(
         max_length=20,
         verbose_name="IMEI",
@@ -463,7 +433,7 @@ class Phone(models.Model):
         verbose_name="Taminotchi"
     )
     external_seller = models.ForeignKey(
-        ExternalSeller,
+        'ExternalSeller',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -471,7 +441,7 @@ class Phone(models.Model):
         related_name="supplied_phones"
     )
     daily_seller = models.ForeignKey(
-        DailySeller,
+        'DailySeller',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -551,6 +521,7 @@ class Phone(models.Model):
         return f"{self.phone_model} {self.memory_size} - IMEI: {self.imei or 'N/A'}"
 
     def save(self, *args, **kwargs):
+        # Cost price hisoblash
         self.cost_price = self.purchase_price + self.imei_cost + self.repair_cost
 
         # Qarz balansini hisoblash
@@ -571,7 +542,28 @@ class Phone(models.Model):
             self.paid_amount = self.cost_price
             self.debt_balance = Decimal('0')
 
+        is_new = self.pk is None
+        old_supplier = None
+        old_debt = Decimal('0')
+
+        # Agar tahrirlash bo'lsa, eski qiymatlarni saqlash
+        if not is_new:
+            try:
+                old_phone = Phone.objects.get(pk=self.pk)
+                old_supplier = old_phone.supplier
+                old_debt = old_phone.debt_balance
+            except Phone.DoesNotExist:
+                pass
+
         super().save(*args, **kwargs)
+
+        # Taminotchining umumiy qarzini yangilash
+        if self.source_type == 'supplier' and self.supplier:
+            self.supplier.update_total_debt()
+
+        # Agar supplier o'zgargan bo'lsa, eski supplier qarzini ham yangilash
+        if old_supplier and old_supplier != self.supplier:
+            old_supplier.update_total_debt()
 
     def clean(self):
         super().clean()

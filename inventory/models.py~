@@ -49,6 +49,19 @@ class Supplier(models.Model):
         """Qoldiq qarz"""
         return self.total_debt - self.total_paid
 
+    def update_total_debt(self):
+        """Taminotchining umumiy qarzini hisoblash"""
+        total = self.phone_set.filter(
+            source_type='supplier',
+            payment_status__in=['debt', 'partial']
+        ).aggregate(
+            total=Sum('debt_balance', output_field=DecimalField(max_digits=15, decimal_places=2))
+        )['total'] or Decimal('0.00')
+
+        self.total_debt = total
+        self.save(update_fields=['total_debt'])
+        return total
+
     def get_debt_phones(self):
         """Qarzda turgan telefonlar"""
         return self.phone_set.filter(
@@ -114,6 +127,7 @@ class PhoneModel(models.Model):
     class Meta:
         verbose_name = "iPhone modeli"
         verbose_name_plural = "iPhone modellari"
+        ordering = ['-created_at']  # Eng yangi birinchi
 
     def __str__(self):
         return self.model_name
@@ -312,8 +326,8 @@ class Phone(models.Model):
     ]
 
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="phones", verbose_name="Do'kon")
-    phone_model = models.ForeignKey(PhoneModel, on_delete=models.CASCADE, verbose_name="iPhone modeli")
-    memory_size = models.ForeignKey(MemorySize, on_delete=models.CASCADE, verbose_name="Xotira hajmi")
+    phone_model = models.ForeignKey('PhoneModel', on_delete=models.CASCADE, verbose_name="iPhone modeli")
+    memory_size = models.ForeignKey('MemorySize', on_delete=models.CASCADE, verbose_name="Xotira hajmi")
     imei = models.CharField(
         max_length=20,
         verbose_name="IMEI",
@@ -391,7 +405,7 @@ class Phone(models.Model):
         verbose_name="Taminotchi"
     )
     external_seller = models.ForeignKey(
-        ExternalSeller,
+        'ExternalSeller',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -399,7 +413,7 @@ class Phone(models.Model):
         related_name="supplied_phones"
     )
     daily_seller = models.ForeignKey(
-        DailySeller,
+        'DailySeller',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -479,6 +493,7 @@ class Phone(models.Model):
         return f"{self.phone_model} {self.memory_size} - IMEI: {self.imei or 'N/A'}"
 
     def save(self, *args, **kwargs):
+        # Cost price hisoblash
         self.cost_price = self.purchase_price + self.imei_cost + self.repair_cost
 
         # Qarz balansini hisoblash
@@ -499,7 +514,28 @@ class Phone(models.Model):
             self.paid_amount = self.cost_price
             self.debt_balance = Decimal('0')
 
+        is_new = self.pk is None
+        old_supplier = None
+        old_debt = Decimal('0')
+
+        # Agar tahrirlash bo'lsa, eski qiymatlarni saqlash
+        if not is_new:
+            try:
+                old_phone = Phone.objects.get(pk=self.pk)
+                old_supplier = old_phone.supplier
+                old_debt = old_phone.debt_balance
+            except Phone.DoesNotExist:
+                pass
+
         super().save(*args, **kwargs)
+
+        # Taminotchining umumiy qarzini yangilash
+        if self.source_type == 'supplier' and self.supplier:
+            self.supplier.update_total_debt()
+
+        # Agar supplier o'zgargan bo'lsa, eski supplier qarzini ham yangilash
+        if old_supplier and old_supplier != self.supplier:
+            old_supplier.update_total_debt()
 
     def clean(self):
         super().clean()
