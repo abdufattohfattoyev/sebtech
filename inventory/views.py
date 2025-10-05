@@ -78,10 +78,11 @@ def dashboard(request):
     total_phone_count = 0
     total_accessory_count = 0
     total_supplier_debt = Decimal('0.00')
-    total_our_money = Decimal('0.00')  # ✅ YANGI
+    total_our_money = Decimal('0.00')
     shop_stats = []
 
     for shop in shops:
+        # ✅ Faqat ko'rsatish uchun filtrlangan telefonlar
         phones = shop.phones.filter(status__in=['shop', 'master', 'returned'])
 
         if status_filter:
@@ -98,8 +99,8 @@ def dashboard(request):
             total=Sum(F('purchase_price') * F('quantity'), output_field=DecimalField(max_digits=15, decimal_places=2))
         )['total'] or Decimal('0.00')
 
-        # Do'kondagi telefonlarning taminotchilar qarzi
-        shop_supplier_debt = phones.filter(
+        # ✅ MUHIM: BARCHA telefonlar uchun taminotchilar qarzi (status filtrsiz!)
+        shop_supplier_debt = shop.phones.filter(
             source_type='supplier',
             payment_status__in=['debt', 'partial']
         ).aggregate(
@@ -114,7 +115,7 @@ def dashboard(request):
         total_phone_value += phone_cost_sum
         total_accessory_value += accessory_cost_sum
         total_supplier_debt += shop_supplier_debt
-        total_our_money += our_money  # ✅ YANGI
+        total_our_money += our_money
 
         shop_stats.append({
             'shop': shop,
@@ -143,7 +144,7 @@ def dashboard(request):
         'total_accessory_value': total_accessory_value,
         'total_shops': shops.count(),
         'total_supplier_debt': total_supplier_debt,
-        'total_our_money': total_our_money,  # ✅ YANGI
+        'total_our_money': total_our_money,
         'status_filter': status_filter,
         'status_choices': Phone.STATUS_CHOICES,
         'phones_in_shop': phones_in_shop,

@@ -77,7 +77,8 @@ def dashboard(request):
     total_accessory_value = Decimal('0.00')
     total_phone_count = 0
     total_accessory_count = 0
-    total_supplier_debt = Decimal('0.00')  # ✅ YANGI - Umumiy taminotchilar qarzi
+    total_supplier_debt = Decimal('0.00')
+    total_our_money = Decimal('0.00')  # ✅ YANGI
     shop_stats = []
 
     for shop in shops:
@@ -97,7 +98,7 @@ def dashboard(request):
             total=Sum(F('purchase_price') * F('quantity'), output_field=DecimalField(max_digits=15, decimal_places=2))
         )['total'] or Decimal('0.00')
 
-        # ✅ YANGI - Do'kondagi telefonlarning taminotchilar qarzi
+        # Do'kondagi telefonlarning taminotchilar qarzi
         shop_supplier_debt = phones.filter(
             source_type='supplier',
             payment_status__in=['debt', 'partial']
@@ -105,14 +106,15 @@ def dashboard(request):
             total=Sum('debt_balance', output_field=DecimalField(max_digits=15, decimal_places=2))
         )['total'] or Decimal('0.00')
 
-        # ✅ YANGI - Hisob pulimiz = Telefonlar qiymati - Taminotchilar qarzi
+        # Hisob pulimiz = Telefonlar qiymati - Taminotchilar qarzi
         our_money = phone_cost_sum - shop_supplier_debt
 
         total_phone_count += phone_count
         total_accessory_count += accessory_count
         total_phone_value += phone_cost_sum
         total_accessory_value += accessory_cost_sum
-        total_supplier_debt += shop_supplier_debt  # ✅ YANGI
+        total_supplier_debt += shop_supplier_debt
+        total_our_money += our_money  # ✅ YANGI
 
         shop_stats.append({
             'shop': shop,
@@ -121,8 +123,8 @@ def dashboard(request):
             'phone_cost_value': phone_cost_sum,
             'accessory_cost_value': accessory_cost_sum,
             'total_value': phone_cost_sum + accessory_cost_sum,
-            'supplier_debt': shop_supplier_debt,  # ✅ YANGI
-            'our_money': our_money,  # ✅ YANGI
+            'supplier_debt': shop_supplier_debt,
+            'our_money': our_money,
         })
 
     all_phones = Phone.objects.filter(shop__in=shops)
@@ -140,7 +142,8 @@ def dashboard(request):
         'total_phone_value': total_phone_value,
         'total_accessory_value': total_accessory_value,
         'total_shops': shops.count(),
-        'total_supplier_debt': total_supplier_debt,  # ✅ YANGI
+        'total_supplier_debt': total_supplier_debt,
+        'total_our_money': total_our_money,  # ✅ YANGI
         'status_filter': status_filter,
         'status_choices': Phone.STATUS_CHOICES,
         'phones_in_shop': phones_in_shop,
