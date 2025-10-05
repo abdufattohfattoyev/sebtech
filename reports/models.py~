@@ -372,7 +372,7 @@ class ReportCalculator:
         # UMUMIY KIRIM = oddiy kirimlar + olingan telefon
         total_usd_income = usd_income + old_phone_value
 
-        # USD CHIQIM - BARCHA CHIQIMLAR (olingan telefon ham!)
+        # USD CHIQIM - BARCHA CHIQIMLAR (olingan telefon CHIQARILGAN)
         usd_expense_without_old_phone = abs(
             transactions.filter(
                 amount_usd__lt=0

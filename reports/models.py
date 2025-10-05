@@ -662,10 +662,10 @@ class ReportCalculator:
             sale_date__range=[start_date, end_date]
         ).select_related('phone', 'customer', 'salesman')
 
-        # BU OYDA QAYTARILGAN TELEFONLAR (qachon sotilgani muhim emas!)
+        # BU OYDA QAYTARILGAN TELEFONLAR
         phone_returns = PhoneReturn.objects.filter(
             phone_sale__phone__shop=self.shop,
-            return_date__range=[start_date, end_date]  # ← QAYTARILGAN SANA!
+            return_date__range=[start_date, end_date]
         ).select_related('phone_sale__phone', 'phone_sale')
 
         # BU OYDA SOTILGAN VA BU OYDA QAYTARILGAN (dublikat oldini olish)
@@ -673,7 +673,7 @@ class ReportCalculator:
             phone_sale__sale_date__range=[start_date, end_date]
         ).values_list('phone_sale_id', flat=True))
 
-        # SOF TELEFON SOTUVLARI (faqat bu oyda sotilgan va qaytarilganlar ayriladi)
+        # SOF TELEFON SOTUVLARI
         net_phone_sales = all_phone_sales.exclude(id__in=returned_sale_ids_this_month)
 
         # BU OYDA QAYTARILGAN LEKIN OLDINGI OYDA SOTILGAN
@@ -715,6 +715,7 @@ class ReportCalculator:
         # ALMASHTIRISH AGGREGATSIYALAR
         exchange_totals = exchanges.aggregate(
             total=Sum('new_phone_price'),
+            old_phone_value=Sum('old_phone_accepted_price'),  # ✅ QO'SHISH
             count=Count('id'),
             cash=Sum('cash_amount'),
             card=Sum('card_amount'),
@@ -757,8 +758,14 @@ class ReportCalculator:
         # JAMI SONLAR (SOF)
         total_phone_sales_usd = (phone_totals.get('total') or Decimal('0')) + (
                 exchange_totals.get('total') or Decimal('0'))
-        total_phone_cash_usd = (phone_totals.get('cash') or Decimal('0')) + (
-                exchange_totals.get('cash') or Decimal('0'))
+
+        # ✅ NAQD = Telefon + Almashtirish + Olingan telefon
+        total_phone_cash_usd = (
+                (phone_totals.get('cash') or Decimal('0')) +
+                (exchange_totals.get('cash') or Decimal('0')) +
+                (exchange_totals.get('old_phone_value') or Decimal('0'))  # ✅ QO'SHISH
+        )
+
         total_phone_card_usd = (phone_totals.get('card') or Decimal('0')) + (
                 exchange_totals.get('card') or Decimal('0'))
         total_phone_debt_usd = (phone_totals.get('debt') or Decimal('0')) + (
@@ -793,7 +800,7 @@ class ReportCalculator:
             'daily_stats': daily_stats,
             'totals': {
                 'phone_sales_usd': total_phone_sales_usd,
-                'phone_cash_usd': total_phone_cash_usd,
+                'phone_cash_usd': total_phone_cash_usd,  # ✅ TO'G'RILANGAN
                 'phone_card_usd': total_phone_card_usd,
                 'phone_debt_usd': total_phone_debt_usd,
                 'phone_credit_usd': total_phone_credit_usd,
@@ -812,8 +819,8 @@ class ReportCalculator:
             },
             'profits': {
                 'phone_profit': net_phone_profit,
-                'phone_profit_from_sales': phone_profit_from_sales,  # Yangi
-                'phone_profit_loss': phone_profit_loss_from_returns,  # Yangi
+                'phone_profit_from_sales': phone_profit_from_sales,
+                'phone_profit_loss': phone_profit_loss_from_returns,
                 'accessory_profit': accessory_profit,
                 'exchange_profit': exchange_profit,
                 'total_phone_exchange_profit': total_phone_exchange_profit,
@@ -829,8 +836,8 @@ class ReportCalculator:
                 'accessory': accessory_totals.get('count') or 0,
                 'exchange': exchange_totals.get('count') or 0,
                 'returns': phone_returns.count(),
-                'returns_this_month': len(returned_sale_ids_this_month),  # Yangi
-                'returns_previous_months': previous_month_returns.count(),  # Yangi
+                'returns_this_month': len(returned_sale_ids_this_month),
+                'returns_previous_months': previous_month_returns.count(),
                 'net_phone': net_phone_count,
                 'total': net_phone_count + (accessory_totals.get('count') or 0)
             }
