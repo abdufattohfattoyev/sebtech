@@ -1,397 +1,170 @@
 {% extends 'base.html' %}
-{% load static %}
 
-{% block title %}{% if is_edit %}Aksessuar Tahrirlash{% else %}Yangi Aksessuar{% endif %}{% endblock %}
+{% block page_title %}
+    {% if is_edit %}Aksessuar Tahrirlash{% else %}Yangi Aksessuar{% endif %}
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Messages -->
+<div class="fade-in">
     {% if messages %}
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         {% endfor %}
     {% endif %}
 
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h4 class="mb-0">
-                                <i class="fas fa-headphones me-2"></i>
-                                {% if is_edit %}Aksessuar Tahrirlash{% else %}Yangi Aksessuar Qo'shish{% endif %}
-                            </h4>
-                            <small class="text-muted">
-                                {% if is_edit %}
-                                    Kod: {{ accessory.code }} | Mavjud: {{ accessory.quantity }} dona
-                                {% else %}
-                                    Aksessuar ma'lumotlarini kiriting
-                                {% endif %}
-                            </small>
-                        </div>
-                        <a href="{% url 'inventory:accessory_list' %}" class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left me-1"></i>Ortga
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-headphones me-2"></i>
+            {% if is_edit %}Aksessuar Tahrirlash{% else %}Yangi Aksessuar{% endif %}
+        </h2>
+        <a href="{% url 'inventory:accessory_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Orqaga
+        </a>
     </div>
 
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <form method="post" enctype="multipart/form-data" novalidate>
+    <div class="card">
+        <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
 
-                <!-- Non-field Errors -->
-                {% if form.non_field_errors %}
-                    <div class="alert alert-danger alert-dismissible fade show">
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        <ul class="mb-0">
-                            {% for error in form.non_field_errors %}
-                                <li>{{ error }}</li>
-                            {% endfor %}
-                        </ul>
+                <div class="row g-3">
+                    <!-- Do'kon -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Do'kon <span class="text-danger">*</span></label>
+                        {{ form.shop }}
+                        {% if form.shop.errors %}<div class="text-danger small">{{ form.shop.errors.0 }}</div>{% endif %}
                     </div>
-                {% endif %}
 
-                <!-- Asosiy Ma'lumotlar -->
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h6 class="mb-0">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Asosiy Ma'lumotlar
-                        </h6>
+                    {% if not is_edit %}
+                    <!-- Mavjud Kod (faqat yangi yaratishda) -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Mavjud Kod (ixtiyoriy)</label>
+                        {{ form.existing_code }}
+                        {% if form.existing_code.errors %}<div class="text-danger small">{{ form.existing_code.errors.0 }}</div>{% endif %}
+                        <div class="form-text">Mavjud aksessuar ustiga qo'shish uchun kodini kiriting</div>
                     </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <!-- Do'kon -->
-                            <div class="col-md-6">
-                                <label for="{{ form.shop.id_for_label }}" class="form-label fw-bold">
-                                    Do'kon <span class="text-danger">*</span>
-                                </label>
-                                {{ form.shop }}
-                                {% if form.shop.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.shop.errors %}
-                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                            </div>
+                    {% else %}
+                    <!-- Kod (tahrirlashda) -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Kod</label>
+                        <input type="text" class="form-control" value="{{ accessory.code }}" disabled>
+                        <div class="form-text">Kod o'zgartirib bo'lmaydi</div>
+                    </div>
+                    {% endif %}
 
-                            <!-- Mavjud Kod / Kod ko'rsatish -->
-                            {% if not is_edit %}
-                            <div class="col-md-6">
-                                <label for="{{ form.existing_code.id_for_label }}" class="form-label fw-bold">
-                                    Mavjud Aksessuar Kodi (ixtiyoriy)
-                                </label>
-                                {{ form.existing_code }}
-                                {% if form.existing_code.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.existing_code.errors %}
-                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                                <div class="form-text">
-                                    <i class="fas fa-info-circle"></i>
-                                    Mavjud aksessuar ustiga qo'shish uchun kodini kiriting
-                                </div>
-                            </div>
-                            {% else %}
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Aksessuar Kodi</label>
-                                <input type="text" class="form-control" value="{{ accessory.code }}" disabled>
-                                <div class="form-text text-muted">Kod o'zgartirib bo'lmaydi</div>
-                            </div>
-                            {% endif %}
+                    <!-- Nomi -->
+                    <div class="col-md-{% if is_edit %}6{% else %}12{% endif %}">
+                        <label class="form-label fw-bold">Nomi <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors.0 }}</div>{% endif %}
+                    </div>
 
-                            <!-- Nomi -->
-                            <div class="col-md-{% if is_edit %}6{% else %}12{% endif %}">
-                                <label for="{{ form.name.id_for_label }}" class="form-label fw-bold">
-                                    Aksessuar Nomi <span class="text-danger">*</span>
-                                </label>
-                                {{ form.name }}
-                                {% if form.name.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.name.errors %}
-                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                                <div class="form-text">Aksessuarning to'liq nomi (masalan: AirPods Pro 2)</div>
-                            </div>
+                    {% if not is_edit %}
+                    <!-- Kod (yangi yaratishda) -->
+                    <div class="col-md-6" id="code-field">
+                        <label class="form-label fw-bold">Kod (ixtiyoriy)</label>
+                        {{ form.code }}
+                        {% if form.code.errors %}<div class="text-danger small">{{ form.code.errors.0 }}</div>{% endif %}
+                        <div class="form-text">Bo'sh qoldirilsa avtomatik beriladi</div>
+                    </div>
 
-                            <!-- Yangi Kod (faqat yaratishda) -->
-                            {% if not is_edit %}
-                            <div class="col-md-6" id="code-field">
-                                <label for="{{ form.code.id_for_label }}" class="form-label fw-bold">
-                                    Yangi Kod (ixtiyoriy)
-                                </label>
-                                {{ form.code }}
-                                {% if form.code.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.code.errors %}
-                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                                <div class="form-text">Bo'sh qoldirilsa avtomatik kod beriladi</div>
-                            </div>
-                            {% endif %}
+                    <!-- Taminotchi -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Taminotchi</label>
+                        {{ form.supplier }}
+                        {% if form.supplier.errors %}<div class="text-danger small">{{ form.supplier.errors.0 }}</div>{% endif %}
+                    </div>
+                    {% else %}
+                    <!-- Taminotchi (tahrirlashda) -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Taminotchi</label>
+                        {{ form.supplier }}
+                        {% if form.supplier.errors %}<div class="text-danger small">{{ form.supplier.errors.0 }}</div>{% endif %}
+                    </div>
+                    {% endif %}
 
-                            <!-- Taminotchi -->
-                            <div class="col-md-6">
-                                <label for="{{ form.supplier.id_for_label }}" class="form-label fw-bold">
-                                    Taminotchi
-                                </label>
-                                {{ form.supplier }}
-                                {% if form.supplier.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.supplier.errors %}
-                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                                <div class="form-text">Aksessuarni yetkazib bergan taminotchi (ixtiyoriy)</div>
-                            </div>
+                    {% if not is_edit %}
+                    <!-- YANGI YARATISH - 3 TA MAYDON -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">
+                            Tannarx (so'm) <span class="text-danger">*</span>
+                        </label>
+                        {{ form.purchase_price }}
+                        {% if form.purchase_price.errors %}<div class="text-danger small">{{ form.purchase_price.errors.0 }}</div>{% endif %}
+                        <div class="form-text">Mingga yaxlitlanadi</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">
+                            Soni <span class="text-danger">*</span>
+                        </label>
+                        {{ form.quantity }}
+                        {% if form.quantity.errors %}<div class="text-danger small">{{ form.quantity.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">
+                            Sotish Narxi (so'm) <span class="text-danger">*</span>
+                        </label>
+                        {{ form.sale_price }}
+                        {% if form.sale_price.errors %}<div class="text-danger small">{{ form.sale_price.errors.0 }}</div>{% endif %}
+                        <div class="form-text">Mingga yaxlitlanadi</div>
+                    </div>
+
+                    {% else %}
+                    <!-- TAHRIRLASH - FAQAT SOTISH NARXI -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Hozirgi Tannarx</label>
+                        <input type="text" class="form-control" value="{{ accessory.purchase_price|floatformat:0 }} so'm" disabled>
+                        <div class="form-text text-muted">O'rtacha tannarx</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Hozirgi Soni</label>
+                        <input type="text" class="form-control" value="{{ accessory.quantity }} dona" disabled>
+                        <div class="form-text text-muted">
+                            <a href="{% url 'inventory:accessory_add_quantity' accessory.pk %}" class="text-decoration-none">
+                                <i class="fas fa-plus-circle"></i> Qo'shish
+                            </a>
                         </div>
                     </div>
-                </div>
 
-                <!-- Narx va Miqdor Ma'lumotlari -->
-                <div class="card mb-4">
-                    <div class="card-header bg-success text-white">
-                        <h6 class="mb-0">
-                            <i class="fas fa-money-bill-wave me-2"></i>
-                            Narx va Miqdor Ma'lumotlari
-                        </h6>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">
+                            Sotish Narxi (so'm) <span class="text-danger">*</span>
+                        </label>
+                        {{ form.sale_price }}
+                        {% if form.sale_price.errors %}<div class="text-danger small">{{ form.sale_price.errors.0 }}</div>{% endif %}
+                        <div class="form-text">Mingga yaxlitlanadi</div>
                     </div>
-                    <div class="card-body">
-                        {% if not is_edit %}
-                        <!-- YANGI YARATISH UCHUN -->
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Eslatma:</strong> Barcha narxlar avtomatik ravishda mingga yaxlitlanadi. Masalan: 101,300 so'm → 101,000 so'm
-                        </div>
+                    {% endif %}
 
-                        <div class="row g-3">
-                            <!-- Tannarx -->
-                            <div class="col-md-4">
-                                <label for="{{ form.purchase_price.id_for_label }}" class="form-label fw-bold">
-                                    Tannarx (so'm) <span class="text-danger">*</span>
-                                </label>
-                                {{ form.purchase_price }}
-                                {% if form.purchase_price.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.purchase_price.errors %}
-                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                                <div class="form-text">Sotib olingan narx (mingga yaxlitlanadi)</div>
+                    <!-- Rasm -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Rasm</label>
+                        {% if is_edit and accessory.image %}
+                            <div class="mb-2">
+                                <img src="{{ accessory.image.url }}" class="rounded" style="max-height: 120px;" alt="{{ accessory.name }}">
                             </div>
-
-                            <!-- Soni -->
-                            <div class="col-md-4">
-                                <label for="{{ form.quantity.id_for_label }}" class="form-label fw-bold">
-                                    Soni (dona) <span class="text-danger">*</span>
-                                </label>
-                                {{ form.quantity }}
-                                {% if form.quantity.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.quantity.errors %}
-                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                                <div class="form-text">Qo'shiladigan aksessuarlar soni</div>
-                            </div>
-
-                            <!-- Sotish narxi -->
-                            <div class="col-md-4">
-                                <label for="{{ form.sale_price.id_for_label }}" class="form-label fw-bold">
-                                    Sotish Narxi (so'm) <span class="text-danger">*</span>
-                                </label>
-                                {{ form.sale_price }}
-                                {% if form.sale_price.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.sale_price.errors %}
-                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                                <div class="form-text">Mijozga sotish narxi (mingga yaxlitlanadi)</div>
-                            </div>
-                        </div>
-
-                        {% else %}
-                        <!-- TAHRIRLASH UCHUN -->
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Diqqat:</strong> Tahrirlashda faqat sotish narxini o'zgartirish mumkin. Soni qo'shish uchun
-                            <a href="{% url 'inventory:accessory_add_quantity' accessory.pk %}" class="alert-link">
-                                "Soni qo'shish"
-                            </a> bo'limiga o'ting.
-                        </div>
-
-                        <div class="row g-3">
-                            <!-- Hozirgi Tannarx (o'qish uchun) -->
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Hozirgi O'rtacha Tannarx</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control"
-                                           value="{{ accessory.purchase_price|floatformat:0 }}" disabled>
-                                    <span class="input-group-text">so'm</span>
-                                </div>
-                                <div class="form-text text-muted">
-                                    <i class="fas fa-calculator"></i> O'rtacha tannarx
-                                </div>
-                            </div>
-
-                            <!-- Hozirgi Soni (o'qish uchun) -->
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Hozirgi Mavjud Soni</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control"
-                                           value="{{ accessory.quantity }}" disabled>
-                                    <span class="input-group-text">dona</span>
-                                </div>
-                                <div class="form-text">
-                                    <a href="{% url 'inventory:accessory_add_quantity' accessory.pk %}"
-                                       class="text-decoration-none">
-                                        <i class="fas fa-plus-circle"></i> Soni qo'shish
-                                    </a>
-                                </div>
-                            </div>
-
-                            <!-- Yangi Sotish Narxi -->
-                            <div class="col-md-4">
-                                <label for="{{ form.sale_price.id_for_label }}" class="form-label fw-bold">
-                                    Sotish Narxi (so'm) <span class="text-danger">*</span>
-                                </label>
-                                {{ form.sale_price }}
-                                {% if form.sale_price.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.sale_price.errors %}
-                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                                <div class="form-text">Yangi sotish narxi (mingga yaxlitlanadi)</div>
-                            </div>
-                        </div>
-
-                        <!-- Tarix Statistikasi (tahrirlashda) -->
-                        {% if accessory.purchase_history.exists %}
-                        <div class="mt-4">
-                            <h6 class="mb-3">
-                                <i class="fas fa-history me-2"></i>
-                                Xarid Tarixi (oxirgi 5 ta)
-                            </h6>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Sana</th>
-                                            <th>Soni</th>
-                                            <th>Tannarx</th>
-                                            <th>Kim qo'shdi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for history in accessory.purchase_history.all|slice:":5" %}
-                                        <tr>
-                                            <td>{{ history.created_at|date:"d.m.Y H:i" }}</td>
-                                            <td>{{ history.quantity }} dona</td>
-                                            <td>{{ history.purchase_price|floatformat:0 }} so'm</td>
-                                            <td>{{ history.created_by.username }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
                         {% endif %}
-                        {% endif %}
+                        {{ form.image }}
+                        {% if form.image.errors %}<div class="text-danger small">{{ form.image.errors.0 }}</div>{% endif %}
                     </div>
-                </div>
 
-                <!-- Rasm -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="fas fa-image me-2"></i>
-                            Aksessuar Rasmi
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                {% if is_edit and accessory.image %}
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold">Hozirgi Rasm:</label>
-                                        <div>
-                                            <img src="{{ accessory.image.url }}"
-                                                 class="img-fluid rounded"
-                                                 style="max-height: 200px;"
-                                                 alt="{{ accessory.name }}">
-                                        </div>
-                                    </div>
-                                {% elif not is_edit %}
-                                    <div class="bg-light rounded d-flex align-items-center justify-content-center"
-                                         style="height: 200px;">
-                                        <i class="fas fa-headphones fa-4x text-muted"></i>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-6">
-                                <label for="{{ form.image.id_for_label }}" class="form-label fw-bold">
-                                    {% if is_edit %}Yangi Rasm Yuklash{% else %}Rasm Yuklash{% endif %}
-                                </label>
-                                {{ form.image }}
-                                {% if form.image.errors %}
-                                    <div class="text-danger small mt-1">
-                                        {% for error in form.image.errors %}
-                                            <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                                <div class="form-text mt-2">
-                                    <i class="fas fa-info-circle"></i>
-                                    JPG, PNG yoki WEBP formatda (ixtiyoriy)
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tugmalar -->
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
+                    <!-- Tugmalar -->
+                    <div class="col-12 mt-4">
+                        <hr>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-1"></i>
+                                {% if is_edit %}Yangilash{% else %}Saqlash{% endif %}
+                            </button>
                             <a href="{% url 'inventory:accessory_list' %}" class="btn btn-secondary">
                                 <i class="fas fa-times me-1"></i>Bekor Qilish
                             </a>
-                            <div class="d-flex gap-2">
-                                {% if is_edit %}
-                                <a href="{% url 'inventory:accessory_add_quantity' accessory.pk %}"
-                                   class="btn btn-info">
-                                    <i class="fas fa-plus-circle me-1"></i>Soni Qo'shish
-                                </a>
-                                {% endif %}
-                                <button type="submit" class="btn btn-success btn-lg">
-                                    <i class="fas fa-save me-1"></i>
-                                    {% if is_edit %}Yangilash{% else %}Saqlash{% endif %}
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -400,82 +173,22 @@
     </div>
 </div>
 
-<style>
-.form-label.fw-bold {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.card-header h6 {
-    font-weight: 600;
-}
-
-.form-control:focus,
-.form-select:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-}
-
-.is-invalid {
-    border-color: #dc3545 !important;
-}
-
-.input-group-text {
-    background-color: #e9ecef;
-}
-</style>
-
 <script>
+// Mavjud kod kiritilganda, yangi kod maydonini yashirish
 {% if not is_edit %}
-// Mavjud kod kiritilganda, yangi kod maydonini yashirish/ko'rsatish
 document.addEventListener('DOMContentLoaded', function() {
-    const existingCodeInput = document.querySelector('input[name="existing_code"]');
+    const existingCodeInput = document.getElementById('existing_code_input');
     const codeField = document.getElementById('code-field');
 
     if (existingCodeInput && codeField) {
-        // Boshlang'ich holatni tekshirish
-        toggleCodeField();
-
-        // Input o'zgarganda
-        existingCodeInput.addEventListener('input', toggleCodeField);
-
-        function toggleCodeField() {
-            if (existingCodeInput.value.trim()) {
+        existingCodeInput.addEventListener('input', function() {
+            if (this.value.trim()) {
                 codeField.style.display = 'none';
-                // Yangi kod maydonini tozalash
-                const codeInput = codeField.querySelector('input[name="code"]');
-                if (codeInput) codeInput.value = '';
             } else {
                 codeField.style.display = 'block';
             }
-        }
-    }
-
-    // Narxlarni formatlashtirish (mingga yaxlitlash haqida ko'rsatkich)
-    const priceInputs = document.querySelectorAll('input[name="purchase_price"], input[name="sale_price"]');
-
-    priceInputs.forEach(input => {
-        input.addEventListener('blur', function() {
-            if (this.value) {
-                const value = parseFloat(this.value);
-                if (!isNaN(value)) {
-                    const rounded = Math.floor(value / 1000) * 1000;
-                    if (value !== rounded) {
-                        this.value = rounded;
-                        // Foydalanuvchiga xabar berish
-                        const helpText = this.nextElementSibling;
-                        if (helpText && helpText.classList.contains('form-text')) {
-                            const originalText = helpText.textContent;
-                            helpText.innerHTML = '<i class="fas fa-check-circle text-success"></i> Mingga yaxlitlandi: ' + rounded.toLocaleString('uz-UZ') + ' so\'m';
-                            setTimeout(() => {
-                                helpText.textContent = originalText;
-                            }, 3000);
-                        }
-                    }
-                }
-            }
         });
-    });
+    }
 });
 {% endif %}
 </script>
