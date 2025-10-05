@@ -357,31 +357,34 @@ class ReportCalculator:
             transaction_date=target_date
         )
 
-        # USD KIRIM - BARCHA KIRIMLAR (olingan telefon ham kirim!)
+        # USD KIRIM
         usd_income = transactions.filter(
             amount_usd__gt=0
         ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
 
-        # OLINGAN TELEFON QIYMATINI QO'SHISH (manfiy bo'lgani uchun)
+        # OLINGAN TELEFON QIYMATI (absolute qiymat)
         old_phone_value = abs(
             transactions.filter(
                 transaction_type='exchange_old_phone_value'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        # UMUMIY KIRIM = kirimlar + olingan telefon qiymati
+        # UMUMIY KIRIM = oddiy kirimlar + olingan telefon
         total_usd_income = usd_income + old_phone_value
 
-        # USD CHIQIM - faqat real chiqimlar (olingan telefon emas!)
-        usd_expense = abs(
+        # USD CHIQIM - BARCHA CHIQIMLAR (olingan telefon ham!)
+        usd_expense_without_old_phone = abs(
             transactions.filter(
                 amount_usd__lt=0
             ).exclude(
-                transaction_type='exchange_old_phone_value'  # Bu chiqim emas!
+                transaction_type='exchange_old_phone_value'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        # UZS KIRIM/CHIQIM
+        # UMUMIY CHIQIM = boshqa chiqimlar + olingan telefon
+        total_usd_expense = usd_expense_without_old_phone + old_phone_value
+
+        # UZS
         uzs_income = transactions.filter(
             amount_uzs__gt=0
         ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
@@ -392,9 +395,7 @@ class ReportCalculator:
             ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
         )
 
-        # TAFSILOTLAR
         details = {
-            # KIRIMLAR
             'phone_sales': transactions.filter(
                 transaction_type='phone_sale'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0'),
@@ -407,13 +408,12 @@ class ReportCalculator:
                 transaction_type='exchange_income'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0'),
 
-            'exchange_old_phone_value': old_phone_value,  # Ma'lumot uchun
+            'exchange_old_phone_value': old_phone_value,
 
             'exchange_equal': transactions.filter(
                 transaction_type='exchange_equal'
             ).count(),
 
-            # CHIQIMLAR
             'daily_seller_payments': abs(
                 transactions.filter(
                     transaction_type='daily_seller_payment'
@@ -441,9 +441,9 @@ class ReportCalculator:
 
         return {
             'usd': {
-                'income': total_usd_income,  # ← 14,166
-                'expense': usd_expense,  # ← 5,470
-                'net': total_usd_income - usd_expense  # ← 8,696
+                'income': total_usd_income,  # $14,166
+                'expense': total_usd_expense,  # $5,470 ($3,100 + $2,370)
+                'net': total_usd_income - total_usd_expense  # $8,696
             },
             'uzs': {
                 'income': uzs_income,
