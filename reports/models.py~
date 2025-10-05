@@ -399,6 +399,181 @@ class ReportCalculator:
             'transactions': transactions
         }
 
+    def get_daily_report(self, target_date=None):
+        """Kunlik hisobot - BARCHA SOTUVCHILAR UCHUN"""
+        if not target_date:
+            target_date = timezone.now().date()
+
+        from sales.models import PhoneSale, AccessorySale, PhoneExchange, PhoneReturn, Expense
+
+        # BU KUNDA SOTILGAN TELEFONLAR
+        phone_sales = PhoneSale.objects.filter(
+            phone__shop=self.shop,
+            sale_date=target_date
+        ).select_related('phone', 'customer', 'salesman')
+
+        # BU KUNDA SOTILGAN AKSESSUARLAR
+        accessory_sales = AccessorySale.objects.filter(
+            accessory__shop=self.shop,
+            sale_date=target_date
+        ).select_related('accessory', 'customer', 'salesman')
+
+        # BU KUNDA BO'LGAN ALMASHTIRISHLAR
+        exchanges = PhoneExchange.objects.filter(
+            new_phone__shop=self.shop,
+            exchange_date=target_date
+        ).select_related('new_phone', 'salesman')
+
+        # BU KUNDA QAYTARILGAN TELEFONLAR
+        phone_returns = PhoneReturn.objects.filter(
+            phone_sale__phone__shop=self.shop,
+            return_date=target_date
+        ).select_related('phone_sale__phone', 'phone_sale')
+
+        # BU KUNDA SOTILGAN VA BU KUNDA QAYTARILGAN (dublikat oldini olish)
+        returned_sale_ids_today = set(phone_returns.filter(
+            phone_sale__sale_date=target_date
+        ).values_list('phone_sale_id', flat=True))
+
+        # SOF TELEFON SOTUVLARI (faqat bu kunda sotilgan va qaytarilganlar ayriladi)
+        net_phone_sales = phone_sales.exclude(id__in=returned_sale_ids_today)
+
+        # BU KUNDA QAYTARILGAN LEKIN OLDINGI KUNLARDA SOTILGAN
+        previous_day_returns = phone_returns.exclude(
+            phone_sale__sale_date=target_date
+        )
+
+        # HARAJATLAR
+        expenses = Expense.objects.filter(
+            shop=self.shop,
+            expense_date=target_date
+        )
+        total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0')
+
+        # AGGREGATSIYALAR
+        phone_totals = net_phone_sales.aggregate(
+            total=Sum('sale_price'),
+            count=Count('id'),
+            cash=Sum('cash_amount'),
+            card=Sum('card_amount'),
+            debt=Sum('debt_amount'),
+            credit=Sum('credit_amount')
+        )
+
+        accessory_totals = accessory_sales.aggregate(
+            total=Sum('total_price'),
+            count=Count('id'),
+            cash=Sum('cash_amount'),
+            card=Sum('card_amount'),
+            debt=Sum('debt_amount'),
+            credit=Sum('credit_amount')
+        )
+
+        exchange_totals = exchanges.aggregate(
+            total=Sum('new_phone_price'),
+            count=Count('id'),
+            cash=Sum('cash_amount'),
+            card=Sum('card_amount'),
+            debt=Sum('debt_amount'),
+            credit=Sum('credit_amount')
+        )
+
+        # FOYDA HISOBLASH
+        phone_profit_from_sales = sum(
+            self.profit_calc.calculate_phone_profit(sale)
+            for sale in net_phone_sales
+        )
+
+        phone_profit_loss_from_returns = sum(
+            self.profit_calc.calculate_phone_profit(ret.phone_sale)
+            for ret in previous_day_returns
+        )
+
+        net_phone_profit = phone_profit_from_sales - phone_profit_loss_from_returns
+
+        accessory_profit = sum(
+            self.profit_calc.calculate_accessory_profit(sale)
+            for sale in accessory_sales
+        )
+
+        exchange_profit = sum(
+            self.profit_calc.calculate_exchange_profit(exchange)
+            for exchange in exchanges
+        )
+
+        total_phone_exchange_profit = net_phone_profit + exchange_profit
+
+        # TELEFON + ALMASHTIRISH JAMI
+        total_phone_sales_usd = (phone_totals.get('total') or Decimal('0')) + (
+                    exchange_totals.get('total') or Decimal('0'))
+        total_phone_cash_usd = (phone_totals.get('cash') or Decimal('0')) + (
+                    exchange_totals.get('cash') or Decimal('0'))
+        total_phone_card_usd = (phone_totals.get('card') or Decimal('0')) + (
+                    exchange_totals.get('card') or Decimal('0'))
+        total_phone_debt_usd = (phone_totals.get('debt') or Decimal('0')) + (
+                    exchange_totals.get('debt') or Decimal('0'))
+        total_phone_credit_usd = (phone_totals.get('credit') or Decimal('0')) + (
+                    exchange_totals.get('credit') or Decimal('0'))
+
+        # AKSESSUAR JAMI
+        total_accessory_sales_uzs = accessory_totals.get('total') or Decimal('0')
+        total_accessory_cash_uzs = accessory_totals.get('cash') or Decimal('0')
+        total_accessory_card_uzs = accessory_totals.get('card') or Decimal('0')
+        total_accessory_debt_uzs = accessory_totals.get('debt') or Decimal('0')
+        total_accessory_credit_uzs = accessory_totals.get('credit') or Decimal('0')
+
+        # CASH FLOW
+        cashflow = self._get_daily_cashflow(target_date)
+
+        # PROFIT MARGIN
+        total_sales = total_phone_sales_usd + total_accessory_sales_uzs
+        profit_margin = Decimal('0.00')
+        if total_sales > 0:
+            profit_margin = (total_phone_exchange_profit / total_sales * 100).quantize(Decimal('0.01'))
+
+        return {
+            'shop': self.shop,
+            'date': target_date,
+            'counts': {
+                'phone': phone_totals.get('count') or 0,
+                'accessory': accessory_totals.get('count') or 0,
+                'exchange': exchange_totals.get('count') or 0,
+                'returns': phone_returns.count(),
+                'total': (phone_totals.get('count') or 0) + (accessory_totals.get('count') or 0) + (
+                            exchange_totals.get('count') or 0)
+            },
+            'sales': {
+                'total': total_phone_sales_usd + total_accessory_sales_uzs,
+                'phone_total_usd': total_phone_sales_usd,
+                'phone_cash_usd': total_phone_cash_usd,
+                'phone_card_usd': total_phone_card_usd,
+                'phone_debt_usd': total_phone_debt_usd,
+                'phone_credit_usd': total_phone_credit_usd,
+                'accessory_total_uzs': total_accessory_sales_uzs,
+                'accessory_cash_uzs': total_accessory_cash_uzs,
+                'accessory_card_uzs': total_accessory_card_uzs,
+                'accessory_debt_uzs': total_accessory_debt_uzs,
+                'accessory_credit_uzs': total_accessory_credit_uzs,
+            },
+            'profits': {
+                'phone_profit': net_phone_profit,
+                'accessory_profit': accessory_profit,
+                'exchange_profit': exchange_profit,
+                'total_phone_exchange_profit': total_phone_exchange_profit,
+                'total_profit': total_phone_exchange_profit + accessory_profit,
+            },
+            'profit_margin': profit_margin,
+            'expenses': total_expenses,
+            'net_cash_uzs': total_accessory_cash_uzs - total_expenses,
+            'cashflow': cashflow,
+            'sales_data': {
+                'phone_sales': net_phone_sales,
+                'accessory_sales': accessory_sales,
+                'exchanges': exchanges,
+                'phone_returns': phone_returns,
+            }
+        }
+
     def get_monthly_report(self, year, month):
         """Oylik hisobot - QAYTARISH BU OYGA TA'SIR QILADI"""
         from sales.models import PhoneReturn
