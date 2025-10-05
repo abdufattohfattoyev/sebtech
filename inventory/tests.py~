@@ -330,7 +330,7 @@ class PhoneFormTestCase(TestCase):
             'source_type': 'supplier',
             'status': 'shop',
             'condition_percentage': 100,
-            'created_at': '2025-01-20',  # ✅ String format
+            'created_at': test_date,  # Date obyekti
         }
 
         form = PhoneForm(data=form_data, user=self.user)

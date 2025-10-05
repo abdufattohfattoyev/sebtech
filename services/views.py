@@ -586,6 +586,8 @@ def service_edit(request, pk):
                     for error in errors:
                         messages.error(request, f"{field}: {error}")
         else:
+            # ✅ Form o'zi initial qiymatlarni to'ldiradi
+            # BU QATORLARNI O'CHIRISH KERAK (form.__init__ da amalga oshiriladi)
             form = MasterServiceForm(instance=service)
 
         return render(request, 'services/service_form.html', {

@@ -894,7 +894,12 @@ def get_available_phones(request):
 # Payment views
 @login_required
 def payment_create(request, service_id):
-    """Yangi to'lov yaratish"""
+    """Yangi to'lov yaratish - faqat boss"""
+    # Superuser tekshiruvi
+    if not request.user.is_superuser:
+        messages.error(request, "Sizda to'lov qo'shish huquqi yo'q! Faqat boshqaruv uchun.")
+        return redirect('services:service_detail', pk=service_id)
+
     try:
         service = get_object_or_404(MasterService, pk=service_id)
 
@@ -932,9 +937,15 @@ def payment_create(request, service_id):
         return redirect('services:service_list')
 
 
+# To'lovni tahrirlash - faqat boss
 @login_required
 def payment_edit(request, service_id, payment_id):
-    """To'lovni tahrirlash"""
+    """To'lovni tahrirlash - faqat boss"""
+    # Superuser tekshiruvi
+    if not request.user.is_superuser:
+        messages.error(request, "Sizda to'lovni tahrirlash huquqi yo'q! Faqat boshqaruv uchun.")
+        return redirect('services:service_detail', pk=service_id)
+
     try:
         service = get_object_or_404(MasterService, pk=service_id)
         payment = get_object_or_404(MasterPayment, pk=payment_id, master_service=service)
@@ -977,9 +988,15 @@ def payment_edit(request, service_id, payment_id):
         return redirect('services:service_list')
 
 
+# To'lovni o'chirish - faqat boss
 @login_required
 def payment_delete(request, service_id, payment_id):
-    """To'lovni o'chirish"""
+    """To'lovni o'chirish - faqat boss"""
+    # Superuser tekshiruvi
+    if not request.user.is_superuser:
+        messages.error(request, "Sizda to'lovni o'chirish huquqi yo'q! Faqat boshqaruv uchun.")
+        return redirect('services:service_detail', pk=service_id)
+
     try:
         service = get_object_or_404(MasterService, pk=service_id)
         payment = get_object_or_404(MasterPayment, pk=payment_id, master_service=service)

@@ -8,12 +8,17 @@ from django.contrib.auth.models import User
 from shops.models import Shop
 
 
+def get_current_date():
+    """Bugungi sanani qaytaradi (date obyekti)"""
+    return timezone.now().date()
+
+
 class Supplier(models.Model):
     """Taminotchi - telefon/aksessuar yetkazib beruvchi tashkilot"""
     name = models.CharField(max_length=100, verbose_name="Taminotchi nomi")
     phone_number = models.CharField(max_length=15, verbose_name="Telefon raqami")
     notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
-    created_at = models.DateField(null=True, blank=True, verbose_name="Yaratilgan sana")
+    created_at = models.DateField(default=get_current_date, verbose_name="Yaratilgan sana")
 
     class Meta:
         verbose_name = "Taminotchi"
@@ -22,23 +27,18 @@ class Supplier(models.Model):
     def __str__(self):
         return f"{self.name} - {self.phone_number}"
 
-    def save(self, *args, **kwargs):
-        if not self.created_at:
-            self.created_at = timezone.now().date()
-        super().save(*args, **kwargs)
-
 
 class ExternalSeller(models.Model):
     """Tashqi sotuvchi - telefon olib keluvchi jismoniy shaxs (diler)"""
     name = models.CharField(max_length=100, verbose_name="Tashqi sotuvchi ismi")
     phone_number = models.CharField(
         max_length=15,
-        unique=True,  # YANGI: telefon raqam unique
+        unique=True,
         verbose_name="Telefon raqami"
     )
     image = models.ImageField(upload_to='external_sellers/', blank=True, null=True, verbose_name="Rasm")
     notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
-    created_at = models.DateField(null=True, blank=True, verbose_name="Yaratilgan sana")
+    created_at = models.DateField(default=get_current_date, verbose_name="Yaratilgan sana")
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                    verbose_name="Qo'shgan foydalanuvchi")
 
@@ -49,22 +49,17 @@ class ExternalSeller(models.Model):
     def __str__(self):
         return f"{self.name} - {self.phone_number}"
 
-    def save(self, *args, **kwargs):
-        if not self.created_at:
-            self.created_at = timezone.now().date()
-        super().save(*args, **kwargs)
-
 
 class DailySeller(models.Model):
     """Kunlik sotuvchi - telefon olib keluvchi shaxs (kunlik naqd puldan to'lanadi)"""
     name = models.CharField(max_length=100, verbose_name="Kunlik sotuvchi ismi")
     phone_number = models.CharField(
         max_length=15,
-        unique=True,  # YANGI: telefon raqam unique
+        unique=True,
         verbose_name="Telefon raqami"
     )
     notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
-    created_at = models.DateField(null=True, blank=True, verbose_name="Yaratilgan sana")
+    created_at = models.DateField(default=get_current_date, verbose_name="Yaratilgan sana")
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                    verbose_name="Qo'shgan foydalanuvchi")
 
@@ -75,15 +70,10 @@ class DailySeller(models.Model):
     def __str__(self):
         return f"{self.name} - {self.phone_number}"
 
-    def save(self, *args, **kwargs):
-        if not self.created_at:
-            self.created_at = timezone.now().date()
-        super().save(*args, **kwargs)
-
 
 class PhoneModel(models.Model):
     model_name = models.CharField(max_length=50, unique=True, verbose_name="iPhone modeli")
-    created_at = models.DateField(null=True, blank=True, verbose_name="Yaratilgan sana")
+    created_at = models.DateField(default=get_current_date, verbose_name="Yaratilgan sana")
 
     class Meta:
         verbose_name = "iPhone modeli"
@@ -92,15 +82,10 @@ class PhoneModel(models.Model):
     def __str__(self):
         return self.model_name
 
-    def save(self, *args, **kwargs):
-        if not self.created_at:
-            self.created_at = timezone.now().date()
-        super().save(*args, **kwargs)
-
 
 class MemorySize(models.Model):
     size = models.CharField(max_length=20, unique=True, verbose_name="Xotira hajmi")
-    created_at = models.DateField(null=True, blank=True, verbose_name="Yaratilgan sana")
+    created_at = models.DateField(default=get_current_date, verbose_name="Yaratilgan sana")
 
     class Meta:
         verbose_name = "Xotira hajmi"
@@ -109,11 +94,6 @@ class MemorySize(models.Model):
     def __str__(self):
         return self.size
 
-    def save(self, *args, **kwargs):
-        if not self.created_at:
-            self.created_at = timezone.now().date()
-        super().save(*args, **kwargs)
-
 
 class Accessory(models.Model):
     """Aksessuar - SO'MDA"""
@@ -121,8 +101,7 @@ class Accessory(models.Model):
     name = models.CharField(max_length=100, verbose_name="Aksessuar nomi")
     code = models.CharField(
         max_length=10,
-        validators=[RegexValidator(r'^\d+$',  # ✅ TO'G'RILANGAN - faqat raqamlar
-                                   "Faqat raqam kiritish mumkin!")],
+        validators=[RegexValidator(r'^\d+$', "Faqat raqam kiritish mumkin!")],
         verbose_name="Aksessuar kodi",
         db_index=True
     )
@@ -156,7 +135,7 @@ class Accessory(models.Model):
         blank=True,
         verbose_name="Qo'shgan foydalanuvchi"
     )
-    created_at = models.DateField(null=True, blank=True, verbose_name="Yaratilgan sana")
+    created_at = models.DateField(default=get_current_date, verbose_name="Yaratilgan sana")
 
     class Meta:
         verbose_name = "Aksessuar"
@@ -167,7 +146,7 @@ class Accessory(models.Model):
         ]
 
     def calculate_totals(self):
-        """Faqat o'rtacha narxni hisoblash, quantity emas!"""
+        """Faqat o'rtacha narxni hisoblash"""
         if not self.pk:
             return 0, Decimal('0.00')
 
@@ -191,10 +170,6 @@ class Accessory(models.Model):
         if self.code and self.code.isdigit() and len(self.code) < 4:
             self.code = self.code.zfill(4)
 
-        if not self.created_at:
-            self.created_at = timezone.now().date()
-
-        # ✅ FAQAT purchase_price ni qayta hisoblash
         if self.pk and not skip_quantity_update:
             _, self.purchase_price = self.calculate_totals()
 
@@ -247,7 +222,7 @@ class AccessoryPurchaseHistory(models.Model):
         validators=[MinValueValidator(0)],
         verbose_name="Tannarx (so'm)"
     )
-    created_at = models.DateField(default=timezone.now, verbose_name="Qo'shilgan sana")
+    created_at = models.DateField(default=get_current_date, verbose_name="Qo'shilgan sana")
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -265,22 +240,18 @@ class AccessoryPurchaseHistory(models.Model):
         is_new = not self.pk
         super().save(*args, **kwargs)
 
-        # ✅ Yangi purchase qo'shilganda quantity ni oshirish
         if is_new and self.accessory_id:
-            from django.db.models import F
             Accessory.objects.filter(pk=self.accessory_id).update(
                 quantity=F('quantity') + self.quantity
             )
-            # ✅ FAQAT purchase_price ni yangilash, quantity emas!
             self.accessory.refresh_from_db()
-            # Faqat o'rtacha narxni qayta hisoblash
             _, avg_price = self.accessory.calculate_totals()
             Accessory.objects.filter(pk=self.accessory_id).update(
                 purchase_price=avg_price
             )
 
     def __str__(self):
-        return f"{self.accessory.name} - {self.quantity} dona, {self.purchase_price} so'm ({self.created_at})"  # inventory/models.py - Accessory klassi YAKUNIY VERSIYA
+        return f"{self.accessory.name} - {self.quantity} dona, {self.purchase_price} so'm ({self.created_at})"
 
 
 class Phone(models.Model):
@@ -304,8 +275,6 @@ class Phone(models.Model):
     memory_size = models.ForeignKey(MemorySize, on_delete=models.CASCADE, verbose_name="Xotira hajmi")
     imei = models.CharField(
         max_length=20,
-        null=True,
-        blank=True,
         verbose_name="IMEI",
         db_index=True,
         validators=[RegexValidator(r'^\d{15}$', "IMEI 15 ta raqamdan iborat bo'lishi kerak")]
@@ -353,7 +322,7 @@ class Phone(models.Model):
         verbose_name="Sotish narxi ($)"
     )
     image = models.ImageField(upload_to='phones/', blank=True, null=True, verbose_name="Rasm")
-    created_at = models.DateField(null=True, blank=True, verbose_name="Yaratilgan sana")
+    created_at = models.DateField(verbose_name="Yaratilgan sana")
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -367,7 +336,6 @@ class Phone(models.Model):
         verbose_name="Izoh",
         help_text="Telefon haqida qo'shimcha ma'lumot"
     )
-    # MANBA MA'LUMOTLARI
     source_type = models.CharField(
         max_length=20,
         choices=SOURCE_CHOICES,
@@ -446,27 +414,29 @@ class Phone(models.Model):
 
     def save(self, *args, **kwargs):
         self.cost_price = self.purchase_price + self.imei_cost + self.repair_cost
-        if not self.created_at:
-            self.created_at = timezone.now().date()
         super().save(*args, **kwargs)
-
-    # models.py da Phone modelida clean() metodini yangilash kerak:
 
     def clean(self):
         super().clean()
 
+        if not self.created_at:
+            raise ValidationError({'created_at': "Qo'shilgan sana kiritilishi shart!"})
+
+        if not self.imei or not self.imei.strip():
+            raise ValidationError({'imei': "IMEI kiritilishi shart!"})
+
         if self.source_type == 'supplier' and not self.supplier:
-            raise ValidationError("Taminotchi manba turi uchun taminotchi tanlanishi kerak.")
+            raise ValidationError({'supplier': "Taminotchi manba turi uchun taminotchi tanlanishi kerak."})
 
         if self.source_type == 'external_seller' and not self.external_seller:
-            raise ValidationError("Tashqi sotuvchi manba turi uchun tashqi sotuvchi tanlanishi kerak.")
+            raise ValidationError({'external_seller': "Tashqi sotuvchi manba turi uchun tashqi sotuvchi tanlanishi kerak."})
 
-        # DAILY SELLER UCHUN VALIDATSIYANI O'CHIRISH YOKI O'ZGARTIRISH
         if self.source_type == 'daily_seller':
-            # Agar daily_seller bo'lmasa, faqat daily_payment_amount tekshiramiz
             if not self.daily_payment_amount or self.daily_payment_amount <= 0:
-                raise ValidationError("Kunlik sotuvchiga to'langan summa kiritilishi kerak.")
+                raise ValidationError({'daily_payment_amount': "Kunlik sotuvchiga to'langan summa kiritilishi kerak."})
 
         if self.source_type == 'exchange' and not (self.original_owner_name and self.original_owner_phone):
-            raise ValidationError("Almashtirish manbasi uchun asl egasi ismi va telefon raqami kiritilishi kerak.")
-
+            raise ValidationError({
+                'original_owner_name': "Almashtirish manbasi uchun asl egasi ismi kiritilishi kerak.",
+                'original_owner_phone': "Almashtirish manbasi uchun telefon raqami kiritilishi kerak."
+            })

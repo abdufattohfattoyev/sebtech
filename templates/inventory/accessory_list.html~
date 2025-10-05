@@ -29,6 +29,11 @@ body { background: #f8fafc; margin: 0; }
     text-decoration: none;
     font-size: 0.8rem;
 }
+.add-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
 
 /* Search */
 .search {
@@ -74,7 +79,6 @@ body { background: #f8fafc; margin: 0; }
 }
 .btn-primary { background: #2563eb; color: white; }
 .btn-outline { background: white; color: #64748b; border: 1px solid #e2e8f0; }
-.btn-info { background: #06b6d4; color: white; }
 
 /* Stats */
 .stats {
@@ -140,6 +144,14 @@ body { background: #f8fafc; margin: 0; }
     position: relative;
     border: 1px solid #e2e8f0;
     padding: 6px;
+    transition: all 0.2s;
+}
+.card-image.clickable {
+    cursor: pointer;
+}
+.card-image.clickable:hover {
+    background: #f1f5f9;
+    transform: scale(1.02);
 }
 .card-image img {
     width: 100%;
@@ -165,6 +177,21 @@ body { background: #f8fafc; margin: 0; }
 .stock.low { background: #ef4444; color: white; }
 .stock.medium { background: #f59e0b; color: white; }
 .stock.high { background: #10b981; color: white; }
+.zoom-icon {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    border-radius: 4px;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.65rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.card-image.clickable:hover .zoom-icon {
+    opacity: 1;
+}
 
 .card-info {
     flex: 1;
@@ -271,6 +298,7 @@ body { background: #f8fafc; margin: 0; }
     align-items: center;
     justify-content: center;
     min-height: 28px;
+    transition: all 0.2s;
 }
 .action.add {
     border-color: #10b981;
@@ -296,22 +324,99 @@ body { background: #f8fafc; margin: 0; }
     background: #ef4444;
     color: white;
 }
-
-/* Quick add section */
-.quick-add {
-    background: white;
-    border-radius: 8px;
-    padding: 0.75rem;
-    margin-bottom: 0.75rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    display: none;
+.action.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
 }
-.quick-add.active { display: block; }
-.quick-add-form {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 80px;
-    gap: 0.5rem;
-    align-items: end;
+
+/* Image Modal */
+.image-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.95);
+    animation: fadeIn 0.3s;
+}
+.image-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-content-wrapper {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-image {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    transform-origin: center;
+    transition: transform 0.3s ease;
+}
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 35px;
+    color: #fff;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10000;
+    background: rgba(0,0,0,0.5);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.modal-close:hover {
+    background: rgba(0,0,0,0.8);
+}
+.zoom-controls {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 10px;
+    border-radius: 8px;
+}
+.zoom-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.zoom-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+.zoom-level {
+    color: white;
+    padding: 0 15px;
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
 }
 
 /* Empty */
@@ -352,6 +457,10 @@ body { background: #f8fafc; margin: 0; }
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* Pagination */
@@ -398,6 +507,19 @@ body { background: #f8fafc; margin: 0; }
         justify-content: start;
     }
 }
+
+@media (max-width: 768px) {
+    .modal-close {
+        top: 10px;
+        right: 10px;
+        font-size: 30px;
+        width: 40px;
+        height: 40px;
+    }
+    .zoom-controls {
+        bottom: 15px;
+    }
+}
 </style>
 {% endblock %}
 
@@ -406,9 +528,15 @@ body { background: #f8fafc; margin: 0; }
     <!-- Header -->
     <div class="header">
         <h1><i class="fas fa-headphones me-2"></i>Aksessuarlar</h1>
-        <a href="{% url 'inventory:accessory_create' %}" class="add-btn">
-            <i class="fas fa-plus me-1"></i>Qo'shish
-        </a>
+        {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+            <a href="{% url 'inventory:accessory_create' %}" class="add-btn">
+                <i class="fas fa-plus me-1"></i>Qo'shish
+            </a>
+        {% else %}
+            <span class="add-btn disabled" title="Faqat rahbar va moliyachi qo'sha oladi">
+                <i class="fas fa-lock me-1"></i>Qo'shish
+            </span>
+        {% endif %}
     </div>
 
     <!-- Search -->
@@ -467,7 +595,13 @@ body { background: #f8fafc; margin: 0; }
         </div>
         <div class="stat">
             <div class="stat-icon" style="background: #f59e0b;"><i class="fas fa-money-bill-wave"></i></div>
-            <div class="stat-value" id="total-accessory-cost">{{ total_accessory_cost|floatformat:0 }} so'm</div>
+            <div class="stat-value" id="total-accessory-cost">
+                {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                    {{ total_accessory_cost|floatformat:0 }} so'm
+                {% else %}
+                    <i class="fas fa-lock" style="font-size: 0.8rem;"></i>
+                {% endif %}
+            </div>
             <div class="stat-label">Umumiy Tannarx</div>
         </div>
     </div>
@@ -483,16 +617,22 @@ body { background: #f8fafc; margin: 0; }
             {% for accessory in accessories %}
                 <div class="card">
                     <div class="card-main">
-                        <div class="card-image">
-                            {% if accessory.image %}
+                        {% if accessory.image %}
+                            <div class="card-image clickable" onclick="openImageModal('{{ accessory.image.url }}', '{{ accessory.name }}')">
                                 <img src="{{ accessory.image.url }}" alt="{{ accessory.name }}">
-                            {% else %}
-                                <div class="placeholder"><i class="fas fa-headphones"></i></div>
-                            {% endif %}
-                            <div class="stock {% if accessory.quantity < 5 %}low{% elif accessory.quantity < 10 %}medium{% else %}high{% endif %}">
-                                {{ accessory.quantity }}
+                                <div class="stock {% if accessory.quantity < 5 %}low{% elif accessory.quantity < 10 %}medium{% else %}high{% endif %}">
+                                    {{ accessory.quantity }}
+                                </div>
+                                <span class="zoom-icon"><i class="fas fa-search-plus"></i></span>
                             </div>
-                        </div>
+                        {% else %}
+                            <div class="card-image">
+                                <div class="placeholder"><i class="fas fa-headphones"></i></div>
+                                <div class="stock {% if accessory.quantity < 5 %}low{% elif accessory.quantity < 10 %}medium{% else %}high{% endif %}">
+                                    {{ accessory.quantity }}
+                                </div>
+                            </div>
+                        {% endif %}
 
                         <div class="card-info">
                             <div class="card-name">{{ accessory.name }}</div>
@@ -509,7 +649,13 @@ body { background: #f8fafc; margin: 0; }
                     <div class="card-meta">
                         <div class="meta-item">
                             <div class="meta-label">Tannarx</div>
-                            <div class="meta-value">{{ accessory.purchase_price|floatformat:0 }} so'm</div>
+                            <div class="meta-value">
+                                {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                                    {{ accessory.purchase_price|floatformat:0 }} so'm
+                                {% else %}
+                                    <i class="fas fa-lock"></i>
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="meta-item">
                             <div class="meta-label">Soni</div>
@@ -517,11 +663,17 @@ body { background: #f8fafc; margin: 0; }
                         </div>
                         <div class="meta-item">
                             <div class="meta-label">Umumiy Qiymat</div>
-                            <div class="meta-value">{{ accessory.total_cost|floatformat:0 }} so'm</div>
+                            <div class="meta-value">
+                                {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                                    {{ accessory.total_cost|floatformat:0 }} so'm
+                                {% else %}
+                                    <i class="fas fa-lock"></i>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
 
-                    {% if request.user == accessory.shop.owner %}
+                    {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
                         <div class="card-actions">
                             <a href="{% url 'inventory:accessory_add_quantity' accessory.pk %}" class="action add">
                                 <i class="fas fa-plus"></i><span class="d-none d-sm-inline ms-1">Qo'sh</span>
@@ -533,9 +685,18 @@ body { background: #f8fafc; margin: 0; }
                                onclick="return confirm('{{ accessory.name }} ni o\'chirmoqchimisiz?')">
                                 <i class="fas fa-trash"></i><span class="d-none d-sm-inline ms-1">O'chir</span>
                             </a>
-                            <div class="card-name">
-                                <a href="{% url 'inventory:accessory_detail' accessory.pk %}">{{ accessory.name }}</a>
-                            </div>
+                        </div>
+                    {% else %}
+                        <div class="card-actions">
+                            <span class="action add disabled" title="Ruxsat yo'q">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <span class="action edit disabled" title="Ruxsat yo'q">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <span class="action delete disabled" title="Ruxsat yo'q">
+                                <i class="fas fa-lock"></i>
+                            </span>
                         </div>
                     {% endif %}
                 </div>
@@ -544,9 +705,11 @@ body { background: #f8fafc; margin: 0; }
                     <div class="empty-icon"><i class="fas fa-headphones"></i></div>
                     <h4>Aksessuarlar topilmadi</h4>
                     <p>Qidiruv bo'yicha natija yo'q.</p>
-                    <a href="{% url 'inventory:accessory_create' %}" class="btn btn-primary">
-                        <i class="fas fa-plus me-1"></i>Yangi qo'shish
-                    </a>
+                    {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                        <a href="{% url 'inventory:accessory_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Yangi qo'shish
+                        </a>
+                    {% endif %}
                 </div>
             {% endfor %}
         </div>
@@ -568,7 +731,90 @@ body { background: #f8fafc; margin: 0; }
     {% endif %}
 </div>
 
+<!-- Image Modal -->
+<div id="imageModal" class="image-modal">
+    <span class="modal-close" onclick="closeImageModal()">&times;</span>
+    <div class="modal-content-wrapper">
+        <img class="modal-image" id="modalImage" src="" alt="">
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomOut()"><i class="fas fa-minus"></i></button>
+            <span class="zoom-level" id="zoomLevel">100%</span>
+            <button class="zoom-btn" onclick="zoomIn()"><i class="fas fa-plus"></i></button>
+            <button class="zoom-btn" onclick="resetZoom()"><i class="fas fa-compress"></i></button>
+        </div>
+    </div>
+</div>
+
 <script>
+// Foydalanuvchi roli
+const userRole = '{{ request.user.userprofile.role }}';
+const canEdit = userRole === 'boss' || userRole === 'finance';
+
+let currentZoom = 1;
+
+// Image Modal Functions
+function openImageModal(imageSrc, altText) {
+    if (!imageSrc) return;
+
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+
+    modal.classList.add('active');
+    modalImg.src = imageSrc;
+    modalImg.alt = altText;
+    currentZoom = 1;
+    updateZoom();
+
+    document.body.style.overflow = 'hidden';
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+    currentZoom = 1;
+}
+
+function zoomIn() {
+    if (currentZoom < 3) {
+        currentZoom += 0.2;
+        updateZoom();
+    }
+}
+
+function zoomOut() {
+    if (currentZoom > 0.5) {
+        currentZoom -= 0.2;
+        updateZoom();
+    }
+}
+
+function resetZoom() {
+    currentZoom = 1;
+    updateZoom();
+}
+
+function updateZoom() {
+    const modalImg = document.getElementById('modalImage');
+    const zoomLevel = document.getElementById('zoomLevel');
+    modalImg.style.transform = `scale(${currentZoom})`;
+    zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+}
+
+// Close modal on outside click
+document.getElementById('imageModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeImageModal();
+    }
+});
+
+// Close modal on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeImageModal();
+    }
+});
+
 // Search functionality
 const debounce = (func, wait) => {
     let timeout;
@@ -592,93 +838,3 @@ const performSearch = (page = 1) => {
     document.getElementById('loading').classList.remove('d-none');
 
     fetch(`{% url 'inventory:accessory_search' %}?${params}`, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(response => response.json())
-    .then(data => {
-        document.getElementById('total-accessories').textContent = data.total_count || 0;
-        document.getElementById('displayed-accessories').textContent = data.accessories.length || 0;
-        document.getElementById('total-accessory-cost').textContent = `${data.total_accessory_cost.toLocaleString('uz-UZ')} so'm`;
-
-        const container = document.getElementById('accessories-grid');
-        if (!data.accessories.length) {
-            container.innerHTML = `
-                <div class="empty">
-                    <div class="empty-icon"><i class="fas fa-headphones"></i></div>
-                    <h4>Topilmadi</h4>
-                    <p>Qidiruv bo'yicha natija yo'q.</p>
-                </div>`;
-            return;
-        }
-
-        container.innerHTML = data.accessories.map(a => `
-            <div class="card">
-                <div class="card-main">
-                    <div class="card-image">
-                        ${a.image ? `<img src="${a.image}" alt="${a.name}">` : `<div class="placeholder"><i class="fas fa-headphones"></i></div>`}
-                        <div class="stock ${a.quantity < 5 ? 'low' : a.quantity < 10 ? 'medium' : 'high'}">${a.quantity}</div>
-                    </div>
-                    <div class="card-info">
-                        <div class="card-name">${a.name}</div>
-                        <div class="card-code">${a.code}</div>
-                        <div class="card-shop">${a.shop_name}</div>
-                        <div class="price-section">
-                            <div class="price-label">Sotish narxi</div>
-                            <div class="card-price">${a.sale_price.toLocaleString('uz-UZ')} so'm</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-meta">
-                    <div class="meta-item">
-                        <div class="meta-label">Tannarx</div>
-                        <div class="meta-value">${a.purchase_price.toLocaleString('uz-UZ')} so'm</div>
-                    </div>
-                    <div class="meta-item">
-                        <div class="meta-label">Soni</div>
-                        <div class="meta-value">${a.quantity}</div>
-                    </div>
-                    <div class="meta-item">
-                        <div class="meta-label">Umumiy Qiymat</div>
-                        <div class="meta-value">${a.total_cost.toLocaleString('uz-UZ')} so'm</div>
-                    </div>
-                </div>
-                ${a.can_edit ? `
-                    <div class="card-actions">
-                        <a href="/inventory/accessories/${a.id}/add-quantity/" class="action add">
-                            <i class="fas fa-plus"></i><span class="d-none d-sm-inline ms-1">Qo'sh</span>
-                        </a>
-                        <a href="/inventory/accessories/${a.id}/edit/" class="action edit">
-                            <i class="fas fa-edit"></i><span class="d-none d-sm-inline ms-1">Tahrir</span>
-                        </a>
-                        <a href="/inventory/accessories/${a.id}/delete/" class="action delete" onclick="return confirm('${a.name} ni o\\'chirmoqchimisiz?')">
-                            <i class="fas fa-trash"></i><span class="d-none d-sm-inline ms-1">O'chir</span>
-                        </a>
-                    </div>
-                ` : ''}
-            </div>
-        `).join('');
-    })
-    .catch(console.error)
-    .finally(() => document.getElementById('loading').classList.add('d-none'));
-};
-
-const debouncedSearch = debounce(performSearch, 300);
-
-document.addEventListener('DOMContentLoaded', () => {
-    ['code', 'name', 'shop_id', 'stock_level'].forEach(id => {
-        const field = document.getElementById(id);
-        if (field) field.addEventListener(field.type === 'text' ? 'input' : 'change', () => debouncedSearch(1));
-    });
-
-    document.getElementById('clear-filters').addEventListener('click', () => {
-        document.getElementById('search-form').reset();
-        debouncedSearch(1);
-    });
-
-    document.getElementById('search-form').addEventListener('submit', e => {
-        e.preventDefault();
-        performSearch(1);
-    });
-});
-</script>
-{% endblock %}

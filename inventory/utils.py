@@ -28,7 +28,7 @@ def format_currency_sum(value):
 
 
 def format_currency_usd(value):
-    """Dollarda formatlash: 1000 -> $1,000"""
+    """Dollarda formatlash: 1000 -> $1,000.00"""
     try:
         return f"${Decimal(str(value)):,.2f}"
     except:

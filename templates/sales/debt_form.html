@@ -3,6 +3,21 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+.field-group { display: none; }
+.field-group.active { display: block; }
+.required-mark { color: #dc3545; }
+.user-info-badge {
+    background: #e3f2fd;
+    border: 2px solid #2196f3;
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row">
@@ -17,93 +32,272 @@
 
                         {% if form.non_field_errors %}
                             <div class="alert alert-danger">
-                                {% for error in form.non_field_errors %}
-                                    {{ error }}
-                                {% endfor %}
+                                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
                             </div>
                         {% endif %}
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="{{ form.creditor.id_for_label }}">
-                                        <i class="fas fa-user-tie"></i> Kimdan qarz olyapsiz? <span class="text-danger">*</span>
-                                    </label>
-                                    {{ form.creditor }}
-                                    {% if form.creditor.errors %}
-                                        <div class="text-danger">
-                                            {% for error in form.creditor.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                    <small class="form-text text-muted">Qarz beruvchi boshliqni tanlang</small>
+                        <!-- Qarz turi -->
+                        <div class="form-group mb-3">
+                            <label for="{{ form.debt_type.id_for_label }}">
+                                <i class="fas fa-exchange-alt"></i> Qarz turi <span class="required-mark">*</span>
+                            </label>
+                            {{ form.debt_type }}
+                            {% if form.debt_type.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.debt_type.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Mijoz → Sotuvchi (Sotuvchi uchun) -->
+                        {% if user_role == 'seller' %}
+                        <div id="customer-fields-seller" class="field-group">
+                            <div class="user-info-badge">
+                                <i class="fas fa-info-circle text-primary"></i>
+                                <strong>Siz mijozga qarz beryapsiz</strong>
+                                <div class="mt-2">
+                                    Qarz beruvchi: <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
                                 </div>
                             </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.customer_name.id_for_label }}">
+                                            <i class="fas fa-user"></i> Mijoz ismi <span class="required-mark">*</span>
+                                        </label>
+                                        {{ form.customer_name }}
+                                        {% if form.customer_name.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.customer_name.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.customer_phone.id_for_label }}">
+                                            <i class="fas fa-phone"></i> Telefon <span class="required-mark">*</span>
+                                        </label>
+                                        {{ form.customer_phone }}
+                                        {% if form.customer_phone.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.customer_phone.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Mijoz → Sotuvchi (Boss uchun) -->
+                        {% if user_role == 'boss' or user_role == 'finance' %}
+                        <div id="customer-fields-boss" class="field-group">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> Mijozga qarz berish
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.customer_name.id_for_label }}">
+                                            <i class="fas fa-user"></i> Mijoz ismi <span class="required-mark">*</span>
+                                        </label>
+                                        {{ form.customer_name }}
+                                        {% if form.customer_name.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.customer_name.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.customer_phone.id_for_label }}">
+                                            <i class="fas fa-phone"></i> Telefon <span class="required-mark">*</span>
+                                        </label>
+                                        {{ form.customer_phone }}
+                                        {% if form.customer_phone.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.customer_phone.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label for="{{ form.creditor.id_for_label }}">
+                                    <i class="fas fa-user-tie"></i> Qarz beruvchi <span class="required-mark">*</span>
+                                </label>
+                                {{ form.creditor }}
+                                <small class="form-text text-muted">Siz yoki istalgan sotuvchi</small>
+                                {% if form.creditor.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.creditor.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Men → Boshliq (Sotuvchi) -->
+                        {% if user_role == 'seller' %}
+                        <div id="seller-fields" class="field-group">
+                            <div class="user-info-badge">
+                                <i class="fas fa-info-circle text-warning"></i>
+                                <strong>Siz boshliqdan qarz olyapsiz</strong>
+                                <div class="mt-2">
+                                    Qarz oluvchi: <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label for="{{ form.creditor.id_for_label }}">
+                                    <i class="fas fa-user-tie"></i> Boshliq <span class="required-mark">*</span>
+                                </label>
+                                {{ form.creditor }}
+                                {% if form.creditor.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.creditor.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Sotuvchi → Boshliq (Boss uchun) -->
+                        {% if user_role == 'boss' or user_role == 'finance' %}
+                        <div id="seller-to-boss-fields" class="field-group">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-info-circle"></i> Sotuvchiga qarz berish
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.creditor.id_for_label }}">
+                                            <i class="fas fa-user-tie"></i> Qarz beruvchi <span class="required-mark">*</span>
+                                        </label>
+                                        {{ form.creditor }}
+                                        {% if form.creditor.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.creditor.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.debtor.id_for_label }}">
+                                            <i class="fas fa-user"></i> Sotuvchi <span class="required-mark">*</span>
+                                        </label>
+                                        {{ form.debtor }}
+                                        {% if form.debtor.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.debtor.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Boshliq → Usta -->
+                        {% if user_role == 'boss' or user_role == 'finance' %}
+                        <div id="master-fields" class="field-group">
+                            <div class="alert alert-primary">
+                                <i class="fas fa-info-circle"></i> Ustaga qarz berish
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.creditor.id_for_label }}">
+                                            <i class="fas fa-user-tie"></i> Qarz beruvchi <span class="required-mark">*</span>
+                                        </label>
+                                        {{ form.creditor }}
+                                        {% if form.creditor.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.creditor.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="{{ form.master.id_for_label }}">
+                                            <i class="fas fa-tools"></i> Usta <span class="required-mark">*</span>
+                                        </label>
+                                        {{ form.master }}
+                                        {% if form.master.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.master.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <hr>
+
+                        <!-- Umumiy maydonlar -->
+                        <div class="row">
                             <div class="col-md-6">
-                                <div class="form-group">
+                                <div class="form-group mb-3">
                                     <label for="{{ form.currency.id_for_label }}">
-                                        <i class="fas fa-money-bill"></i> Valyuta <span class="text-danger">*</span>
+                                        <i class="fas fa-money-bill"></i> Valyuta <span class="required-mark">*</span>
                                     </label>
                                     {{ form.currency }}
                                     {% if form.currency.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.currency.errors %}
-                                                {{ error }}
-                                            {% endfor %}
+                                            {% for error in form.currency.errors %}{{ error }}{% endfor %}
                                         </div>
                                     {% endif %}
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6">
-                                <div class="form-group">
+                                <div class="form-group mb-3">
                                     <label for="{{ form.debt_amount.id_for_label }}">
-                                        <i class="fas fa-dollar-sign"></i> Qarz summasi <span class="text-danger">*</span>
+                                        <i class="fas fa-dollar-sign"></i> Summa <span class="required-mark">*</span>
                                     </label>
                                     {{ form.debt_amount }}
                                     {% if form.debt_amount.errors %}
                                         <div class="text-danger">
-                                            {% for error in form.debt_amount.errors %}
-                                                {{ error }}
-                                            {% endfor %}
+                                            {% for error in form.debt_amount.errors %}{{ error }}{% endfor %}
                                         </div>
                                     {% endif %}
-                                    <small class="form-text text-muted">Maksimal: USD - 500$, UZS - 10,000,000 so'm</small>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="{{ form.due_date.id_for_label }}">
-                                        <i class="fas fa-calendar"></i> Qaytarish muddati <span class="text-danger">*</span>
-                                    </label>
-                                    {{ form.due_date }}
-                                    {% if form.due_date.errors %}
-                                        <div class="text-danger">
-                                            {% for error in form.due_date.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
+                                    <small class="form-text text-muted">Max: USD-500$, UZS-10M</small>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group mb-3">
+                            <label for="{{ form.due_date.id_for_label }}">
+                                <i class="fas fa-calendar"></i> Muddat <span class="required-mark">*</span>
+                            </label>
+                            {{ form.due_date }}
+                            {% if form.due_date.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.due_date.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group mb-3">
                             <label for="{{ form.notes.id_for_label }}">
                                 <i class="fas fa-sticky-note"></i> Izoh
                             </label>
                             {{ form.notes }}
                             {% if form.notes.errors %}
                                 <div class="text-danger">
-                                    {% for error in form.notes.errors %}
-                                        {{ error }}
-                                    {% endfor %}
+                                    {% for error in form.notes.errors %}{{ error }}{% endfor %}
                                 </div>
                             {% endif %}
-                            <small class="form-text text-muted">Qarz maqsadini yoki boshqa ma'lumotlarni kiriting</small>
                         </div>
 
                         <div class="form-group mt-4">
@@ -111,26 +305,93 @@
                                 <i class="fas fa-save"></i> Saqlash
                             </button>
                             <a href="{% url 'sales:debt_list' %}" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Bekor qilish
+                                <i class="fas fa-times"></i> Bekor
                             </a>
                         </div>
                     </form>
                 </div>
             </div>
+        </div>
 
-            <!-- Yordam kartasi -->
-            <div class="card mt-3">
+        <div class="col-md-4">
+            <div class="card">
                 <div class="card-body">
-                    <h5><i class="fas fa-info-circle text-info"></i> Eslatma:</h5>
-                    <ul>
-                        <li>Siz o'zingiz uchun boshliqdan qarz so'rayapsiz</li>
-                        <li>Qarz oluvchi sifatida avtomatik ravishda sizning ismingiz yoziladi</li>
-                        <li>Qarzni yaratgandan keyin status avtomatik "Faol" bo'ladi</li>
-                        <li>To'lovlarni keyinchalik qo'shishingiz mumkin</li>
-                    </ul>
+                    <h5><i class="fas fa-shield-alt text-success"></i> Xavfsizlik</h5>
+                    <div id="help-text">
+                        <p class="text-muted">Qarz turini tanlang</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+const userRole = '{{ user_role }}';
+
+document.addEventListener('DOMContentLoaded', function() {
+    const debtTypeSelect = document.getElementById('id_debt_type');
+    const creditorField = document.getElementById('id_creditor');
+    const debtorField = document.getElementById('id_debtor');
+    const masterField = document.getElementById('id_master');
+    const helpText = document.getElementById('help-text');
+
+    // Sotuvchi uchun
+    const customerFieldsSeller = document.getElementById('customer-fields-seller');
+    const sellerFields = document.getElementById('seller-fields');
+
+    // Boss uchun
+    const customerFieldsBoss = document.getElementById('customer-fields-boss');
+    const sellerToBossFields = document.getElementById('seller-to-boss-fields');
+    const masterFields = document.getElementById('master-fields');
+
+    function hideAll() {
+        if (customerFieldsSeller) customerFieldsSeller.classList.remove('active');
+        if (sellerFields) sellerFields.classList.remove('active');
+        if (customerFieldsBoss) customerFieldsBoss.classList.remove('active');
+        if (sellerToBossFields) sellerToBossFields.classList.remove('active');
+        if (masterFields) masterFields.classList.remove('active');
+
+        // Barcha maydonlarni ixtiyoriy qilish
+        if (creditorField) creditorField.removeAttribute('required');
+        if (debtorField) debtorField.removeAttribute('required');
+        if (masterField) masterField.removeAttribute('required');
+    }
+
+    function toggleFields() {
+        const debtType = debtTypeSelect.value;
+        hideAll();
+
+        if (userRole === 'seller') {
+            if (debtType === 'customer_to_seller') {
+                customerFieldsSeller.classList.add('active');
+                helpText.innerHTML = '<ul><li>Siz mijozga qarz beryapsiz</li><li>Avtomatik qarz beruvchi - siz</li></ul>';
+            } else if (debtType === 'seller_to_boss') {
+                sellerFields.classList.add('active');
+                creditorField.setAttribute('required', 'required');
+                helpText.innerHTML = '<ul><li>Siz boshliqdan qarz olyapsiz</li><li>Avtomatik qarz oluvchi - siz</li></ul>';
+            }
+        } else if (userRole === 'boss' || userRole === 'finance') {
+            if (debtType === 'customer_to_seller') {
+                customerFieldsBoss.classList.add('active');
+                creditorField.setAttribute('required', 'required');
+                helpText.innerHTML = '<ul><li>Mijozga qarz berish</li><li>Qarz beruvchi: siz yoki sotuvchi</li></ul>';
+            } else if (debtType === 'seller_to_boss') {
+                sellerToBossFields.classList.add('active');
+                creditorField.setAttribute('required', 'required');
+                debtorField.setAttribute('required', 'required');
+                helpText.innerHTML = '<ul><li>Sotuvchiga qarz berish</li><li>Qarz beruvchi va oluvchini tanlang</li></ul>';
+            } else if (debtType === 'boss_to_master') {
+                masterFields.classList.add('active');
+                creditorField.setAttribute('required', 'required');
+                masterField.setAttribute('required', 'required');
+                helpText.innerHTML = '<ul><li>Ustaga qarz berish</li><li>Ustani tanlang</li></ul>';
+            }
+        }
+    }
+
+    debtTypeSelect.addEventListener('change', toggleFields);
+    toggleFields();
+});
+</script>
 {% endblock %}

@@ -118,11 +118,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
-.stats-grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
 .stats-grid-5 {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -163,6 +158,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   color: #9ca3af;
   margin-top: 6px;
   font-weight: 500;
+}
+
+/* JAMI FOYDA CARD */
+.total-profit-card {
+  grid-column: span 2;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border: 3px solid #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+.total-profit-card .stat-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #065f46;
+}
+.total-profit-card .stat-value {
+  font-size: 32px;
+  color: #065f46;
+}
+.total-profit-card .stat-currency {
+  font-size: 11px;
+  color: #059669;
 }
 
 /* Kassa Section */
@@ -347,7 +363,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .seller-amount.usd { color: #10b981; }
 .seller-count { font-size: 12px; color: #6b7280; font-weight: 500; }
 
-/* Sotuvchi detallari */
 .seller-details {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -394,6 +409,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 }
 
 /* Responsive */
+@media (max-width: 1200px) {
+  .stats-grid-5 { grid-template-columns: repeat(4, 1fr); }
+}
+
 @media (max-width: 1024px) {
   .stats-container { grid-template-columns: 1fr; }
   .main { grid-template-columns: 1fr; }
@@ -401,13 +420,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 }
 
 @media (max-width: 768px) {
+  .filter-row { grid-template-columns: 1fr; }
   .stats-grid-5 { grid-template-columns: repeat(2, 1fr); }
   .seller-details { grid-template-columns: repeat(2, 1fr); }
+  .sale-payment { grid-template-columns: repeat(3, 1fr); }
+  .kassa-grid { grid-template-columns: 1fr; }
+  .cashflow-grid { grid-template-columns: 1fr; }
+  .total-profit-card { grid-column: span 1; }
 }
 
 @media (max-width: 480px) {
+  .container { padding: 10px; }
   .stats-grid-5 { grid-template-columns: 1fr; }
   .seller-details { grid-template-columns: repeat(2, 1fr); }
+  .sale-payment { grid-template-columns: repeat(2, 1fr); }
+  .stats-grid, .stats-grid-3 { grid-template-columns: 1fr; }
+  .tabs { flex-direction: column; }
+  .tab-btn { min-width: auto; }
 }
 </style>
 {% endblock %}
@@ -448,7 +477,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <!-- TELEFON VA AKSESSUAR -->
   <div class="stats-container">
     <div class="stats-section">
-      <div class="stats-section-title usd">TELEFON (Dollar)</div>
+      <div class="stats-section-title usd">TELEFON + ALMASHTIRISH (Dollar)</div>
       <div class="stats-grid">
         <div class="stat">
           <div class="stat-label">Jami Savdo</div>
@@ -476,7 +505,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div class="stat-currency">USD</div>
         </div>
         <div class="stat">
-          <div class="stat-label">Soni</div>
+          <div class="stat-label">Telefon Soni</div>
           <div class="stat-value usd">{{ daily_stats.counts.phone|default:0 }}</div>
           <div class="stat-currency">dona</div>
         </div>
@@ -486,8 +515,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div class="stat-currency">dona</div>
         </div>
         <div class="stat">
-          <div class="stat-label">Foyda</div>
-          <div class="stat-value usd">${{ daily_stats.profits.phone_profit_usd|floatformat:0|intcomma }}</div>
+          <div class="stat-label">Qaytarish</div>
+          <div class="stat-value expense">{{ daily_stats.counts.returns|default:0 }}</div>
+          <div class="stat-currency">dona</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Tel. Foyda</div>
+          <div class="stat-value usd">${{ daily_stats.profits.phone_profit|floatformat:0|intcomma|default:"0" }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Alm. Foyda</div>
+          <div class="stat-value usd">${{ daily_stats.profits.exchange_profit|floatformat:0|intcomma|default:"0" }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+
+        <!-- JAMI FOYDA -->
+        <div class="stat total-profit-card">
+          <div class="stat-label">JAMI FOYDA (Tel + Alm)</div>
+          <div class="stat-value">${{ daily_stats.profits.total_phone_exchange_profit|floatformat:0|intcomma|default:"0" }}</div>
           <div class="stat-currency">USD</div>
         </div>
       </div>
@@ -498,27 +544,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="stats-grid">
         <div class="stat">
           <div class="stat-label">Jami Savdo</div>
-          <div class="stat-value uzs">{{ daily_stats.sales.accessory_total_uzs|floatformat:0 }}</div>
+          <div class="stat-value uzs">{{ daily_stats.sales.accessory_total_uzs|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
         <div class="stat">
           <div class="stat-label">Naqd</div>
-          <div class="stat-value uzs">{{ daily_stats.sales.accessory_cash_uzs|floatformat:0 }}</div>
+          <div class="stat-value uzs">{{ daily_stats.sales.accessory_cash_uzs|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
         <div class="stat">
           <div class="stat-label">Karta</div>
-          <div class="stat-value uzs">{{ daily_stats.sales.accessory_card_uzs|floatformat:0 }}</div>
+          <div class="stat-value uzs">{{ daily_stats.sales.accessory_card_uzs|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
         <div class="stat">
           <div class="stat-label">Nasiya</div>
-          <div class="stat-value installment">{{ daily_stats.sales.accessory_credit_uzs|floatformat:0 }}</div>
+          <div class="stat-value installment">{{ daily_stats.sales.accessory_credit_uzs|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
         <div class="stat">
           <div class="stat-label">Qarz</div>
-          <div class="stat-value expense">{{ daily_stats.sales.accessory_debt_uzs|floatformat:0 }}</div>
+          <div class="stat-value expense">{{ daily_stats.sales.accessory_debt_uzs|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
         <div class="stat">
@@ -528,12 +574,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div class="stat">
           <div class="stat-label">Xarajat</div>
-          <div class="stat-value expense">{{ daily_stats.expenses|floatformat:0 }}</div>
+          <div class="stat-value expense">{{ daily_stats.expenses|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
         <div class="stat">
           <div class="stat-label">Foyda</div>
-          <div class="stat-value uzs">{{ daily_stats.profits.accessory_profit_uzs|floatformat:0 }}</div>
+          <div class="stat-value uzs">{{ daily_stats.profits.accessory_profit|floatformat:0|intcomma|default:"0" }}</div>
           <div class="stat-currency">UZS</div>
         </div>
       </div>
@@ -568,17 +614,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="cashflow-grid">
         <div class="stat">
           <div class="stat-label">Kirim</div>
-          <div class="stat-value income">{{ daily_stats.cashflow.uzs.income|floatformat:0 }}</div>
+          <div class="stat-value income">{{ daily_stats.cashflow.uzs.income|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
         <div class="stat">
           <div class="stat-label">Chiqim</div>
-          <div class="stat-value expense">{{ daily_stats.cashflow.uzs.expense|floatformat:0 }}</div>
+          <div class="stat-value expense">{{ daily_stats.cashflow.uzs.expense|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
         <div class="stat">
           <div class="stat-label">Sof Balans</div>
-          <div class="stat-value net">{{ daily_stats.cashflow.uzs.net|floatformat:0 }}</div>
+          <div class="stat-value net">{{ daily_stats.cashflow.uzs.net|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
       </div>
@@ -597,7 +643,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div class="kassa-stat highlight">
           <div class="stat-label">So'm (Naqd - Xarajat)</div>
-          <div class="stat-value uzs">{{ daily_stats.net_cash_uzs|floatformat:0 }}</div>
+          <div class="stat-value uzs">{{ daily_stats.net_cash_uzs|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
         <div class="kassa-stat">
@@ -630,16 +676,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 </div>
                 <div class="sale-price usd">${{ sale.sale_price|floatformat:0|intcomma }}</div>
               </div>
-              <div class="sale-details">
-                  <div class="detail-row">
-                      <span class="detail-label">Mijoz:</span> {{ sale.customer.name }}
-                  </div>
-                  <div class="detail-row">
-                      <span class="detail-label">Sotuvchi:</span> {{ sale.salesman.get_full_name|default:sale.salesman.username }}
-                  </div>
-                  <div class="detail-row">
-                      <span class="detail-label">IMEI:</span> {{ sale.phone.imei|default:"N/A" }}
-                  </div>
+              <div class="sale-details"><div class="detail-row">
+                  <span class="detail-label">Mijoz:</span> {{ sale.customer.name }}
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Sotuvchi:</span> {{ sale.salesman.get_full_name|default:sale.salesman.username }}
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">IMEI:</span> {{ sale.phone.imei|default:"N/A" }}
+                </div>
               </div>
 
               <div class="sale-payment">
@@ -680,7 +725,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                   <div class="sale-title">{{ sale.accessory.name }} × {{ sale.quantity }}</div>
                   <div class="sale-time">{{ sale.created_at|date:"H:i" }}</div>
                 </div>
-                <div class="sale-price uzs">{{ sale.total_price|floatformat:0 }} so'm</div>
+                <div class="sale-price uzs">{{ sale.total_price|floatformat:0|intcomma }} so'm</div>
               </div>
               <div class="sale-details">
                 <div class="detail-row"><span class="detail-label">Mijoz:</span> {{ sale.customer.name }}</div>
@@ -689,23 +734,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
               <div class="sale-payment">
                 <div class="payment-badge">
                   <span class="payment-label">NAQD</span>
-                  <div class="payment-value cash">{{ sale.cash_amount|floatformat:0 }}</div>
+                  <div class="payment-value cash">{{ sale.cash_amount|floatformat:0|intcomma }}</div>
                 </div>
                 <div class="payment-badge">
                   <span class="payment-label">KARTA</span>
-                  <div class="payment-value card">{{ sale.card_amount|floatformat:0 }}</div>
+                  <div class="payment-value card">{{ sale.card_amount|floatformat:0|intcomma }}</div>
                 </div>
                 <div class="payment-badge">
                   <span class="payment-label">NASIYA</span>
-                  <div class="payment-value installment">{{ sale.credit_amount|default:0|floatformat:0 }}</div>
+                  <div class="payment-value installment">{{ sale.credit_amount|default:0|floatformat:0|intcomma }}</div>
                 </div>
                 <div class="payment-badge">
                   <span class="payment-label">QARZ</span>
-                  <div class="payment-value debt">{{ sale.debt_amount|floatformat:0 }}</div>
+                  <div class="payment-value debt">{{ sale.debt_amount|floatformat:0|intcomma }}</div>
                 </div>
                 <div class="payment-badge">
                   <span class="payment-label">FOYDA</span>
-                  <div class="payment-value profit">{{ sale.calculated_profit|floatformat:0|default:"0" }}</div>
+                  <div class="payment-value profit">{{ sale.calculated_profit|floatformat:0|intcomma|default:"0" }}</div>
                 </div>
               </div>
             </div>
@@ -729,7 +774,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
               <div class="sale-details">
                 <div class="detail-row"><span class="detail-label">Mijoz:</span> {{ exchange.customer_name }}</div>
                 <div class="detail-row"><span class="detail-label">Sotuvchi:</span> {{ exchange.salesman.get_full_name|default:exchange.salesman.username }}</div>
-                <div class="detail-row"><span class="detail-label">Eski qiymati:</span> ${{ exchange.old_phone_value|floatformat:0|intcomma }}</div>
+                <div class="detail-row"><span class="detail-label">Eski qiymati:</span> ${{ exchange.old_phone_accepted_price|floatformat:0|intcomma }}</div>
                 <div class="detail-row"><span class="detail-label">Yangi narxi:</span> ${{ exchange.new_phone_price|floatformat:0|intcomma }}</div>
               </div>
               <div class="sale-payment">
@@ -785,7 +830,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 </div>
               </div>
 
-              <!-- ✅ HAR BIR SOTUVCHINING O'Z STATISTIKASI -->
               <div class="seller-details">
                 <div class="seller-detail-item">
                   <div class="seller-detail-label">Telefonlar</div>
@@ -826,7 +870,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div class="stat">
           <div class="stat-label">Aksessuar Savdo</div>
-          <div class="stat-value income">{{ daily_stats.cashflow.details.accessory_sales|floatformat:0 }}</div>
+          <div class="stat-value income">{{ daily_stats.cashflow.details.accessory_sales|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
         <div class="stat">
@@ -861,7 +905,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div class="stat">
           <div class="stat-label">Harajatlar</div>
-          <div class="stat-value expense">{{ daily_stats.cashflow.details.daily_expenses|floatformat:0 }}</div>
+          <div class="stat-value expense">{{ daily_stats.cashflow.details.daily_expenses|floatformat:0|intcomma }}</div>
           <div class="stat-currency">UZS</div>
         </div>
       </div>

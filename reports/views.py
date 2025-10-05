@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, date
 from decimal import Decimal
 from calendar import monthrange
 
-from sales.models import PhoneSale, PhoneExchange, PhoneReturn
+from sales.models import PhoneSale, PhoneExchange, PhoneReturn, AccessorySale
 from shops.models import Shop
 from .models import ReportCalculator, ProfitCalculator
 
@@ -47,9 +47,7 @@ class ReportMixin:
 
 @login_required
 def daily_report(request):
-    """Kunlik hisobot - CASH FLOW bilan"""
-    from sales.models import PhoneSale, AccessorySale, PhoneExchange
-
+    """KUNLIK HISOBOT - Barcha sotuvchilar umumiy va alohida"""
     shops = ReportMixin.get_user_shops(request.user)
     if not shops.exists():
         return render(request, 'reports/no_shop.html')
@@ -59,8 +57,17 @@ def daily_report(request):
 
     calculator = ReportCalculator(selected_shop)
     daily_data = calculator.get_daily_report(selected_date)
+    profit_calc = ProfitCalculator()
 
-    # Sotuvchilar statistikasi
+    # Foyda hisoblash - umumiy ma'lumotlar uchun
+    for sale in daily_data['sales_data']['phone_sales']:
+        sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
+    for sale in daily_data['sales_data']['accessory_sales']:
+        sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
+    for exchange in daily_data['sales_data']['exchanges']:
+        exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
+
+    # SOTUVCHILAR RO'YXATI
     phone_sellers = list(PhoneSale.objects.filter(
         phone__shop=selected_shop,
         sale_date=selected_date
@@ -79,42 +86,51 @@ def daily_report(request):
     seller_ids = set(phone_sellers) | set(accessory_sellers) | set(exchange_sellers)
     sellers = User.objects.filter(id__in=seller_ids).order_by('id')
 
+    # HAR BIR SOTUVCHI UCHUN TAFSILOT
     seller_stats = []
-    profit_calc = ProfitCalculator()
-
     for seller in sellers:
-        # ✅ HAR BIR SOTUVCHI UCHUN YANGI CALCULATOR YARATISH
         seller_calculator = ReportCalculator(selected_shop)
         seller_data = seller_calculator.get_seller_daily_report(seller, selected_date)
 
-        # Telefon uchun foyda
+        # Foyda hisoblash
         for sale in seller_data['sales_data']['phone_sales']:
             sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
-
-        # Aksessuar uchun foyda
         for sale in seller_data['sales_data']['accessory_sales']:
             sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
-
-        # Almashtirish uchun foyda
         for exchange in seller_data['sales_data']['exchanges']:
             exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
 
-        # Faqat savdosi bo'lgan sotuvchilarni qo'shish
         if seller_data['counts']['total'] > 0:
             seller_stats.append(seller_data)
 
-    # ASOSIY DAILY DATA uchun ham foyda hisoblash
-    for sale in daily_data['sales_data']['phone_sales']:
-        sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
-
-    for sale in daily_data['sales_data']['accessory_sales']:
-        sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
-
-    for exchange in daily_data['sales_data']['exchanges']:
-        exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
-
     # Telefon savdosi bo'yicha tartiblash
     seller_stats.sort(key=lambda x: x['sales']['phone_total_usd'], reverse=True)
+
+    # UMUMIY STATISTIKA
+    total_stats = {
+        'total_phones_sold': daily_data['counts']['phone'],
+        'total_accessories_sold': daily_data['counts']['accessory'],
+        'total_exchanges': daily_data['counts']['exchange'],
+        'total_returns': daily_data['counts'].get('returns', 0),
+        'total_transactions': daily_data['counts']['total'],
+        'total_sales_usd': daily_data['sales']['phone_total_usd'],
+        'total_sales_uzs': daily_data['sales']['accessory_total_uzs'],
+        'total_cash_usd': daily_data['sales']['phone_cash_usd'],
+        'total_cash_uzs': daily_data['sales']['accessory_cash_uzs'],
+        'total_card_usd': daily_data['sales']['phone_card_usd'],
+        'total_card_uzs': daily_data['sales']['accessory_card_uzs'],
+        'total_debt_usd': daily_data['sales']['phone_debt_usd'],
+        'total_debt_uzs': daily_data['sales']['accessory_debt_uzs'],
+        'total_credit_usd': daily_data['sales']['phone_credit_usd'],
+        'total_credit_uzs': daily_data['sales']['accessory_credit_uzs'],
+        'phone_profit': daily_data['profits'].get('phone_profit_usd', daily_data['profits'].get('phone_profit', 0)),
+        'accessory_profit': daily_data['profits'].get('accessory_profit_uzs',
+                                                      daily_data['profits'].get('accessory_profit', 0)),
+        'exchange_profit': daily_data['profits'].get('exchange_profit_usd',
+                                                     daily_data['profits'].get('exchange_profit', 0)),
+        'total_phone_exchange_profit': daily_data['profits'].get('total_phone_exchange_profit', 0),
+        'profit_margin': daily_data.get('profit_margin', 0),
+    }
 
     return render(request, 'reports/daily_report.html', {
         'shops': shops,
@@ -122,13 +138,14 @@ def daily_report(request):
         'selected_date': selected_date,
         'daily_stats': daily_data,
         'seller_stats': seller_stats,
+        'total_stats': total_stats,
         'today': timezone.now().date(),
     })
 
 
 @login_required
 def monthly_report(request):
-    """Oylik hisobot"""
+    """OYLIK HISOBOT - Barcha sotuvchilar umumiy va alohida"""
     shops = ReportMixin.get_user_shops(request.user)
     if not shops.exists():
         return render(request, 'reports/no_shop.html')
@@ -137,49 +154,14 @@ def monthly_report(request):
     year = int(request.GET.get('year', timezone.now().year))
     month = int(request.GET.get('month', timezone.now().month))
 
-    try:
-        calculator = ReportCalculator(selected_shop)
-        monthly_data = calculator.get_monthly_report(year, month)
-    except Exception as e:
-        print(f"Oylik hisobot xatosi: {e}")
-        monthly_data = {
-            'year': year,
-            'month': month,
-            'totals': {
-                'phone_sales_usd': Decimal('0'),
-                'accessory_sales_uzs': Decimal('0'),
-                'phone_cash_usd': Decimal('0'),
-                'accessory_cash_uzs': Decimal('0'),
-                'phone_card_usd': Decimal('0'),
-                'accessory_card_uzs': Decimal('0'),
-                'expenses': Decimal('0'),
-                'net_cash': Decimal('0'),
-                'sales': Decimal('0'),
-                'cash': Decimal('0'),
-                'card': Decimal('0')
-            },
-            'counts': {'phone': 0, 'accessory': 0, 'exchange': 0, 'total': 0},
-            'daily_stats': [],
-            'profits': {
-                'phone_profit': Decimal('0'),
-                'accessory_profit': Decimal('0'),
-                'exchange_profit': Decimal('0'),
-                'total_profit': Decimal('0')
-            },
-            'profit_margin': Decimal('0.00'),
-            'averages': {
-                'daily_phone_sales': Decimal('0'),
-                'daily_accessory_sales': Decimal('0'),
-                'daily_cash': Decimal('0')
-            }
-        }
-
-    from sales.models import PhoneSale, AccessorySale, PhoneExchange
+    calculator = ReportCalculator(selected_shop)
+    monthly_data = calculator.get_monthly_report(year, month)
 
     start_date = date(year, month, 1)
     _, last_day = monthrange(year, month)
     end_date = date(year, month, last_day)
 
+    # SOTUVCHILAR RO'YXATI
     phone_sellers = PhoneSale.objects.filter(
         phone__shop=selected_shop,
         sale_date__range=[start_date, end_date]
@@ -198,27 +180,51 @@ def monthly_report(request):
     seller_ids = set(phone_sellers) | set(accessory_sellers) | set(exchange_sellers)
     sellers = User.objects.filter(id__in=seller_ids)
 
+    # HAR BIR SOTUVCHI UCHUN OYLIK MA'LUMOT
     seller_monthly_stats = []
     for seller in sellers:
         salary_data = calculator.get_seller_monthly_salary(seller, year, month)
+
         if salary_data['sales']['phone_count'] > 0 or salary_data['sales']['accessory_count'] > 0:
-            phone_sales_usd = salary_data['sales']['phone_total']
-            accessory_sales_uzs = salary_data['sales']['accessory_total']
+            total_phone_exchange_profit = salary_data['profits']['phone_profit'] + salary_data['profits'][
+                'exchange_profit']
 
             seller_monthly_stats.append({
                 'seller': seller,
-                'phone_sales': phone_sales_usd,
-                'accessory_sales': accessory_sales_uzs,
-                'total_sales': phone_sales_usd + accessory_sales_uzs,
-                'cash': salary_data['profits']['phone_profit'] + salary_data['profits']['accessory_profit'],
-                'profit': salary_data['profits']['total_profit'],
-                'transactions': salary_data['sales']['phone_count'] + salary_data['sales']['exchange_count'],
+                'phone_sales_usd': salary_data['sales']['phone_total'],
+                'accessory_sales_uzs': salary_data['sales']['accessory_total'],
+                'total_sales': salary_data['sales']['phone_total'] + salary_data['sales']['accessory_total'],
+                'phone_profit': salary_data['profits']['phone_profit'],
+                'accessory_profit': salary_data['profits']['accessory_profit'],
+                'exchange_profit': salary_data['profits']['exchange_profit'],
+                'total_phone_exchange_profit': total_phone_exchange_profit,
+                'phone_count': salary_data['sales']['phone_count'],
                 'accessory_count': salary_data['sales']['accessory_count'],
                 'exchange_count': salary_data['sales']['exchange_count'],
-                'days': len(salary_data.get('daily_data', []))
+                'returns_count': salary_data['sales']['returns_count'],
+                'net_phones_sold': salary_data['sales']['phone_count'] + salary_data['sales']['exchange_count'],
+                'commission': salary_data['commission'],
+                'working_days': len(salary_data.get('daily_data', [])),
             })
 
-    seller_monthly_stats.sort(key=lambda x: x['phone_sales'], reverse=True)
+    seller_monthly_stats.sort(key=lambda x: x['phone_sales_usd'], reverse=True)
+
+    # UMUMIY STATISTIKA
+    total_stats = {
+        'total_phones_sold': monthly_data['counts']['phone'],
+        'total_accessories_sold': monthly_data['counts']['accessory'],
+        'total_exchanges': monthly_data['counts']['exchange'],
+        'total_returns': monthly_data['counts']['returns'],
+        'net_phones_sold': monthly_data['counts']['net_phone'],
+        'total_transactions': monthly_data['counts']['total'],
+        'total_sales': monthly_data['totals']['sales'],
+        'phone_profit': monthly_data['profits']['phone_profit'],
+        'accessory_profit': monthly_data['profits']['accessory_profit'],
+        'exchange_profit': monthly_data['profits']['exchange_profit'],
+        'total_phone_exchange_profit': monthly_data['profits']['total_phone_exchange_profit'],
+        'profit_margin': monthly_data['profit_margin'],
+        'working_days': monthly_data['period']['working_days'],
+    }
 
     return render(request, 'reports/monthly_report.html', {
         'shops': shops,
@@ -227,6 +233,7 @@ def monthly_report(request):
         'month': month,
         'monthly_stats': monthly_data,
         'seller_monthly_stats': seller_monthly_stats,
+        'total_stats': total_stats,
         'current_year': timezone.now().year,
         'current_month': timezone.now().month,
         'years': range(2020, timezone.now().year + 2),
@@ -241,7 +248,7 @@ def monthly_report(request):
 
 @login_required
 def yearly_report(request):
-    """Yillik hisobot"""
+    """YILLIK HISOBOT - OYLIK HISOBOTLARDAN JAMLASH"""
     shops = ReportMixin.get_user_shops(request.user)
     if not shops.exists():
         return render(request, 'reports/no_shop.html')
@@ -249,98 +256,13 @@ def yearly_report(request):
     selected_shop = ReportMixin.get_selected_shop(shops, request.GET.get('shop'))
     year = int(request.GET.get('year', timezone.now().year))
 
-    try:
-        calculator = ReportCalculator(selected_shop)
-        yearly_data = calculator.get_yearly_report(year)
-
-        if not yearly_data:
-            yearly_data = {}
-
-        yearly_data.setdefault('year', year)
-        yearly_data.setdefault('totals', {})
-        yearly_data.setdefault('counts', {})
-        yearly_data.setdefault('profits', {})
-        yearly_data.setdefault('monthly_stats', [])
-
-        totals = yearly_data['totals']
-        totals.setdefault('phone_sales', Decimal('0'))
-        totals.setdefault('accessory_sales', Decimal('0'))
-        totals.setdefault('phone_cash', Decimal('0'))
-        totals.setdefault('accessory_cash', Decimal('0'))
-        totals.setdefault('expenses', Decimal('0'))
-        totals.setdefault('net_cash', Decimal('0'))
-        totals.setdefault('sales', Decimal('0'))
-        totals.setdefault('cash', Decimal('0'))
-
-        counts = yearly_data['counts']
-        counts.setdefault('phone', 0)
-        counts.setdefault('accessory', 0)
-        counts.setdefault('exchange', 0)
-        counts.setdefault('total', 0)
-
-        profits = yearly_data['profits']
-        profits.setdefault('phone_profit', Decimal('0'))
-        profits.setdefault('accessory_profit', Decimal('0'))
-        profits.setdefault('exchange_profit', Decimal('0'))
-        profits.setdefault('total_profit', Decimal('0'))
-        profits.setdefault('profit_margin', Decimal('0.00'))
-
-        for monthly in yearly_data['monthly_stats']:
-            monthly.setdefault('month', 1)
-            monthly.setdefault('totals', {})
-            monthly.setdefault('counts', {})
-            monthly.setdefault('profits', {})
-            monthly.setdefault('period', {})
-
-            m_totals = monthly['totals']
-            m_totals.setdefault('phone_sales_usd', Decimal('0'))
-            m_totals.setdefault('accessory_sales_uzs', Decimal('0'))
-            m_totals.setdefault('phone_cash_usd', Decimal('0'))
-            m_totals.setdefault('accessory_cash_uzs', Decimal('0'))
-
-            m_counts = monthly['counts']
-            m_counts.setdefault('phone', 0)
-            m_counts.setdefault('accessory', 0)
-            m_counts.setdefault('exchange', 0)
-
-            m_profits = monthly['profits']
-            m_profits.setdefault('phone_profit', Decimal('0'))
-            m_profits.setdefault('accessory_profit', Decimal('0'))
-            m_profits.setdefault('exchange_profit', Decimal('0'))
-
-            m_period = monthly['period']
-            m_period.setdefault('working_days', 0)
-
-    except Exception as e:
-        print(f"Yillik hisobot xatosi: {e}")
-        yearly_data = {
-            'year': year,
-            'totals': {
-                'phone_sales': Decimal('0'),
-                'accessory_sales': Decimal('0'),
-                'phone_cash': Decimal('0'),
-                'accessory_cash': Decimal('0'),
-                'expenses': Decimal('0'),
-                'net_cash': Decimal('0'),
-                'sales': Decimal('0'),
-                'cash': Decimal('0')
-            },
-            'counts': {'phone': 0, 'accessory': 0, 'exchange': 0, 'total': 0},
-            'monthly_stats': [],
-            'profits': {
-                'phone_profit': Decimal('0'),
-                'accessory_profit': Decimal('0'),
-                'exchange_profit': Decimal('0'),
-                'total_profit': Decimal('0'),
-                'profit_margin': Decimal('0.00')
-            }
-        }
-
-    from sales.models import PhoneSale, AccessorySale, PhoneExchange
+    calculator = ReportCalculator(selected_shop)
+    yearly_data = calculator.get_yearly_report(year)
 
     start_date = date(year, 1, 1)
     end_date = date(year, 12, 31)
 
+    # SOTUVCHILAR RO'YXATI
     phone_sellers = PhoneSale.objects.filter(
         phone__shop=selected_shop,
         sale_date__range=[start_date, end_date]
@@ -359,98 +281,91 @@ def yearly_report(request):
     seller_ids = set(phone_sellers) | set(accessory_sellers) | set(exchange_sellers)
     sellers = User.objects.filter(id__in=seller_ids)
 
+    # HAR BIR SOTUVCHI UCHUN YILLIK MA'LUMOT (OYLIK HISOBOTLARDAN)
     yearly_sellers_stats = []
-    profit_calc = ProfitCalculator()
 
     for seller in sellers:
-        try:
-            seller_phone_sales = PhoneSale.objects.filter(
-                phone__shop=selected_shop,
-                salesman=seller,
-                sale_date__range=[start_date, end_date]
-            )
+        # OYLIK HISOBOTLARNI JAM QILISH
+        total_phone_sales = Decimal('0')
+        total_accessory_sales = Decimal('0')
+        total_phone_profit = Decimal('0')
+        total_accessory_profit = Decimal('0')
+        total_exchange_profit = Decimal('0')
+        total_phone_count = 0
+        total_accessory_count = 0
+        total_exchange_count = 0
+        total_returns_count = 0
 
-            seller_accessory_sales = AccessorySale.objects.filter(
-                accessory__shop=selected_shop,
-                salesman=seller,
-                sale_date__range=[start_date, end_date]
-            )
+        # OYLIK MA'LUMOTLAR UCHUN MASSIVLAR
+        monthly_phone_data = []
+        monthly_accessory_data = []
+        working_days_count = 0
 
-            seller_exchanges = PhoneExchange.objects.filter(
-                new_phone__shop=selected_shop,
-                salesman=seller,
-                exchange_date__range=[start_date, end_date]
-            )
+        for month in range(1, 13):
+            monthly_salary = calculator.get_seller_monthly_salary(seller, year, month)
 
-            phone_totals = seller_phone_sales.aggregate(
-                total=Sum('sale_price'),
-                count=Count('id')
-            )
+            total_phone_sales += monthly_salary['sales']['phone_total']
+            total_accessory_sales += monthly_salary['sales']['accessory_total']
+            total_phone_profit += monthly_salary['profits']['phone_profit']
+            total_accessory_profit += monthly_salary['profits']['accessory_profit']
+            total_exchange_profit += monthly_salary['profits']['exchange_profit']
+            total_phone_count += monthly_salary['sales']['phone_count']
+            total_accessory_count += monthly_salary['sales']['accessory_count']
+            total_exchange_count += monthly_salary['sales']['exchange_count']
+            total_returns_count += monthly_salary['sales']['returns_count']
 
-            accessory_totals = seller_accessory_sales.aggregate(
-                total=Sum('total_price'),
-                count=Count('id')
-            )
+            # OYLIK DIAGRAMMA UCHUN MA'LUMOTLAR
+            net_phones = monthly_salary['sales']['phone_count'] + monthly_salary['sales']['exchange_count']
+            monthly_phone_data.append(net_phones)
+            monthly_accessory_data.append(monthly_salary['sales']['accessory_count'])
 
-            exchange_totals = seller_exchanges.aggregate(
-                total=Sum('new_phone_price'),
-                count=Count('id')
-            )
+            if len(monthly_salary.get('daily_data', [])) > 0:
+                working_days_count += len(monthly_salary['daily_data'])
 
-            # TO'G'RILANGAN - ProfitCalculator ishlatish
-            phone_profit = sum(
-                profit_calc.calculate_phone_profit(sale)
-                for sale in seller_phone_sales
-            )
+        total_phone_exchange_profit = total_phone_profit + total_exchange_profit
+        net_phone_count = total_phone_count + total_exchange_count
 
-            accessory_profit = sum(
-                profit_calc.calculate_accessory_profit(sale)
-                for sale in seller_accessory_sales
-            )
-
-            exchange_profit = sum(
-                profit_calc.calculate_exchange_profit(exchange)
-                for exchange in seller_exchanges
-            )
-
-            phone_dates = set(seller_phone_sales.values_list('sale_date', flat=True))
-            accessory_dates = set(seller_accessory_sales.values_list('sale_date', flat=True))
-            exchange_dates = set(seller_exchanges.values_list('exchange_date', flat=True))
-            working_days = len(phone_dates | accessory_dates | exchange_dates)
-
-            phone_sales_value = phone_totals.get('total') or Decimal('0')
-            phone_count = phone_totals.get('count') or 0
-            accessory_sales_value = accessory_totals.get('total') or Decimal('0')
-            accessory_count = accessory_totals.get('count') or 0
-            exchange_sales_value = exchange_totals.get('total') or Decimal('0')
-            exchange_count = exchange_totals.get('count') or 0
-
-            if phone_count > 0 or accessory_count > 0 or exchange_count > 0:
-                yearly_sellers_stats.append({
-                    'seller': seller,
-                    'phone_sales': phone_sales_value,
-                    'accessory_sales': accessory_sales_value,
-                    'exchange_sales': exchange_sales_value,
-                    'phone_count': phone_count,
-                    'accessory_count': accessory_count,
-                    'exchange_count': exchange_count,
-                    'phone_profit': phone_profit,
-                    'accessory_profit': accessory_profit,
-                    'exchange_profit': exchange_profit,
-                    'total_profit': phone_profit + accessory_profit + exchange_profit,
-                    'working_days': working_days,
-                    'total_sales': phone_sales_value + accessory_sales_value + exchange_sales_value,
-                    'total_transactions': phone_count + accessory_count + exchange_count
-                })
-
-        except Exception as e:
-            print(f"Sotuvchi {seller.username} uchun xatolik: {e}")
-            continue
+        if total_phone_count > 0 or total_accessory_count > 0 or total_exchange_count > 0:
+            yearly_sellers_stats.append({
+                'seller': seller,
+                'phone_sales_usd': total_phone_sales,
+                'accessory_sales_uzs': total_accessory_sales,
+                'phone_count': total_phone_count,
+                'accessory_count': total_accessory_count,
+                'exchange_count': total_exchange_count,
+                'returns_count': total_returns_count,
+                'net_phone_count': net_phone_count,
+                'phone_profit': total_phone_profit,
+                'accessory_profit': total_accessory_profit,
+                'exchange_profit': total_exchange_profit,
+                'total_phone_exchange_profit': total_phone_exchange_profit,
+                'total_sales': total_phone_sales + total_accessory_sales,
+                'total_transactions': total_phone_count + total_accessory_count + total_exchange_count,
+                'monthly_phone_data': monthly_phone_data,
+                'monthly_accessory_data': monthly_accessory_data,
+                'working_days': working_days_count
+            })
 
     yearly_sellers_stats.sort(
-        key=lambda x: (x['phone_sales'], x['total_transactions']),
+        key=lambda x: (x['phone_sales_usd'], x['total_transactions']),
         reverse=True
     )
+
+    # UMUMIY STATISTIKA
+    total_stats = {
+        'total_phones_sold': yearly_data['counts']['phone'],
+        'total_accessories_sold': yearly_data['counts']['accessory'],
+        'total_exchanges': yearly_data['counts']['exchange'],
+        'total_returns': yearly_data['counts']['returns'],
+        'net_phones_sold': yearly_data['counts']['net_phone'],
+        'total_transactions': yearly_data['counts']['total'],
+        'total_sales': yearly_data['totals']['sales'],
+        'phone_profit': yearly_data['profits']['phone_profit'],
+        'accessory_profit': yearly_data['profits']['accessory_profit'],
+        'exchange_profit': yearly_data['profits']['exchange_profit'],
+        'total_phone_exchange_profit': yearly_data['profits']['total_phone_exchange_profit'],
+        'profit_margin': yearly_data['profits']['profit_margin'],
+    }
 
     return render(request, 'reports/yearly_report.html', {
         'shops': shops,
@@ -458,6 +373,7 @@ def yearly_report(request):
         'year': year,
         'yearly_stats': yearly_data,
         'yearly_sellers_stats': yearly_sellers_stats,
+        'total_stats': total_stats,
         'current_year': timezone.now().year,
         'years': range(2020, timezone.now().year + 2),
         'month_names': {
@@ -470,9 +386,7 @@ def yearly_report(request):
 
 @login_required
 def seller_detail_page(request, seller_id):
-    """Sotuvchi KUNLIK tafsilot - QAYTARILGANLAR bilan"""
-    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-
+    """SOTUVCHI KUNLIK TAFSILOT SAHIFASI"""
     seller = get_object_or_404(User, id=seller_id)
     shops = ReportMixin.get_user_shops(request.user)
 
@@ -482,8 +396,34 @@ def seller_detail_page(request, seller_id):
     selected_shop = ReportMixin.get_selected_shop(shops, request.GET.get('shop'))
     selected_date = ReportMixin.parse_date(request.GET.get('date'))
 
-    month = selected_date.month
-    year = selected_date.year
+    calculator = ReportCalculator(selected_shop)
+    seller_stats = calculator.get_seller_daily_report(seller, selected_date)
+    profit_calc = ProfitCalculator()
+
+    # Foyda hisoblash
+    for sale in seller_stats['sales_data']['phone_sales']:
+        sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
+    for exchange in seller_stats['sales_data']['exchanges']:
+        exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
+    for sale in seller_stats['sales_data']['accessory_sales']:
+        sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
+    for return_obj in seller_stats['sales_data']['phone_returns']:
+        return_obj.lost_profit = (
+            return_obj.phone_sale.sale_price - return_obj.phone_sale.phone.cost_price
+        )
+
+    # Pagination
+    phone_page = request.GET.get('phone_page', 1)
+    phone_paginator = Paginator(seller_stats['sales_data']['phone_sales'], 10)
+    phone_sales_page = phone_paginator.get_page(phone_page)
+
+    accessory_page = request.GET.get('accessory_page', 1)
+    accessory_paginator = Paginator(seller_stats['sales_data']['accessory_sales'], 10)
+    accessory_sales_page = accessory_paginator.get_page(accessory_page)
+
+    exchange_page = request.GET.get('exchange_page', 1)
+    exchange_paginator = Paginator(seller_stats['sales_data']['exchanges'], 10)
+    exchanges_page = exchange_paginator.get_page(exchange_page)
 
     month_names = {
         1: 'Yanvar', 2: 'Fevral', 3: 'Mart', 4: 'Aprel',
@@ -491,63 +431,14 @@ def seller_detail_page(request, seller_id):
         9: 'Sentabr', 10: 'Oktabr', 11: 'Noyabr', 12: 'Dekabr'
     }
 
-    calculator = ReportCalculator(selected_shop)
-    seller_stats = calculator.get_seller_daily_report(seller, selected_date)
-
-    profit_calc = ProfitCalculator()
-
-    # Telefon sotuvlari uchun foyda hisoblash
-    for sale in seller_stats['sales_data']['phone_sales']:
-        sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
-
-    # Almashtirishlar uchun foyda hisoblash
-    for exchange in seller_stats['sales_data']['exchanges']:
-        exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
-
-    # ✅ QAYTARILGANLAR uchun foyda hisoblash
-    for return_obj in seller_stats['sales_data']['phone_returns']:
-        # Qaytarilgan telefonning yo'qotilgan foydasi
-        return_obj.lost_profit = (
-                return_obj.phone_sale.sale_price -
-                return_obj.phone_sale.phone.cost_price
-        )
-
-    # Pagination
-    phone_page = request.GET.get('phone_page', 1)
-    phone_paginator = Paginator(seller_stats['sales_data']['phone_sales'], 10)
-    try:
-        phone_sales_page = phone_paginator.page(phone_page)
-    except PageNotAnInteger:
-        phone_sales_page = phone_paginator.page(1)
-    except EmptyPage:
-        phone_sales_page = phone_paginator.page(phone_paginator.num_pages)
-
-    accessory_page = request.GET.get('accessory_page', 1)
-    accessory_paginator = Paginator(seller_stats['sales_data']['accessory_sales'], 10)
-    try:
-        accessory_sales_page = accessory_paginator.page(accessory_page)
-    except PageNotAnInteger:
-        accessory_sales_page = accessory_paginator.page(1)
-    except EmptyPage:
-        accessory_sales_page = accessory_paginator.page(accessory_paginator.num_pages)
-
-    exchange_page = request.GET.get('exchange_page', 1)
-    exchange_paginator = Paginator(seller_stats['sales_data']['exchanges'], 10)
-    try:
-        exchanges_page = exchange_paginator.page(exchange_page)
-    except PageNotAnInteger:
-        exchanges_page = exchange_paginator.page(1)
-    except EmptyPage:
-        exchanges_page = exchange_paginator.page(exchange_paginator.num_pages)
-
     return render(request, 'reports/seller_detail.html', {
         'seller': seller,
         'shops': shops,
         'selected_shop': selected_shop,
         'selected_date': selected_date,
-        'month': month,
-        'year': year,
-        'month_name': month_names.get(month),
+        'month': selected_date.month,
+        'year': selected_date.year,
+        'month_name': month_names.get(selected_date.month),
         'seller_stats': seller_stats,
         'phone_sales_page': phone_sales_page,
         'accessory_sales_page': accessory_sales_page,
@@ -560,7 +451,6 @@ def seller_detail_page(request, seller_id):
 def seller_detail_modal(request, seller_id):
     """Sotuvchi modal tafsiloti"""
     seller = get_object_or_404(User, id=seller_id)
-
     shop_id = request.GET.get('shop')
     selected_date = ReportMixin.parse_date(request.GET.get('date'))
 
@@ -574,14 +464,14 @@ def seller_detail_modal(request, seller_id):
 
     calculator = ReportCalculator(shop)
     seller_stats = calculator.get_seller_daily_report(seller, selected_date)
-
     profit_calc = ProfitCalculator()
+
     for sale in seller_stats['sales_data']['phone_sales']:
         sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
     for sale in seller_stats['sales_data']['accessory_sales']:
-        sale.profit = profit_calc.calculate_accessory_profit(sale)
+        sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
     for exchange in seller_stats['sales_data']['exchanges']:
-        exchange.profit = profit_calc.calculate_exchange_profit(exchange)
+        exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
 
     return render(request, 'reports/seller_detail_modal.html', {
         'seller': seller,
@@ -593,7 +483,7 @@ def seller_detail_modal(request, seller_id):
 
 @login_required
 def seller_salary_report(request, seller_id):
-    """Sotuvchi OYLIK maoshi - TO'LIQ ANIQ"""
+    """SOTUVCHI OYLIK MAOSH HISOBOTI"""
     seller = get_object_or_404(User, id=seller_id)
     shops = ReportMixin.get_user_shops(request.user)
 
@@ -606,17 +496,14 @@ def seller_salary_report(request, seller_id):
 
     calculator = ReportCalculator(selected_shop)
     salary_data = calculator.get_seller_monthly_salary(seller, year, month)
-
     profit_calc = ProfitCalculator()
 
     # Har bir kunlik ma'lumotga foyda qo'shish
     for day_data in salary_data.get('daily_data', []):
         for sale in day_data['sales_data']['phone_sales']:
             sale.calculated_profit = profit_calc.calculate_phone_profit(sale)
-
         for exchange in day_data['sales_data']['exchanges']:
             exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
-
         for sale in day_data['sales_data']['accessory_sales']:
             sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
 
@@ -637,7 +524,6 @@ def seller_salary_report(request, seller_id):
         }
     })
 
-
 @login_required
 def phone_sales_api(request):
     """Telefon sotuvlari API"""
@@ -654,7 +540,6 @@ def phone_sales_api(request):
     except (ValueError, Shop.DoesNotExist):
         return JsonResponse({'error': "Noto'g'ri parametrlar"}, status=400)
 
-    from sales.models import PhoneSale
     phone_sales = PhoneSale.objects.filter(
         phone__shop=shop,
         sale_date=selected_date
@@ -704,7 +589,6 @@ def accessory_sales_api(request):
     except (ValueError, Shop.DoesNotExist):
         return JsonResponse({'error': "Noto'g'ri parametrlar"}, status=400)
 
-    from sales.models import AccessorySale
     accessory_sales = AccessorySale.objects.filter(
         accessory__shop=shop,
         sale_date=selected_date
@@ -755,11 +639,10 @@ def exchange_sales_api(request):
     except (ValueError, Shop.DoesNotExist):
         return JsonResponse({'error': "Noto'g'ri parametrlar"}, status=400)
 
-    from sales.models import PhoneExchange
     exchanges = PhoneExchange.objects.filter(
         new_phone__shop=shop,
         exchange_date=selected_date
-    ).select_related('old_phone', 'new_phone', 'customer', 'salesman').order_by('-id')
+    ).select_related('new_phone', 'salesman').order_by('-id')
 
     paginator = Paginator(exchanges, 20)
     page_obj = paginator.get_page(page)
@@ -768,13 +651,13 @@ def exchange_sales_api(request):
     results = []
     for exchange in page_obj:
         results.append({
-            'old_phone_model': f"{exchange.old_phone.phone_model} {exchange.old_phone.memory_size}",
+            'old_phone_model': f"{exchange.old_phone_model}",
             'new_phone_model': f"{exchange.new_phone.phone_model} {exchange.new_phone.memory_size}",
-            'customer_name': exchange.customer.name,
+            'customer_name': exchange.customer_name,
             'salesman_name': exchange.salesman.get_full_name() or exchange.salesman.username,
             'new_phone_price_usd': float(exchange.new_phone_price),
-            'old_phone_value_usd': float(exchange.old_phone_value),
-            'additional_payment_usd': float(exchange.additional_payment),
+            'old_phone_value_usd': float(exchange.old_phone_accepted_price),
+            'additional_payment_usd': float(exchange.cash_amount),
             'profit_usd': float(profit_calc.calculate_exchange_profit(exchange)),
             'exchange_time': exchange.created_at.strftime('%H:%M') if hasattr(exchange, 'created_at') else exchange.exchange_date.strftime('%H:%M'),
             'currency': 'USD'
@@ -786,7 +669,6 @@ def exchange_sales_api(request):
         'has_next': page_obj.has_next(),
         'has_previous': page_obj.has_previous()
     })
-
 
 @login_required
 def comparison_report(request):
@@ -897,7 +779,6 @@ def yearly_profit_detail(request):
         'totals': {
             'phone_sales': float(yearly_data.get('totals', {}).get('phone_sales', 0)),
             'accessory_sales': float(yearly_data.get('totals', {}).get('accessory_sales', 0)),
-            'exchange_sales': float(yearly_data.get('totals', {}).get('exchange_sales', 0)),
             'total_sales': float(yearly_data.get('totals', {}).get('sales', 0))
         },
         'counts': {
@@ -995,335 +876,4 @@ def cashflow_details_api(request):
         'success': True,
         'count': len(results),
         'transactions': results
-    })
-
-
-@login_required
-def sales_chart_dashboard(request):
-    """Asosiy diagramma dashboard"""
-    from django.db.models import Q
-
-    shops = Shop.objects.all()
-    if hasattr(request.user, 'userprofile') and request.user.userprofile.role != 'boss':
-        shops = shops.filter(owner=request.user)
-
-    if not shops.exists():
-        return render(request, 'reports/no_shop.html')
-
-    selected_shop = shops.first()
-    if request.GET.get('shop'):
-        selected_shop = get_object_or_404(shops, id=request.GET.get('shop'))
-
-    # Sotuvchilar ro'yxati
-    sellers = User.objects.filter(
-        Q(phonesale__phone__shop=selected_shop) |
-        Q(phoneexchange__new_phone__shop=selected_shop)
-    ).distinct()
-
-    current_year = timezone.now().year
-    current_month = timezone.now().month
-
-    return render(request, 'reports/sales_chart_dashboard.html', {
-        'shops': shops,
-        'selected_shop': selected_shop,
-        'sellers': sellers,
-        'current_year': current_year,
-        'current_month': current_month,
-        'years': range(2020, current_year + 2),
-        'months': range(1, 13),
-        'month_names': {
-            1: 'Yanvar', 2: 'Fevral', 3: 'Mart', 4: 'Aprel',
-            5: 'May', 6: 'Iyun', 7: 'Iyul', 8: 'Avgust',
-            9: 'Sentabr', 10: 'Oktabr', 11: 'Noyabr', 12: 'Dekabr'
-        }
-    })
-
-
-@login_required
-def daily_sales_chart_api(request):
-    """Kunlik sotuvlar diagrammasi API"""
-    shop_id = request.GET.get('shop')
-    year = int(request.GET.get('year', timezone.now().year))
-    month = int(request.GET.get('month', timezone.now().month))
-    seller_id = request.GET.get('seller')
-
-    if not shop_id:
-        return JsonResponse({'error': "Do'kon ID kerak"}, status=400)
-
-    try:
-        shop = Shop.objects.get(id=shop_id)
-    except Shop.DoesNotExist:
-        return JsonResponse({'error': "Do'kon topilmadi"}, status=404)
-
-    # Oy boshi va oxiri
-    start_date = date(year, month, 1)
-    _, last_day = monthrange(year, month)
-    end_date = date(year, month, last_day)
-
-    # Filter setup
-    phone_filter = Q(phone__shop=shop, sale_date__range=[start_date, end_date])
-    exchange_filter = Q(new_phone__shop=shop, exchange_date__range=[start_date, end_date])
-    return_filter = Q(phone_sale__phone__shop=shop, return_date__range=[start_date, end_date])
-
-    if seller_id:
-        seller = get_object_or_404(User, id=seller_id)
-        phone_filter &= Q(salesman=seller)
-        exchange_filter &= Q(salesman=seller)
-        return_filter &= Q(phone_sale__salesman=seller)
-
-    # Har bir kun uchun ma'lumot
-    daily_data = []
-    current_date = start_date
-
-    while current_date <= end_date:
-        # Sotilgan telefonlar
-        phone_sales_count = PhoneSale.objects.filter(
-            phone_filter & Q(sale_date=current_date)
-        ).count()
-
-        # Almashtirishlar
-        exchanges_count = PhoneExchange.objects.filter(
-            exchange_filter & Q(exchange_date=current_date)
-        ).count()
-
-        # Qaytarilganlar
-        returns_count = PhoneReturn.objects.filter(
-            return_filter & Q(return_date=current_date)
-        ).count()
-
-        # Net sotuvlar
-        net_sales = phone_sales_count + exchanges_count - returns_count
-
-        daily_data.append({
-            'date': current_date.strftime('%Y-%m-%d'),
-            'day': current_date.day,
-            'phone_sales': phone_sales_count,
-            'exchanges': exchanges_count,
-            'returns': returns_count,
-            'net_sales': net_sales
-        })
-
-        current_date += timedelta(days=1)
-
-    return JsonResponse({
-        'success': True,
-        'period': f"{month}/{year}",
-        'data': daily_data
-    })
-
-
-@login_required
-def monthly_sales_chart_api(request):
-    """Oylik sotuvlar diagrammasi API"""
-    shop_id = request.GET.get('shop')
-    year = int(request.GET.get('year', timezone.now().year))
-    seller_id = request.GET.get('seller')
-
-    if not shop_id:
-        return JsonResponse({'error': "Do'kon ID kerak"}, status=400)
-
-    try:
-        shop = Shop.objects.get(id=shop_id)
-    except Shop.DoesNotExist:
-        return JsonResponse({'error': "Do'kon topilmadi"}, status=404)
-
-    monthly_data = []
-
-    for month in range(1, 13):
-        start_date = date(year, month, 1)
-        _, last_day = monthrange(year, month)
-        end_date = date(year, month, last_day)
-
-        # Filter setup
-        phone_filter = Q(phone__shop=shop, sale_date__range=[start_date, end_date])
-        exchange_filter = Q(new_phone__shop=shop, exchange_date__range=[start_date, end_date])
-        return_filter = Q(phone_sale__phone__shop=shop, return_date__range=[start_date, end_date])
-
-        if seller_id:
-            seller = get_object_or_404(User, id=seller_id)
-            phone_filter &= Q(salesman=seller)
-            exchange_filter &= Q(salesman=seller)
-            return_filter &= Q(phone_sale__salesman=seller)
-
-        # Sotilgan telefonlar
-        phone_sales_count = PhoneSale.objects.filter(phone_filter).count()
-
-        # Almashtirishlar
-        exchanges_count = PhoneExchange.objects.filter(exchange_filter).count()
-
-        # Qaytarilganlar
-        returns_count = PhoneReturn.objects.filter(return_filter).count()
-
-        # Net sotuvlar
-        net_sales = phone_sales_count + exchanges_count - returns_count
-
-        month_names = {
-            1: 'Yan', 2: 'Fev', 3: 'Mar', 4: 'Apr',
-            5: 'May', 6: 'Iyun', 7: 'Iyul', 8: 'Avg',
-            9: 'Sen', 10: 'Okt', 11: 'Noy', 12: 'Dek'
-        }
-
-        monthly_data.append({
-            'month': month,
-            'month_name': month_names[month],
-            'phone_sales': phone_sales_count,
-            'exchanges': exchanges_count,
-            'returns': returns_count,
-            'net_sales': net_sales
-        })
-
-    return JsonResponse({
-        'success': True,
-        'year': year,
-        'data': monthly_data
-    })
-
-
-@login_required
-def seller_comparison_chart_api(request):
-    """Sotuvchilar taqqoslash diagrammasi API"""
-    shop_id = request.GET.get('shop')
-    year = int(request.GET.get('year', timezone.now().year))
-    month = int(request.GET.get('month', timezone.now().month))
-    period_type = request.GET.get('period', 'monthly')  # 'monthly' or 'yearly'
-
-    if not shop_id:
-        return JsonResponse({'error': "Do'kon ID kerak"}, status=400)
-
-    try:
-        shop = Shop.objects.get(id=shop_id)
-    except Shop.DoesNotExist:
-        return JsonResponse({'error': "Do'kon topilmadi"}, status=404)
-
-    # Sana diapazoni
-    if period_type == 'monthly':
-        start_date = date(year, month, 1)
-        _, last_day = monthrange(year, month)
-        end_date = date(year, month, last_day)
-    else:  # yearly
-        start_date = date(year, 1, 1)
-        end_date = date(year, 12, 31)
-
-    # Sotuvchilarni topish
-    seller_ids = set(
-        PhoneSale.objects.filter(
-            phone__shop=shop,
-            sale_date__range=[start_date, end_date]
-        ).values_list('salesman_id', flat=True)
-    ) | set(
-        PhoneExchange.objects.filter(
-            new_phone__shop=shop,
-            exchange_date__range=[start_date, end_date]
-        ).values_list('salesman_id', flat=True)
-    )
-
-    sellers = User.objects.filter(id__in=seller_ids)
-
-    seller_data = []
-
-    for seller in sellers:
-        # Sotilgan telefonlar
-        phone_sales_count = PhoneSale.objects.filter(
-            phone__shop=shop,
-            salesman=seller,
-            sale_date__range=[start_date, end_date]
-        ).count()
-
-        # Almashtirishlar
-        exchanges_count = PhoneExchange.objects.filter(
-            new_phone__shop=shop,
-            salesman=seller,
-            exchange_date__range=[start_date, end_date]
-        ).count()
-
-        # Qaytarilganlar
-        returns_count = PhoneReturn.objects.filter(
-            phone_sale__phone__shop=shop,
-            phone_sale__salesman=seller,
-            return_date__range=[start_date, end_date]
-        ).count()
-
-        # Net sotuvlar
-        net_sales = phone_sales_count + exchanges_count - returns_count
-
-        if net_sales > 0 or phone_sales_count > 0 or exchanges_count > 0:
-            seller_data.append({
-                'seller_id': seller.id,
-                'seller_name': seller.get_full_name() or seller.username,
-                'phone_sales': phone_sales_count,
-                'exchanges': exchanges_count,
-                'returns': returns_count,
-                'net_sales': net_sales
-            })
-
-    # Eng ko'p sotgan bo'yicha tartiblash
-    seller_data.sort(key=lambda x: x['net_sales'], reverse=True)
-
-    return JsonResponse({
-        'success': True,
-        'period': f"{month}/{year}" if period_type == 'monthly' else str(year),
-        'data': seller_data
-    })
-
-
-@login_required
-def shop_comparison_chart_api(request):
-    """Do'konlar taqqoslash diagrammasi API"""
-    year = int(request.GET.get('year', timezone.now().year))
-    month = int(request.GET.get('month', timezone.now().month))
-    period_type = request.GET.get('period', 'monthly')
-
-    shops = Shop.objects.all()
-    if hasattr(request.user, 'userprofile') and request.user.userprofile.role != 'boss':
-        shops = shops.filter(owner=request.user)
-
-    # Sana diapazoni
-    if period_type == 'monthly':
-        start_date = date(year, month, 1)
-        _, last_day = monthrange(year, month)
-        end_date = date(year, month, last_day)
-    else:  # yearly
-        start_date = date(year, 1, 1)
-        end_date = date(year, 12, 31)
-
-    shop_data = []
-
-    for shop in shops:
-        # Sotilgan telefonlar
-        phone_sales_count = PhoneSale.objects.filter(
-            phone__shop=shop,
-            sale_date__range=[start_date, end_date]
-        ).count()
-
-        # Almashtirishlar
-        exchanges_count = PhoneExchange.objects.filter(
-            new_phone__shop=shop,
-            exchange_date__range=[start_date, end_date]
-        ).count()
-
-        # Qaytarilganlar
-        returns_count = PhoneReturn.objects.filter(
-            phone_sale__phone__shop=shop,
-            return_date__range=[start_date, end_date]
-        ).count()
-
-        # Net sotuvlar
-        net_sales = phone_sales_count + exchanges_count - returns_count
-
-        shop_data.append({
-            'shop_id': shop.id,
-            'shop_name': shop.name,
-            'phone_sales': phone_sales_count,
-            'exchanges': exchanges_count,
-            'returns': returns_count,
-            'net_sales': net_sales
-        })
-
-    # Eng ko'p sotgan bo'yicha tartiblash
-    shop_data.sort(key=lambda x: x['net_sales'], reverse=True)
-
-    return JsonResponse({
-        'success': True,
-        'period': f"{month}/{year}" if period_type == 'monthly' else str(year),
-        'data': shop_data
     })

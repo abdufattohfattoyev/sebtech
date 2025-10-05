@@ -5,7 +5,389 @@
 
 {% block extra_css %}
 <style>
-.search-card,.stat-card{box-shadow:0 1px 3px rgba(0,0,0,.1);padding:1rem}.phone-card,.search-card,.stat-card{background:#fff;border-radius:8px}.phone-info,.search-card,.stat-card{padding:1rem}.action-btn,.btn-add{text-decoration:none}.action-btn.disabled,.btn-add.disabled{cursor:not-allowed;pointer-events:none}.modal-content,.phone-image img{max-height:80%;object-fit:contain}.image-modal,.modal-close{backdrop-filter:blur(10px)}.empty-state,.loading,.modal-info,.modal-loading,.stat-card{text-align:center}.fade-in{animation:.2s ease-out fadeIn}@keyframes fadeIn{from{opacity:0}to{opacity:1}}.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}.stat-value{font-size:1.5rem;font-weight:700;color:#1f2937}.stat-label{font-size:.75rem;color:#6b7280;text-transform:uppercase}.search-card{margin-bottom:1.5rem}.phones-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}.phone-card{border:1px solid #e5e7eb;overflow:hidden;transition:transform .2s,box-shadow .2s}.phone-actions,.phone-footer{border-top:1px solid #f3f4f6;display:flex}.phone-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.15)}.phone-image{height:120px;background:#f9fafb;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.3s;position:relative;overflow:hidden}.phone-image:hover,.spec-badge{background:#f3f4f6}.phone-image:hover img{transform:scale(1.05)}.phone-image img{max-width:80%;transition:transform .3s}.phone-placeholder{color:#9ca3af;font-size:1.5rem}.phone-title{font-size:.9rem;font-weight:600;color:#1f2937;margin-bottom:.5rem}.phone-specs{display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}.spec-badge{color:#4b5563;padding:.2rem .5rem;border-radius:4px;font-size:.7rem}.spec-badge.primary{background:#dbeafe;color:#2563eb}.phone-details{background:#f9fafb;padding:.5rem;border-radius:4px;margin-bottom:.75rem;font-size:.8rem}.detail-row{display:flex;justify-content:space-between;margin-bottom:.25rem}.detail-row:last-child{margin-bottom:0}.detail-label{color:#6b7280}.detail-value{color:#1f2937;font-weight:500}.imei-code{font-family:monospace;background:#fff;padding:.1rem .2rem;border-radius:2px;font-size:.7rem}.phone-footer{justify-content:space-between;align-items:center;padding-top:.5rem}.phone-price{font-size:1rem;font-weight:700;color:#2563eb}.phone-status{padding:.2rem .5rem;border-radius:4px;font-size:.65rem;font-weight:600;text-transform:uppercase}.phone-status.shop{background:#dbeafe;color:#1e40af}.phone-status.sold{background:#dcfce7;color:#166534}.phone-status.master{background:#fef3c7;color:#92400e}.phone-status.returned{background:#fee2e2;color:#991b1b}.phone-status.exchanged_in{background:#e0e7ff;color:#3730a3}.action-btn.primary,.btn-add{background:#2563eb;color:#fff}.phone-actions{gap:.25rem;margin-top:.5rem;padding-top:.5rem}.action-btn{flex:1;padding:.4rem;border-radius:4px;border:1px solid;font-size:.75rem;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s}.action-btn.primary{border-color:#2563eb}.action-btn.warning{border-color:#f59e0b;color:#f59e0b}.action-btn.danger{border-color:#ef4444;color:#ef4444}.action-btn.disabled{opacity:.3}.btn-add{border:none;padding:.5rem 1rem;border-radius:6px;font-size:.875rem;display:inline-flex;align-items:center;gap:.5rem}.btn-add.disabled{opacity:.5}.loading{padding:1rem}.spinner{width:1.5rem;height:1.5rem;border:2px solid #f3f4f6;border-top:2px solid #2563eb;border-radius:50%;animation:.8s linear infinite spin;margin:0 auto}@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}.empty-state{padding:2rem 1rem;color:#6b7280;grid-column:1/-1}.image-modal{display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.95);animation:.3s fadeIn}.modal-content{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);max-width:90%;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5);opacity:0;transition:.4s cubic-bezier(.175, .885, .32, 1.275)}.modal-close,.modal-info{position:fixed;color:#fff}.modal-content.loaded{transform:translate(-50%,-50%) scale(1);opacity:1}.modal-close{top:20px;right:20px;font-size:32px;font-weight:700;cursor:pointer;z-index:10000;width:50px;height:50px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:.3s;border:2px solid rgba(255,255,255,.3)}.modal-close:hover{background:rgba(239,68,68,.8);border-color:rgba(255,255,255,.8);transform:scale(1.1) rotate(90deg)}.modal-info{bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.9));padding:30px 20px;animation:.3s slideUp}@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}.modal-title{font-size:1.4rem;font-weight:700;margin-bottom:8px;text-shadow:0 2px 4px rgba(0,0,0,.5)}.modal-subtitle{font-size:1rem;opacity:.9;text-shadow:0 1px 2px rgba(0,0,0,.5)}.modal-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;z-index:1000}.modal-spinner{width:50px;height:50px;border:3px solid rgba(255,255,255,.3);border-top:3px solid #fff;border-radius:50%;animation:1s linear infinite spin;margin:0 auto 15px}@media (max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr);gap:.5rem}.phones-grid{grid-template-columns:1fr;gap:.75rem}.phone-info,.search-card{padding:.75rem}.phone-image{height:100px}.modal-content{max-width:95%;max-height:70%;border-radius:8px}.modal-close{top:10px;right:10px;width:40px;height:40px;font-size:24px}.modal-info{padding:20px 15px}.modal-title{font-size:1.2rem}.modal-subtitle{font-size:.9rem}}@media (max-width:480px){.modal-content{max-width:98%;max-height:60%;border-radius:6px}.modal-close{top:5px;right:5px;width:35px;height:35px;font-size:20px}.modal-info{padding:15px 10px}.modal-title{font-size:1.1rem}.modal-subtitle{font-size:.85rem}}@media (hover:none) and (pointer:coarse){.phone-card:hover,.phone-image:hover img{transform:none}.phone-image:hover{background:#f9fafb}.modal-close:hover{transform:none;background:rgba(255,255,255,.1)}.modal-close:active{background:rgba(239,68,68,.8);transform:scale(.95)}}.modal-close:focus{outline:white solid 2px;outline-offset:2px}@keyframes zoomIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}.zoom-in{animation:.3s ease-out zoomIn}
+/* Minimal animations */
+.fade-in { animation: fadeIn 0.2s ease-out; }
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Stats Cards - simplified */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+.stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+/* Search Card - simplified */
+.search-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+}
+
+/* Phone Cards - minimal */
+.phones-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+.phone-card {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+.phone-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.phone-image {
+    height: 120px;
+    background: #f9fafb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.2s;
+}
+.phone-image.clickable {
+    cursor: pointer;
+}
+.phone-image.clickable:hover {
+    background: #f3f4f6;
+}
+.phone-image.clickable img {
+    transition: transform 0.2s;
+}
+.phone-image.clickable:hover img {
+    transform: scale(1.05);
+}
+.phone-image img {
+    max-width: 80%;
+    max-height: 80%;
+    object-fit: contain;
+}
+.phone-placeholder {
+    color: #9ca3af;
+    font-size: 1.5rem;
+}
+.zoom-icon {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.phone-image.clickable:hover .zoom-icon {
+    opacity: 1;
+}
+.phone-info {
+    padding: 1rem;
+}
+.phone-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+.phone-specs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+.spec-badge {
+    background: #f3f4f6;
+    color: #4b5563;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+}
+.spec-badge.primary {
+    background: #dbeafe;
+    color: #2563eb;
+}
+.phone-details {
+    background: #f9fafb;
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+    font-size: 0.8rem;
+}
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+.detail-row:last-child { margin-bottom: 0; }
+.detail-label {
+    color: #6b7280;
+}
+.detail-value {
+    color: #1f2937;
+    font-weight: 500;
+    max-width: 60%;
+    text-align: right;
+    word-break: break-word;
+}
+.imei-code {
+    font-family: monospace;
+    background: white;
+    padding: 0.1rem 0.2rem;
+    border-radius: 2px;
+    font-size: 0.7rem;
+}
+.phone-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f3f4f6;
+}
+.phone-price {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #2563eb;
+}
+.phone-status {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.phone-status.shop { background: #dbeafe; color: #1e40af; }
+.phone-status.sold { background: #dcfce7; color: #166534; }
+.phone-status.master { background: #fef3c7; color: #92400e; }
+.phone-status.returned { background: #fee2e2; color: #991b1b; }
+.phone-status.exchanged_in { background: #e0e7ff; color: #3730a3; }
+
+.phone-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f3f4f6;
+}
+.action-btn {
+    flex: 1;
+    padding: 0.4rem;
+    border-radius: 4px;
+    border: 1px solid;
+    font-size: 0.75rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.action-btn.primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
+}
+.action-btn.warning {
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+.action-btn.danger {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+.action-btn.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Image Modal */
+.image-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.95);
+    animation: fadeIn 0.3s;
+}
+.image-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-content-wrapper {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-image {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    transform-origin: center;
+    transition: transform 0.3s ease;
+}
+.modal-close {
+    position: absolute;
+    top: 20px;
+    right: 35px;
+    color: #fff;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10000;
+    background: rgba(0,0,0,0.5);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.modal-close:hover {
+    background: rgba(0,0,0,0.8);
+}
+.zoom-controls {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    background: rgba(0,0,0,0.7);
+    padding: 10px;
+    border-radius: 8px;
+}
+.zoom-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.zoom-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+.zoom-level {
+    color: white;
+    padding: 0 15px;
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+/* Header button styles */
+.btn-add {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.btn-add.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Loading - minimal */
+.loading {
+    text-align: center;
+    padding: 1rem;
+}
+.spinner {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid #f3f4f6;
+    border-top: 2px solid #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Empty state - minimal */
+.empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #6b7280;
+    grid-column: 1 / -1;
+}
+
+/* Responsive - simplified */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+    .phones-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    .search-card, .phone-info {
+        padding: 0.75rem;
+    }
+    .phone-image {
+        height: 100px;
+    }
+    .modal-close {
+        top: 10px;
+        right: 10px;
+        font-size: 30px;
+        width: 40px;
+        height: 40px;
+    }
+    .zoom-controls {
+        bottom: 15px;
+    }
+}
 </style>
 {% endblock %}
 
@@ -108,101 +490,87 @@
         <small class="text-muted d-block mt-2">Yuklanmoqda...</small>
     </div>
 
-    <!-- Image Modal -->
-    <div id="imageModal" class="image-modal">
-        <span class="modal-close" id="modalClose">&times;</span>
-        <div class="modal-loading" id="modalLoading">
-            <div class="modal-spinner"></div>
-            <div>Rasm yuklanmoqda...</div>
-        </div>
-        <img class="modal-content" id="modalImage">
-        <div class="modal-info" id="modalInfo">
-            <div class="modal-title" id="modalTitle"></div>
-            <div class="modal-subtitle" id="modalSubtitle"></div>
-        </div>
-    </div>
-
     <!-- Phones -->
     <div id="phones-container">
-    <div class="phones-grid" id="phones-grid">
-        {% for phone in phones %}
-            <div class="phone-card">
-                <div class="phone-image"
-                     {% if phone.image and phone.image.url %}
-                         onclick="openImageModal(this, '{{ phone.image.url }}', '{{ phone.phone_model }}', '{{ phone.memory_size }}', '{{ phone.imei|default:"—" }}')"
-                     {% endif %}>
-                    {% if phone.image and phone.image.url %}
-                        <img src="{{ phone.image.url }}" alt="{{ phone.phone_model }}" loading="lazy">
+        <div class="phones-grid" id="phones-grid">
+            {% for phone in phones %}
+                <div class="phone-card">
+                    {% if phone.image %}
+                        <div class="phone-image clickable" onclick="openImageModal('{{ phone.image.url }}', '{{ phone.phone_model }}')">
+                            <img src="{{ phone.image.url }}" alt="{{ phone.phone_model }}">
+                            <span class="zoom-icon"><i class="fas fa-search-plus"></i></span>
+                        </div>
                     {% else %}
-                        <div class="phone-placeholder"><i class="fas fa-mobile-alt"></i></div>
+                        <div class="phone-image">
+                            <div class="phone-placeholder"><i class="fas fa-mobile-alt"></i></div>
+                        </div>
                     {% endif %}
-                </div>
-                <div class="phone-info">
-                    <h6 class="phone-title">{{ phone.phone_model }}</h6>
-                    <div class="phone-specs">
-                        <span class="spec-badge primary">{{ phone.memory_size }}</span>
-                        <span class="spec-badge">{{ phone.shop.name }}</span>
-                    </div>
-                    <div class="phone-details">
-                        <div class="detail-row">
-                            <span class="detail-label">IMEI:</span>
-                            <span class="detail-value imei-code">{{ phone.imei|default:"—" }}</span>
+                    <div class="phone-info">
+                        <h6 class="phone-title">{{ phone.phone_model }}</h6>
+                        <div class="phone-specs">
+                            <span class="spec-badge primary">{{ phone.memory_size }}</span>
+                            <span class="spec-badge">{{ phone.shop.name }}</span>
                         </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Holat:</span>
-                            <span class="detail-value">{{ phone.condition_percentage }}%</span>
+                        <div class="phone-details">
+                            <div class="detail-row">
+                                <span class="detail-label">IMEI:</span>
+                                <span class="detail-value imei-code">{{ phone.imei|default:"—" }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Holat:</span>
+                                <span class="detail-value">{{ phone.condition_percentage }}%</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Izoh:</span>
+                                <span class="detail-value">{{ phone.note|default:"—" }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Narx:</span>
+                                <span class="detail-value">
+                                    {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                                        ${{ phone.cost_price|floatformat:0 }}
+                                    {% else %}
+                                        <i class="fas fa-lock"></i>
+                                    {% endif %}
+                                </span>
+                            </div>
                         </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Izoh:</span>
-                            <span class="detail-value">{{ phone.note|default:"—" }}</span>
+                        <div class="phone-footer">
+                            <div class="phone-price">${{ phone.sale_price|floatformat:0|default:"—" }}</div>
+                            <span class="phone-status {{ phone.status }}">{{ phone.get_status_display }}</span>
                         </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Narx:</span>
-                            <span class="detail-value">
-                                {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
-                                    ${{ phone.cost_price|floatformat:0 }}
-                                {% else %}
+                        {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
+                            <div class="phone-actions">
+                                <a href="{% url 'inventory:phone_detail' phone.pk %}" class="action-btn primary" title="Ko'rish"><i class="fas fa-eye"></i></a>
+                                <a href="{% url 'inventory:phone_update' phone.pk %}" class="action-btn warning" title="Tahrirlash"><i class="fas fa-edit"></i></a>
+                                <a href="{% url 'inventory:phone_delete' phone.pk %}" class="action-btn danger" title="O'chirish"><i class="fas fa-trash"></i></a>
+                            </div>
+                        {% else %}
+                            <div class="phone-actions">
+                                <span class="action-btn primary disabled" title="Ruxsat yo'q">
                                     <i class="fas fa-lock"></i>
-                                {% endif %}
-                            </span>
-                        </div>
+                                </span>
+                                <span class="action-btn warning disabled" title="Ruxsat yo'q">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <span class="action-btn danger disabled" title="Ruxsat yo'q">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                            </div>
+                        {% endif %}
                     </div>
-                    <div class="phone-footer">
-                        <div class="phone-price">${{ phone.sale_price|floatformat:0|default:"—" }}</div>
-                        <span class="phone-status {{ phone.status }}">{{ phone.get_status_display }}</span>
-                    </div>
-                    {% if request.user.userprofile.role == 'boss' or request.user.userprofile.role == 'finance' %}
-                        <div class="phone-actions">
-                            <a href="{% url 'inventory:phone_detail' phone.pk %}" class="action-btn primary" title="Ko'rish"><i class="fas fa-eye"></i></a>
-                            <a href="{% url 'inventory:phone_update' phone.pk %}" class="action-btn warning" title="Tahrirlash"><i class="fas fa-edit"></i></a>
-                            <a href="{% url 'inventory:phone_delete' phone.pk %}" class="action-btn danger" title="O'chirish"><i class="fas fa-trash"></i></a>
-                        </div>
-                    {% else %}
-                        <div class="phone-actions">
-                            <span class="action-btn primary disabled" title="Ruxsat yo'q">
-                                <i class="fas fa-lock"></i>
-                            </span>
-                            <span class="action-btn warning disabled" title="Ruxsat yo'q">
-                                <i class="fas fa-lock"></i>
-                            </span>
-                            <span class="action-btn danger disabled" title="Ruxsat yo'q">
-                                <i class="fas fa-lock"></i>
-                            </span>
-                        </div>
-                    {% endif %}
                 </div>
-            </div>
-        {% empty %}
-            <div class="empty-state">
-                <i class="fas fa-mobile-alt fa-2x mb-2"></i>
-                <h5 class="text-muted">Telefonlar topilmadi</h5>
-                <p class="mb-2">Qidiruv bo'yicha natija yo'q</p>
-                <a href="{% url 'inventory:phone_create' %}" class="btn btn-primary btn-sm">
-                    <i class="fas fa-plus me-1"></i>Yangi qo'shish
-                </a>
-            </div>
-        {% endfor %}
-    </div>
+            {% empty %}
+                <div class="empty-state">
+                    <i class="fas fa-mobile-alt fa-2x mb-2"></i>
+                    <h5 class="text-muted">Telefonlar topilmadi</h5>
+                    <p class="mb-2">Qidiruv bo'yicha natija yo'q</p>
+                    <a href="{% url 'inventory:phone_create' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i>Yangi qo'shish
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
     </div>
 
     <!-- Pagination -->
@@ -226,115 +594,94 @@
         </ul>
     </nav>
 </div>
+
+<!-- Image Modal -->
+<div id="imageModal" class="image-modal">
+    <span class="modal-close" onclick="closeImageModal()">&times;</span>
+    <div class="modal-content-wrapper">
+        <img class="modal-image" id="modalImage" src="" alt="">
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomOut()"><i class="fas fa-minus"></i></button>
+            <span class="zoom-level" id="zoomLevel">100%</span>
+            <button class="zoom-btn" onclick="zoomIn()"><i class="fas fa-plus"></i></button>
+            <button class="zoom-btn" onclick="resetZoom()"><i class="fas fa-compress"></i></button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Image Modal functionality
-let currentModalImage = null;
-
-function openImageModal(clickedElement, imageUrl, model, memory, imei) {
-    if (!imageUrl || imageUrl === 'None') return;
-
-    const modal = document.getElementById('imageModal');
-    const modalImage = document.getElementById('modalImage');
-    const modalLoading = document.getElementById('modalLoading');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalSubtitle = document.getElementById('modalSubtitle');
-
-    // Show modal immediately
-    modal.style.display = 'block';
-    modalLoading.style.display = 'block';
-    modalImage.style.display = 'none';
-    modalImage.classList.remove('loaded');
-
-    // Set modal content
-    modalTitle.textContent = model;
-    modalSubtitle.textContent = `${memory} | IMEI: ${imei}`;
-
-    // Load image
-    const img = new Image();
-    img.onload = function() {
-        modalImage.src = imageUrl;
-        modalImage.alt = model;
-        modalLoading.style.display = 'none';
-        modalImage.style.display = 'block';
-
-        // Add loaded class with slight delay for smooth animation
-        setTimeout(() => {
-            modalImage.classList.add('loaded');
-        }, 50);
-
-        currentModalImage = modalImage;
-    };
-
-    img.onerror = function() {
-        modalLoading.innerHTML = `
-            <div style="color: white; text-align: center;">
-                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                <div>Rasm yuklanmadi</div>
-            </div>
-        `;
-        setTimeout(() => {
-            closeImageModal();
-        }, 2000);
-    };
-
-    img.src = imageUrl;
-
-    // Prevent body scroll
-    document.body.style.overflow = 'hidden';
-    document.body.style.paddingRight = '15px'; // Prevent layout shift
-}
-
-function closeImageModal() {
-    const modal = document.getElementById('imageModal');
-    modal.style.display = 'none';
-    document.body.style.overflow = 'auto';
-    document.body.style.paddingRight = '0';
-
-    if (currentModalImage) {
-        currentModalImage.classList.remove('loaded');
-        currentModalImage = null;
-    }
-}
-
-// Close modal on outside click
-function onClickOutsideModal(event) {
-    const modal = document.getElementById('imageModal');
-    if (event.target === modal) {
-        closeImageModal();
-    }
-}
-
-// Keyboard support
-function onKeyDown(event) {
-    if (event.key === 'Escape') {
-        closeImageModal();
-    }
-}
-
-// Initialize modal events
-document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('imageModal');
-    const modalClose = document.getElementById('modalClose');
-
-    if (modalClose) {
-        modalClose.addEventListener('click', closeImageModal);
-    }
-
-    if (modal) {
-        modal.addEventListener('click', onClickOutsideModal);
-    }
-
-    document.addEventListener('keydown', onKeyDown);
-});
-
 // Foydalanuvchi roli
 const userRole = '{{ request.user.userprofile.role }}';
 const canEdit = userRole === 'boss' || userRole === 'finance';
 
 let searchTimeout = null;
+let currentZoom = 1;
+
+// Image Modal Functions
+function openImageModal(imageSrc, altText) {
+    if (!imageSrc) return;
+
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+
+    modal.classList.add('active');
+    modalImg.src = imageSrc;
+    modalImg.alt = altText;
+    currentZoom = 1;
+    updateZoom();
+
+    document.body.style.overflow = 'hidden';
+}
+
+function closeImageModal() {
+    const modal = document.getElementById('imageModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = 'auto';
+    currentZoom = 1;
+}
+
+function zoomIn() {
+    if (currentZoom < 3) {
+        currentZoom += 0.2;
+        updateZoom();
+    }
+}
+
+function zoomOut() {
+    if (currentZoom > 0.5) {
+        currentZoom -= 0.2;
+        updateZoom();
+    }
+}
+
+function resetZoom() {
+    currentZoom = 1;
+    updateZoom();
+}
+
+function updateZoom() {
+    const modalImg = document.getElementById('modalImage');
+    const zoomLevel = document.getElementById('zoomLevel');
+    modalImg.style.transform = `scale(${currentZoom})`;
+    zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+}
+
+// Close modal on outside click
+document.getElementById('imageModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeImageModal();
+    }
+});
+
+// Close modal on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeImageModal();
+    }
+});
 
 const performSearch = (page = 1) => {
     clearTimeout(searchTimeout);
@@ -412,14 +759,20 @@ const updateResults = (phones) => {
         return;
     }
 
-    container.innerHTML = phones.map(phone => `
+    container.innerHTML = phones.map(phone => {
+        const hasImage = phone.image && phone.image !== '';
+        const imageHtml = hasImage
+            ? `<div class="phone-image clickable" onclick="openImageModal('${phone.image}', '${phone.phone_model}')">
+                   <img src="${phone.image}" alt="${phone.phone_model}">
+                   <span class="zoom-icon"><i class="fas fa-search-plus"></i></span>
+               </div>`
+            : `<div class="phone-image">
+                   <div class="phone-placeholder"><i class="fas fa-mobile-alt"></i></div>
+               </div>`;
+
+        return `
         <div class="phone-card">
-            <div class="phone-image" onclick="openImageModal(this, '${phone.image || ''}', '${phone.phone_model}', '${phone.memory_size}', '${phone.imei || '—'}')">
-                ${phone.image ?
-                    `<img src="${phone.image}" alt="${phone.phone_model}" loading="lazy">` :
-                    `<div class="phone-placeholder"><i class="fas fa-mobile-alt"></i></div>`
-                }
-            </div>
+            ${imageHtml}
             <div class="phone-info">
                 <h6 class="phone-title">${phone.phone_model}</h6>
                 <div class="phone-specs">
@@ -434,6 +787,10 @@ const updateResults = (phones) => {
                     <div class="detail-row">
                         <span class="detail-label">Holat:</span>
                         <span class="detail-value">${phone.condition_percentage}%</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Izoh:</span>
+                        <span class="detail-value">${phone.note || '—'}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Narx:</span>
@@ -473,7 +830,8 @@ const updateResults = (phones) => {
                 `}
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 };
 
 const updatePagination = (data) => {

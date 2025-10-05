@@ -1,4 +1,4 @@
-# reports/tests.py - YAKUNIY ISHLAYOTGAN VERSIYA
+# reports/tests.py - YAKUNIY TO'G'RILANGAN
 
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
@@ -75,9 +75,11 @@ class ProfitCalculatorTestCase(TestCase):
             owner=self.user
         )
 
+        # PhoneModel va MemorySize yaratish
         self.phone_model = PhoneModel.objects.create(model_name='iPhone 15')
         self.memory = MemorySize.objects.create(size='128GB')
 
+        # Phone yaratish
         self.phone = Phone.objects.create(
             phone_model=self.phone_model,
             memory_size=self.memory,
@@ -92,6 +94,7 @@ class ProfitCalculatorTestCase(TestCase):
             created_at=date.today()
         )
 
+        # Customer yaratish
         self.customer = Customer.objects.create(
             name='Test Customer',
             phone_number='998901234567',
@@ -112,6 +115,7 @@ class ProfitCalculatorTestCase(TestCase):
         profit_calc = ProfitCalculator()
         profit = profit_calc.calculate_phone_profit(phone_sale)
 
+        # 1000 - 800 = 200
         self.assertEqual(profit, Decimal('200.00'))
 
     def test_accessory_profit_calculation(self):
@@ -125,6 +129,7 @@ class ProfitCalculatorTestCase(TestCase):
             sale_price=Decimal('80000')
         )
 
+        # Purchase history qo'shish
         AccessoryPurchaseHistory.objects.create(
             accessory=accessory,
             quantity=10,
@@ -132,6 +137,7 @@ class ProfitCalculatorTestCase(TestCase):
             created_by=self.user
         )
 
+        # Accessory refresh qilish (purchase_price yangilandi)
         accessory.refresh_from_db()
 
         accessory_sale = AccessorySale.objects.create(
@@ -147,10 +153,13 @@ class ProfitCalculatorTestCase(TestCase):
         profit_calc = ProfitCalculator()
         profit = profit_calc.calculate_accessory_profit(accessory_sale)
 
+        # total_price - (purchase_price * quantity)
+        # 160000 - (50000 * 2) = 60000
         self.assertEqual(profit, Decimal('60000'))
 
     def test_exchange_profit_calculation(self):
         """Almashtirish foydasi hisoblash testi"""
+        # Yangi telefon
         new_phone = Phone.objects.create(
             phone_model=self.phone_model,
             memory_size=self.memory,
@@ -165,11 +174,10 @@ class ProfitCalculatorTestCase(TestCase):
             created_at=date.today()
         )
 
-        # MUHIM: old_phone_imei kiritish (PhoneExchange.save() eski telefon yaratadi)
+        # PhoneExchange yaratish - price_difference avtomatik hisoblash uchun
         exchange = PhoneExchange(
             old_phone_model=self.phone_model,
             old_phone_memory=self.memory,
-            old_phone_imei='999999999999999',  # ✅ IMEI qo'shildi
             new_phone=new_phone,
             customer_name='Test Customer',
             customer_phone_number='998901234567',
@@ -181,12 +189,14 @@ class ProfitCalculatorTestCase(TestCase):
             exchange_date=date.today()
         )
 
+        # calculate_price_difference chaqirish
         exchange.calculate_price_difference()
         exchange.save()
 
         profit_calc = ProfitCalculator()
         profit = profit_calc.calculate_exchange_profit(exchange)
 
+        # 1200 - 900 = 300
         self.assertEqual(profit, Decimal('300.00'))
 
 
@@ -244,6 +254,8 @@ class SalesQueryHelperTestCase(TestCase):
 
     def test_get_phone_sales_by_salesman(self):
         """Sotuvchi bo'yicha telefon sotuvlarini olish testi"""
+        user2 = User.objects.create_user(username='user2', password='test123')
+
         PhoneSale.objects.create(
             phone=self.phone,
             customer=self.customer,
@@ -425,7 +437,7 @@ class ViewTestCase(TestCase):
     def test_daily_report_view_requires_login(self):
         """Kunlik hisobot login talab qilishini tekshirish"""
         response = self.client.get('/reports/daily/')
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 302)  # Redirect to login
 
     def test_daily_report_view_with_login(self):
         """Login qilingandan keyin kunlik hisobot view testi"""

@@ -3,6 +3,8 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 from .models import Master, MasterService, MasterPayment
 from inventory.models import Phone
 
@@ -36,7 +38,7 @@ class MasterForm(forms.ModelForm):
 
 
 class MasterServiceForm(forms.ModelForm):
-    # YANGI: IMEI orqali telefon qidirish uchun
+    # IMEI orqali telefon qidirish uchun
     phone_imei = forms.CharField(
         max_length=20,
         required=False,
@@ -82,20 +84,29 @@ class MasterServiceForm(forms.ModelForm):
 
         # Telefon maydonini sozlash
         if self.instance.pk:
-            # Tahrirlashda - barcha do'kondagi telefonlar + joriy telefon
+            # Tahrirlashda
             phones = Phone.objects.filter(status='shop').select_related('phone_model', 'memory_size', 'shop')
             # Joriy telefonni ham qo'shish (agar master holatida bo'lsa)
             if self.instance.phone.status == 'master':
                 phones = phones | Phone.objects.filter(pk=self.instance.phone.pk)
             self.fields['phone'].queryset = phones
 
-            # IMEI maydoniga joriy telefon IMEI ni qo'yish
-            self.fields['phone_imei'].initial = self.instance.phone.imei or ''
+            # ✅ Initial qiymatlarni to'ldirish (self.initial ishlatish)
+            self.initial['phone_imei'] = self.instance.phone.imei or ''
+            self.initial['phone'] = self.instance.phone.id
+            self.initial['master'] = self.instance.master.id
+            self.initial['service_fee'] = self.instance.service_fee
+            self.initial['repair_reasons'] = self.instance.repair_reasons
+            if self.instance.expected_return_date:
+                self.initial['expected_return_date'] = self.instance.expected_return_date
         else:
-            # Yangi yaratishda - faqat do'kondagi telefonlar
+            # Yangi yaratishda
             self.fields['phone'].queryset = Phone.objects.filter(
                 status='shop'
             ).select_related('phone_model', 'memory_size', 'shop')
+
+            # Default qiymatlar
+            self.initial['expected_return_date'] = timezone.now().date() + timedelta(days=7)
 
         # Usta tanlash
         self.fields['master'].queryset = Master.objects.all().order_by('first_name', 'last_name')
@@ -180,6 +191,10 @@ class MasterPaymentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.master_service = kwargs.pop('master_service', None)
         super().__init__(*args, **kwargs)
+
+        # ✅ Initial qiymatlarni to'ldirish
+        if not self.instance.pk:
+            self.initial['payment_date'] = timezone.now().date()
 
         if self.master_service:
             # Qolgan summani hisoblash

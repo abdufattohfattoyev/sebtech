@@ -1,6 +1,4 @@
-# sales/forms.py
 from datetime import timedelta
-
 from django import forms
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -9,12 +7,178 @@ from django.db import transaction
 from decimal import Decimal
 
 from .models import PhoneSale, PhoneReturn, AccessorySale, PhoneExchange, Debt, DebtPayment, Expense
-from inventory.models import Phone, PhoneModel, MemorySize
+from inventory.models import Phone
 from shops.models import Customer, Shop
 
 
+# ============ HELPER FUNCTIONS ============
+def manage_sale_debts(sale_obj, form_data, user, is_new=True):
+    """
+    Universal qarz boshqarish funksiyasi - PhoneSale, AccessorySale, PhoneExchange uchun
+
+    Args:
+        sale_obj: PhoneSale, AccessorySale yoki PhoneExchange instance
+        form_data: cleaned_data
+        user: Current user
+        is_new: Yangi yaratish yoki tahrirlash
+    """
+    debt_amount = form_data.get('debt_amount', Decimal('0'))
+    debt_due_date = form_data.get('debt_due_date')
+    customer = sale_obj.customer
+
+    # Valyuta va identifikator aniqlash
+    if isinstance(sale_obj, PhoneSale):
+        currency = 'USD'
+        identifier = f"IMEI: {sale_obj.phone.imei}"
+        description = f"Telefon sotish: {sale_obj.phone.phone_model} {sale_obj.phone.memory_size}"
+    elif isinstance(sale_obj, AccessorySale):
+        currency = 'UZS'
+        identifier = f"Aksessuar: {sale_obj.accessory.name} x {sale_obj.quantity}"
+        description = identifier
+    elif isinstance(sale_obj, PhoneExchange):
+        currency = 'USD'
+        identifier = f"IMEI: {sale_obj.new_phone.imei}"
+        description = f"Telefon almashtirish: {sale_obj.old_phone_model} → {sale_obj.new_phone.phone_model}"
+        # PhoneExchange uchun qarz faqat customer_pays holatida
+        if sale_obj.exchange_type != 'customer_pays':
+            return
+    else:
+        return
+
+    # Shop owner
+    if isinstance(sale_obj, AccessorySale):
+        shop_owner = sale_obj.accessory.shop.owner
+    else:
+        shop_owner = sale_obj.phone.shop.owner if isinstance(sale_obj, PhoneSale) else sale_obj.new_phone.shop.owner
+
+    if is_new:
+        # ========== YANGI YARATISH ==========
+        if debt_amount > 0:
+            if user == shop_owner:
+                # Boshliq o'zi - 1 ta qarz
+                Debt.objects.create(
+                    debt_type='customer_to_seller',
+                    creditor=shop_owner,
+                    customer=customer,
+                    currency=currency,
+                    debt_amount=debt_amount,
+                    paid_amount=Decimal('0'),
+                    due_date=debt_due_date,
+                    status='active',
+                    notes=f"{description} ({identifier})"
+                )
+            else:
+                # Xodim - 2 ta qarz
+                Debt.objects.create(
+                    debt_type='customer_to_seller',
+                    creditor=user,
+                    customer=customer,
+                    currency=currency,
+                    debt_amount=debt_amount,
+                    paid_amount=Decimal('0'),
+                    due_date=debt_due_date,
+                    status='active',
+                    notes=f"{description} ({identifier})"
+                )
+
+                Debt.objects.create(
+                    debt_type='seller_to_boss',
+                    creditor=shop_owner,
+                    debtor=user,
+                    currency=currency,
+                    debt_amount=debt_amount,
+                    paid_amount=Decimal('0'),
+                    due_date=debt_due_date,
+                    status='active',
+                    notes=f"Qarz javobgarligi: {description} (Mijoz: {customer.name}, {identifier})"
+                )
+    else:
+        # ========== TAHRIRLASH ==========
+        # Mavjud qarzlarni topish
+        customer_debt = Debt.objects.filter(
+            debt_type='customer_to_seller',
+            currency=currency,
+            notes__icontains=identifier.split(':')[1].strip()  # IMEI yoki aksessuar nomi
+        ).first()
+
+        seller_debt = Debt.objects.filter(
+            debt_type='seller_to_boss',
+            debtor=sale_obj.salesman,
+            currency=currency,
+            notes__icontains=identifier.split(':')[1].strip()
+        ).first()
+
+        if debt_amount > 0:
+            # QARZ YANGILASH yoki YARATISH
+            if customer_debt:
+                customer_debt.debt_amount = debt_amount
+                customer_debt.customer = customer
+                customer_debt.creditor = shop_owner if user == shop_owner else sale_obj.salesman
+                if debt_due_date:
+                    customer_debt.due_date = debt_due_date
+                customer_debt.notes = f"{description} (yangilandi, {identifier})"
+                customer_debt.save()
+            else:
+                Debt.objects.create(
+                    debt_type='customer_to_seller',
+                    creditor=shop_owner if user == shop_owner else sale_obj.salesman,
+                    customer=customer,
+                    currency=currency,
+                    debt_amount=debt_amount,
+                    paid_amount=Decimal('0'),
+                    due_date=debt_due_date,
+                    status='active',
+                    notes=f"{description} (yangilandi, {identifier})"
+                )
+
+            # Sotuvchi → Boss qarz
+            if user != shop_owner:
+                if seller_debt:
+                    seller_debt.debt_amount = debt_amount
+                    if debt_due_date:
+                        seller_debt.due_date = debt_due_date
+                    seller_debt.notes = f"Qarz javobgarligi (yangilandi): {description} (Mijoz: {customer.name}, {identifier})"
+                    seller_debt.save()
+                else:
+                    Debt.objects.create(
+                        debt_type='seller_to_boss',
+                        creditor=shop_owner,
+                        debtor=sale_obj.salesman,
+                        currency=currency,
+                        debt_amount=debt_amount,
+                        paid_amount=Decimal('0'),
+                        due_date=debt_due_date,
+                        status='active',
+                        notes=f"Qarz javobgarligi (yangilandi): {description} (Mijoz: {customer.name}, {identifier})"
+                    )
+            else:
+                if seller_debt:
+                    seller_debt.delete()
+        else:
+            # QARZ 0 - O'CHIRISH
+            if customer_debt:
+                customer_debt.delete()
+            if seller_debt:
+                seller_debt.delete()
+
+
+def get_or_create_customer(phone, name, user):
+    """Mijozni yaratish yoki yangilash"""
+    customer, created = Customer.objects.get_or_create(
+        phone_number=phone,
+        defaults={'name': name, 'created_by': user}
+    )
+    if not created and customer.name != name:
+        customer.name = name
+        customer.save(update_fields=['name'])
+    return customer
+
+
+# ============ FORMS ============
+
 class DebtPaymentForm(forms.ModelForm):
     """Qarz to'lovi formi"""
+
     class Meta:
         model = DebtPayment
         fields = ['payment_amount', 'payment_date', 'notes']
@@ -68,17 +232,15 @@ class DebtPaymentForm(forms.ModelForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-
         if self.debt:
             instance.debt = self.debt
-
         if commit:
             instance.save()
         return instance
 
 
 class PhoneSaleForm(forms.ModelForm):
-    """Telefon sotish formi - ikki tomonlama qarz bilan"""
+    """Telefon sotish formi"""
     customer_name = forms.CharField(
         max_length=100,
         required=True,
@@ -103,11 +265,15 @@ class PhoneSaleForm(forms.ModelForm):
 
     debt_due_date = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={
-            'class': 'form-control',
-            'type': 'date',
-            'id': 'id_debt_due_date'
-        }),
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(
+            format='%Y-%m-%d',  # ✅ Output formati
+            attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'id': 'id_debt_due_date'
+            }
+        ),
         label="Qarz qaytarish muddati"
     )
 
@@ -155,11 +321,14 @@ class PhoneSaleForm(forms.ModelForm):
                 'value': 0,
                 'id': 'id_debt_amount'
             }),
-            'sale_date': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date',
-                'id': 'id_sale_date'
-            }),
+            'sale_date': forms.DateInput(
+                format='%Y-%m-%d',  # ✅ Output formati
+                attrs={
+                    'class': 'form-control',
+                    'type': 'date',
+                    'id': 'id_sale_date'
+                }
+            ),
             'notes': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 3,
@@ -171,32 +340,55 @@ class PhoneSaleForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
+        # ✅ SANA FORMATLARI - input va output formatlari
+        self.fields['sale_date'].input_formats = ['%Y-%m-%d']
+        self.fields['sale_date'].widget.format = '%Y-%m-%d'
+
+        self.fields['debt_due_date'].input_formats = ['%Y-%m-%d']
+        self.fields['debt_due_date'].widget.format = '%Y-%m-%d'
+
+        # MUHIM: Yangi yaratishda salesman ni oldindan o'rnatish
+        if not self.instance.pk and self.user:
+            self.instance.salesman = self.user
+
         if not self.instance.pk:
+            # ✅ YANGI YARATISH
             self.fields['sale_date'].initial = timezone.now().date()
             self.fields['debt_due_date'].initial = timezone.now().date() + timedelta(days=30)
         else:
-            if self.instance.sale_date:
-                self.fields['sale_date'].initial = self.instance.sale_date.strftime('%Y-%m-%d')
-
+            # ✅ TAHRIRLASH - initial qiymatlarni to'g'ri formatda
+            # Mijoz ma'lumotlari
             if self.instance.customer:
                 self.fields['customer_name'].initial = self.instance.customer.name
                 self.fields['customer_phone'].initial = self.instance.customer.phone_number
 
-    def clean_phone(self):
-        """✅ Telefon validatsiyasi"""
-        phone = self.cleaned_data.get('phone')
+            # ✅ SOTISH SANASI - date obyekt sifatida
+            if self.instance.sale_date:
+                self.fields['sale_date'].initial = self.instance.sale_date
 
+            # ✅ Qarz muddati
+            if self.instance.debt_amount > 0:
+                debt = Debt.objects.filter(
+                    debt_type='customer_to_seller',
+                    customer=self.instance.customer,
+                    currency='USD',
+                    notes__icontains=self.instance.phone.imei
+                ).first()
+                if debt and debt.due_date:
+                    self.fields['debt_due_date'].initial = debt.due_date
+
+    def clean_phone(self):
+        phone = self.cleaned_data.get('phone')
         if not phone:
             raise ValidationError("Telefon tanlanishi kerak!")
 
-        # Yangi yaratishda - faqat 'shop' va 'returned' statusli telefonlar
+        # Faqat yangi yaratishda telefon statusini tekshirish
         if not self.instance.pk:
             if phone.status not in ['shop', 'returned']:
                 raise ValidationError(
                     f"Bu telefon {phone.get_status_display()} holatida! "
                     f"Faqat do'kondagi yoki qaytarilgan telefonlarni sotish mumkin."
                 )
-
         return phone
 
     def clean(self):
@@ -209,6 +401,18 @@ class PhoneSaleForm(forms.ModelForm):
         card_amount = cleaned_data.get('card_amount') or Decimal('0')
         credit_amount = cleaned_data.get('credit_amount') or Decimal('0')
 
+        # MUHIM: Mijozni validatsiya paytida yaratish/olish
+        customer_phone = cleaned_data.get('customer_phone')
+        customer_name = cleaned_data.get('customer_name')
+
+        if customer_phone and customer_name and self.user:
+            self.instance.customer = get_or_create_customer(
+                customer_phone,
+                customer_name,
+                self.user
+            )
+
+        # To'lovlar yig'indisini tekshirish
         if sale_price:
             total_payments = cash_amount + card_amount + credit_amount + debt_amount
             if abs(total_payments - sale_price) > Decimal('0.01'):
@@ -216,6 +420,7 @@ class PhoneSaleForm(forms.ModelForm):
                     f"To'lovlar yig'indisi ({total_payments:.2f}$) sotish narxiga ({sale_price:.2f}$) teng bo'lishi kerak!"
                 )
 
+        # Qarz uchun muddat tekshiruvi
         if debt_amount > 0 and not debt_due_date:
             raise ValidationError({
                 'debt_due_date': "Qarz uchun qaytarish muddati kiritilishi kerak!"
@@ -225,88 +430,37 @@ class PhoneSaleForm(forms.ModelForm):
 
     @transaction.atomic
     def save(self, commit=True):
-        """Saqlash - ikki tomonlama qarz yaratish/yangilash"""
         is_new = not self.instance.pk
         phone_sale = super().save(commit=False)
-        phone_sale.salesman = self.user
 
-        # Mijozni yaratish/topish
-        customer_phone = self.cleaned_data.get('customer_phone')
-        customer_name = self.cleaned_data.get('customer_name')
+        # Salesman allaqachon __init__ da o'rnatilgan, lekin qayta o'rnatamiz
+        if self.user:
+            phone_sale.salesman = self.user
 
-        customer, created = Customer.objects.get_or_create(
-            phone_number=customer_phone,
-            defaults={'name': customer_name, 'created_by': self.user}
-        )
-
-        if not created and customer.name != customer_name:
-            customer.name = customer_name
-            customer.save(update_fields=['name'])
-
-        phone_sale.customer = customer
+        # Mijoz allaqachon clean() da yaratilgan
+        if not phone_sale.customer:
+            phone_sale.customer = get_or_create_customer(
+                self.cleaned_data.get('customer_phone'),
+                self.cleaned_data.get('customer_name'),
+                self.user
+            )
 
         if commit:
             phone_sale.save()
 
-            # Eski qarzlarni o'chirish (edit holatida)
-            if not is_new:
-                old_debt_amount = self.initial.get('debt_amount', Decimal('0'))
-                if phone_sale.debt_amount != old_debt_amount:
-                    # Mijoz → Sotuvchi qarzni o'chirish
-                    Debt.objects.filter(
-                        debt_type='customer_to_seller',
-                        customer=self.instance.customer,
-                        currency='USD',
-                        notes__contains=phone_sale.phone.imei
-                    ).delete()
-
-                    # Sotuvchi → Boss qarzni o'chirish
-                    shop_owner = phone_sale.phone.shop.owner
-                    Debt.objects.filter(
-                        debt_type='seller_to_boss',
-                        debtor=self.user,
-                        creditor=shop_owner,
-                        currency='USD',
-                        notes__contains=phone_sale.phone.imei
-                    ).delete()
-
-            # Yangi qarzlarni yaratish (agar qarz mavjud bo'lsa)
-            if phone_sale.debt_amount > 0:
-                debt_due_date = self.cleaned_data.get('debt_due_date')
-                shop_owner = phone_sale.phone.shop.owner
-
-                # Mijoz → Sotuvchi qarz
-                Debt.objects.create(
-                    debt_type='customer_to_seller',
-                    creditor=self.user,
-                    customer=phone_sale.customer,
-                    currency='USD',
-                    debt_amount=phone_sale.debt_amount,
-                    paid_amount=Decimal('0'),
-                    due_date=debt_due_date,
-                    status='active',
-                    notes=f"Telefon sotish {'(tahrirlangan)' if not is_new else ''}: {phone_sale.phone.phone_model} {phone_sale.phone.memory_size} (IMEI: {phone_sale.phone.imei})"
-                )
-
-                # Sotuvchi → Boss qarz (agar sotuvchi rahbar bo'lmasa)
-                if self.user != shop_owner:
-                    Debt.objects.create(
-                        debt_type='seller_to_boss',
-                        creditor=shop_owner,
-                        debtor=self.user,
-                        currency='USD',
-                        debt_amount=phone_sale.debt_amount,
-                        paid_amount=Decimal('0'),
-                        due_date=debt_due_date,
-                        status='active',
-                        notes=f"Telefon sotish qarz javobgarligi {'(tahrirlangan)' if not is_new else ''}: {phone_sale.phone.phone_model} (Mijoz: {phone_sale.customer.name})"
-                    )
+            # Qarz boshqarish
+            manage_sale_debts(
+                phone_sale,
+                self.cleaned_data,
+                self.user,
+                is_new=is_new
+            )
 
         return phone_sale
 
 
 class AccessorySaleForm(forms.ModelForm):
-    """Aksessuar sotish formi - ikki tomonlama qarz bilan"""
+    """Aksessuar sotish formi"""
     accessory_code = forms.CharField(
         max_length=10,
         required=False,
@@ -416,34 +570,23 @@ class AccessorySaleForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # ✅ TO'G'RI INITIAL QILISH - SANALAR
         if not self.instance.pk:
-            # Yangi sotish
             self.initial['sale_date'] = timezone.now().date()
             self.initial['debt_due_date'] = timezone.now().date() + timedelta(days=30)
         else:
-            # Edit paytida - mavjud sanalarni o'rnatish
-            if self.instance.sale_date:
-                self.initial['sale_date'] = self.instance.sale_date
-
-            # Mijoz ma'lumotlari
             if self.instance.customer:
                 self.initial['customer_name'] = self.instance.customer.name
                 self.initial['customer_phone'] = self.instance.customer.phone_number
 
-            # ✅ QARZ SANASINI INITIAL QILISH (agar qarz mavjud bo'lsa)
             if self.instance.debt_amount > 0:
-                # Mijoz → Sotuvchi qarzini topish
-                customer_debt = Debt.objects.filter(
+                debt = Debt.objects.filter(
                     debt_type='customer_to_seller',
                     customer=self.instance.customer,
-                    creditor=self.instance.salesman,
                     currency='UZS',
                     notes__icontains=self.instance.accessory.name
                 ).first()
-
-                if customer_debt and customer_debt.due_date:
-                    self.initial['debt_due_date'] = customer_debt.due_date.strftime('%Y-%m-%d')
+                if debt and debt.due_date:
+                    self.initial['debt_due_date'] = debt.due_date
 
     def clean(self):
         cleaned_data = super().clean()
@@ -496,27 +639,17 @@ class AccessorySaleForm(forms.ModelForm):
 
     @transaction.atomic
     def save(self, commit=True):
-        """Saqlash - faqat yangi aksessuar sotish uchun qarz yaratish"""
         is_new = not self.instance.pk
         accessory_sale = super().save(commit=False)
         accessory_sale.salesman = self.user
 
-        # Mijozni yaratish/topish
-        customer_phone = self.cleaned_data.get('customer_phone')
-        customer_name = self.cleaned_data.get('customer_name')
-
-        customer, created = Customer.objects.get_or_create(
-            phone_number=customer_phone,
-            defaults={'name': customer_name, 'created_by': self.user}
+        # Mijoz
+        accessory_sale.customer = get_or_create_customer(
+            self.cleaned_data.get('customer_phone'),
+            self.cleaned_data.get('customer_name'),
+            self.user
         )
 
-        if not created and customer.name != customer_name:
-            customer.name = customer_name
-            customer.save(update_fields=['name'])
-
-        accessory_sale.customer = customer
-
-        # Total priceni hisoblash
         accessory_sale.total_price = accessory_sale.unit_price * accessory_sale.quantity
 
         if commit:
@@ -527,7 +660,6 @@ class AccessorySaleForm(forms.ModelForm):
                 accessory_sale.accessory.quantity -= accessory_sale.quantity
                 accessory_sale.accessory.save(update_fields=['quantity'])
             else:
-                # Edit holatida - eski va yangi quantity farqini hisoblash
                 old_quantity = self.initial.get('quantity', 0)
                 quantity_diff = accessory_sale.quantity - old_quantity
                 if quantity_diff != 0:
@@ -539,58 +671,19 @@ class AccessorySaleForm(forms.ModelForm):
 
             accessory_sale.save()
 
-            # ✅ FAQAT YANGI SOTISH UCHUN QARZ YARATISH
-            if is_new and accessory_sale.debt_amount > 0:
-                debt_due_date = self.cleaned_data.get('debt_due_date')
-                shop_owner = accessory_sale.accessory.shop.owner
-
-                if self.user == shop_owner:
-                    # Rahbar o'zi sotyapti
-                    Debt.objects.create(
-                        debt_type='customer_to_seller',
-                        creditor=shop_owner,
-                        customer=accessory_sale.customer,
-                        currency='UZS',
-                        debt_amount=accessory_sale.debt_amount,
-                        paid_amount=Decimal('0'),
-                        due_date=debt_due_date,
-                        status='active',
-                        notes=f"Aksessuar: {accessory_sale.accessory.name} x {accessory_sale.quantity}"
-                    )
-                else:
-                    # Xodim sotyapti - ikki qarz
-
-                    # a) MIJOZ → SOTUVCHI
-                    Debt.objects.create(
-                        debt_type='customer_to_seller',
-                        creditor=self.user,
-                        customer=accessory_sale.customer,
-                        currency='UZS',
-                        debt_amount=accessory_sale.debt_amount,
-                        paid_amount=Decimal('0'),
-                        due_date=debt_due_date,
-                        status='active',
-                        notes=f"Aksessuar: {accessory_sale.accessory.name} x {accessory_sale.quantity}"
-                    )
-
-                    # b) SOTUVCHI → BOSHLIQ
-                    Debt.objects.create(
-                        debt_type='seller_to_boss',
-                        creditor=shop_owner,
-                        debtor=self.user,
-                        currency='UZS',
-                        debt_amount=accessory_sale.debt_amount,
-                        paid_amount=Decimal('0'),
-                        due_date=debt_due_date,
-                        status='active',
-                        notes=f"Aksessuar qarz javobgarligi: {accessory_sale.accessory.name} (Mijoz: {accessory_sale.customer.name})"
-                    )
+            # Qarz boshqarish
+            manage_sale_debts(
+                accessory_sale,
+                self.cleaned_data,
+                self.user,
+                is_new=is_new
+            )
 
         return accessory_sale
 
 
 class PhoneExchangeForm(forms.ModelForm):
-    """Telefon almashtirish formi - ikki tomonlama qarz bilan"""
+    """Telefon almashtirish formi"""
     customer_name_input = forms.CharField(
         max_length=100,
         required=True,
@@ -635,28 +728,95 @@ class PhoneExchangeForm(forms.ModelForm):
 
         widgets = {
             'new_phone': forms.HiddenInput(attrs={'id': 'id_new_phone'}),
-            'new_phone_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
-            'old_phone_model': forms.Select(attrs={'class': 'form-control'}),
-            'old_phone_memory': forms.Select(attrs={'class': 'form-control'}),
-            'old_phone_imei': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '15 raqamli IMEI'}),
-            'old_phone_condition_percentage': forms.NumberInput(
-                attrs={'class': 'form-control', 'min': 1, 'max': 100, 'value': 80}),
-            'old_phone_accepted_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
-            'old_phone_repair_cost': forms.NumberInput(
-                attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'value': 0}),
-            'old_phone_imei_cost': forms.NumberInput(
-                attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'value': 0}),
-            'old_phone_future_sale_price': forms.NumberInput(
-                attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
-            'old_phone_image': forms.FileInput(attrs={'class': 'form-control'}),
-            'exchange_type': forms.Select(attrs={'class': 'form-control'}),
-            'cash_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'value': 0}),
-            'card_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'value': 0}),
-            'credit_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'value': 0}),
-            'debt_amount': forms.NumberInput(
-                attrs={'class': 'form-control', 'step': '0.01', 'min': '0', 'max': '500', 'value': 0}),
-            'exchange_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
+            'new_phone_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Yangi telefon narxi ($)'
+            }),
+            'old_phone_model': forms.Select(attrs={'class': 'form-control', 'required': True}),
+            'old_phone_memory': forms.Select(attrs={'class': 'form-control', 'required': True}),
+            'old_phone_imei': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '15 raqamli IMEI'
+            }),
+            'old_phone_condition_percentage': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 1,
+                'max': 100,
+                'value': 80,
+                'placeholder': 'Holati (%)'
+            }),
+            'old_phone_accepted_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Qabul narxi ($)'
+            }),
+            'old_phone_repair_cost': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'placeholder': 'Ta\'mirlash xarajati ($)'
+            }),
+            'old_phone_imei_cost': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'placeholder': 'IMEI xarajati ($)'
+            }),
+            'old_phone_future_sale_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Kelajakdagi sotish narxi ($)'
+            }),
+            'old_phone_image': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
+            'exchange_type': forms.Select(attrs={'class': 'form-control', 'required': True}),
+            'cash_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'placeholder': 'Naqd ($)'
+            }),
+            'card_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'placeholder': 'Karta ($)'
+            }),
+            'credit_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'placeholder': 'Nasiya ($)'
+            }),
+            'debt_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'max': '500',
+                'value': 0,
+                'placeholder': 'Qarz (max 500$)'
+            }),
+            'exchange_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'required': True
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Qo\'shimcha izohlar...'
+            })
         }
 
     def __init__(self, *args, **kwargs):
@@ -669,41 +829,75 @@ class PhoneExchangeForm(forms.ModelForm):
             self.fields['exchange_date'].initial = timezone.now().date()
             self.fields['debt_due_date'].initial = timezone.now().date() + timedelta(days=30)
         else:
-            # Edit paytida sanalarni to'g'ri formatda initial qilish
-            if self.instance.exchange_date:
-                self.fields['exchange_date'].initial = self.instance.exchange_date.strftime('%Y-%m-%d')
-
-            # Mijoz ma'lumotlarini initial qilish
             if self.instance.customer_name:
                 self.fields['customer_name_input'].initial = self.instance.customer_name
             if self.instance.customer_phone_number:
                 self.fields['customer_phone_input'].initial = self.instance.customer_phone_number
 
+            if self.instance.debt_amount > 0 and self.instance.exchange_type == 'customer_pays':
+                if self.instance.new_phone:
+                    debt = Debt.objects.filter(
+                        debt_type='customer_to_seller',
+                        customer=self.instance.customer,
+                        currency='USD',
+                        notes__icontains=self.instance.new_phone.imei
+                    ).first()
+                    if debt and debt.due_date:
+                        self.fields['debt_due_date'].initial = debt.due_date
+
     def clean(self):
         cleaned_data = super().clean()
-        customer_name = cleaned_data.get('customer_name_input')
-        customer_phone = cleaned_data.get('customer_phone_input')
+        customer_name = cleaned_data.get('customer_name_input', '').strip()
+        customer_phone = cleaned_data.get('customer_phone_input', '').strip()
         debt_amount = cleaned_data.get('debt_amount') or Decimal('0')
         debt_due_date = cleaned_data.get('debt_due_date')
+        exchange_type = cleaned_data.get('exchange_type')
+        new_phone = cleaned_data.get('new_phone')
 
-        if not customer_name or not customer_name.strip():
-            raise ValidationError("Mijoz ismi kiritilishi kerak.")
+        if not customer_name:
+            raise ValidationError({'customer_name_input': "Mijoz ismi kiritilishi kerak."})
 
-        if not customer_phone or not customer_phone.strip():
-            raise ValidationError("Mijoz telefon raqami kiritilishi kerak.")
+        if not customer_phone:
+            raise ValidationError({'customer_phone_input': "Mijoz telefon raqami kiritilishi kerak."})
 
-        if debt_amount > 0 and not debt_due_date:
-            raise ValidationError({
-                'debt_due_date': "Qarz uchun qaytarish muddati kiritilishi kerak!"
-            })
+        if not new_phone:
+            raise ValidationError({'new_phone': "Yangi telefon tanlanishi kerak!"})
 
-        cleaned_data['customer_name'] = customer_name.strip()
-        cleaned_data['customer_phone_number'] = customer_phone.strip()
+        if debt_amount > 0:
+            if not debt_due_date:
+                raise ValidationError({
+                    'debt_due_date': "Qarz uchun qaytarish muddati kiritilishi kerak!"
+                })
+
+            if exchange_type != 'customer_pays':
+                raise ValidationError({
+                    'debt_amount': "Qarz faqat 'Mijoz to'laydi' holatida bo'lishi mumkin!"
+                })
+
+        if exchange_type == 'customer_pays':
+            cash_amount = cleaned_data.get('cash_amount') or Decimal('0')
+            card_amount = cleaned_data.get('card_amount') or Decimal('0')
+            credit_amount = cleaned_data.get('credit_amount') or Decimal('0')
+
+            new_phone_price = cleaned_data.get('new_phone_price') or Decimal('0')
+            old_phone_accepted_price = cleaned_data.get('old_phone_accepted_price') or Decimal('0')
+            price_difference = new_phone_price - old_phone_accepted_price
+
+            if price_difference > 0:
+                total_payments = cash_amount + card_amount + credit_amount + debt_amount
+                if abs(total_payments - price_difference) > Decimal('0.01'):
+                    raise ValidationError(
+                        f"To'lovlar yig'indisi ({total_payments:.2f}$) narx farqiga ({price_difference:.2f}$) teng bo'lishi kerak!"
+                    )
+
+        cleaned_data['customer_name'] = customer_name
+        cleaned_data['customer_phone_number'] = customer_phone
 
         return cleaned_data
 
     @transaction.atomic
     def save(self, commit=True):
+        is_new = not self.instance.pk
         exchange = super().save(commit=False)
 
         if self.user:
@@ -717,76 +911,32 @@ class PhoneExchangeForm(forms.ModelForm):
             exchange.customer_phone_number = self.cleaned_data['customer_phone_number']
 
         if exchange.customer_name and exchange.customer_phone_number and self.user:
-            customer, created = Customer.objects.get_or_create(
-                phone_number=exchange.customer_phone_number,
-                defaults={
-                    'name': exchange.customer_name,
-                    'created_by': self.user
-                }
+            exchange.customer = get_or_create_customer(
+                exchange.customer_phone_number,
+                exchange.customer_name,
+                self.user
             )
 
-            if not created and customer.name != exchange.customer_name:
-                customer.name = exchange.customer_name
-                customer.save(update_fields=['name'])
-
-            exchange.customer = customer
+        exchange.calculate_price_difference()
 
         if commit:
             exchange.save()
 
-            # FAQAT YANGI YARATISHDA QARZ YARATISH
-            is_new = not self.instance.pk
-
-            if is_new and exchange.debt_amount > 0 and exchange.exchange_type == 'customer_pays':
-                shop_owner = exchange.new_phone.shop.owner
-                debt_due_date = self.cleaned_data.get('debt_due_date')
-
-                if self.user == shop_owner:
-                    # Rahbar o'zi almashtiryapti
-                    Debt.objects.create(
-                        debt_type='customer_to_seller',
-                        creditor=shop_owner,
-                        customer=exchange.customer,
-                        currency='USD',
-                        debt_amount=exchange.debt_amount,
-                        paid_amount=Decimal('0'),
-                        due_date=debt_due_date,
-                        status='active',
-                        notes=f"Telefon almashtirish: {exchange.old_phone_model} → {exchange.new_phone.phone_model}"
-                    )
-                else:
-                    # Xodim almashtiryapti - ikki qarz
-
-                    # a) MIJOZ → SOTUVCHI
-                    Debt.objects.create(
-                        debt_type='customer_to_seller',
-                        creditor=self.user,
-                        customer=exchange.customer,
-                        currency='USD',
-                        debt_amount=exchange.debt_amount,
-                        paid_amount=Decimal('0'),
-                        due_date=debt_due_date,
-                        status='active',
-                        notes=f"Telefon almashtirish: {exchange.old_phone_model} → {exchange.new_phone.phone_model}"
-                    )
-
-                    # b) SOTUVCHI → BOSHLIQ
-                    Debt.objects.create(
-                        debt_type='seller_to_boss',
-                        creditor=shop_owner,
-                        debtor=self.user,
-                        currency='USD',
-                        debt_amount=exchange.debt_amount,
-                        paid_amount=Decimal('0'),
-                        due_date=debt_due_date,
-                        status='active',
-                        notes=f"Almashtirish qarz javobgarligi: {exchange.new_phone.phone_model} (Mijoz: {exchange.customer.name})"
-                    )
+            # Qarz boshqarish (faqat customer_pays holatida)
+            if exchange.exchange_type == 'customer_pays':
+                manage_sale_debts(
+                    exchange,
+                    self.cleaned_data,
+                    self.user,
+                    is_new=is_new
+                )
 
         return exchange
 
+
 class PhoneReturnForm(forms.ModelForm):
     """Telefon qaytarish formi"""
+
     class Meta:
         model = PhoneReturn
         fields = ['phone_sale', 'return_amount', 'return_date', 'reason', 'notes']
@@ -885,18 +1035,55 @@ class PhoneReturnForm(forms.ModelForm):
         return cleaned_data
 
 
-# sales/forms.py (DebtForm qismi)
 class DebtForm(forms.ModelForm):
-    """Qarz formi - sotuvchi o'zi uchun qarz so'raydi"""
+    """Qarz formi"""
+    customer_name = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Mijoz ismi',
+            'id': 'id_customer_name'
+        }),
+        label="Mijoz ismi"
+    )
+
+    customer_phone = forms.CharField(
+        max_length=15,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': '+998901234567',
+            'id': 'id_customer_phone'
+        }),
+        label="Mijoz telefon raqami"
+    )
 
     class Meta:
         model = Debt
-        fields = ['creditor', 'currency', 'debt_amount', 'due_date', 'notes']
+        fields = ['debt_type', 'creditor', 'debtor', 'customer', 'master',
+                  'currency', 'debt_amount', 'due_date', 'notes']
         widgets = {
+            'debt_type': forms.Select(attrs={
+                'class': 'form-select',
+                'id': 'id_debt_type',
+                'required': True
+            }),
             'creditor': forms.Select(attrs={
                 'class': 'form-select',
                 'id': 'id_creditor',
-                'required': True
+            }),
+            'debtor': forms.Select(attrs={
+                'class': 'form-select',
+                'id': 'id_debtor',
+            }),
+            'customer': forms.Select(attrs={
+                'class': 'form-select d-none',
+                'id': 'id_customer',
+            }),
+            'master': forms.Select(attrs={
+                'class': 'form-select',
+                'id': 'id_master',
             }),
             'currency': forms.Select(attrs={
                 'class': 'form-select',
@@ -920,73 +1107,164 @@ class DebtForm(forms.ModelForm):
                 'placeholder': 'Izohlar...'
             }),
         }
-        labels = {
-            'creditor': 'Kimdan qarz olyapsiz?',
-            'currency': 'Valyuta',
-            'debt_amount': 'Qarz summasi',
-            'due_date': 'Qaytarish muddati',
-            'notes': 'Izoh'
-        }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # Qarz beruvchilar ro'yxati (faqat boshliqlar)
-        if self.user:
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        if user_role == 'seller':
+            self.fields['debt_type'].choices = [
+                ('customer_to_seller', 'Mijoz → Men'),
+                ('seller_to_boss', 'Men → Boshliq'),
+            ]
+
             boss_ids = Shop.objects.values_list('owner_id', flat=True).distinct()
-            # O'zidan boshqa boshliqlarni ko'rsatish
+
+            from django.db.models import Q
             self.fields['creditor'].queryset = User.objects.filter(
-                id__in=boss_ids
-            ).exclude(id=self.user.id)
+                Q(id=self.user.id) | Q(id__in=boss_ids)
+            ).distinct()
 
-        # Majburiy maydonlar
-        self.fields['due_date'].required = True
-        self.fields['creditor'].required = True
-        self.fields['debt_amount'].required = True
-        self.fields['currency'].required = True
+            self.fields['creditor'].empty_label = None
+            self.fields['creditor'].required = False
+            self.fields['creditor'].initial = self.user.id
 
-        # Default qiymatlar (faqat yangi yaratishda)
+            self.fields['debtor'].required = False
+            self.fields['master'].required = False
+
+        elif user_role in ['boss', 'finance']:
+            self.fields['debt_type'].choices = Debt.DEBT_TYPE_CHOICES
+            self.fields['creditor'].queryset = User.objects.all()
+            self.fields['creditor'].empty_label = None
+
+            from users.models import UserProfile
+            seller_ids = UserProfile.objects.filter(role='seller').values_list('user_id', flat=True)
+            self.fields['debtor'].queryset = User.objects.filter(id__in=seller_ids)
+            self.fields['debtor'].empty_label = None
+
+            self.fields['debtor'].required = False
+            self.fields['master'].required = False
+
+            try:
+                from services.models import Master
+                self.fields['master'].queryset = Master.objects.all()
+            except:
+                self.fields['master'].queryset = User.objects.none()
+
+        if self.user:
+            self.fields['customer'].queryset = Customer.objects.all().order_by('name')
+
         if not self.instance.pk:
-            self.fields['due_date'].initial = timezone.now().date() + timedelta(days=30)
+            today = timezone.now().date()
+            due_date = today + timedelta(days=30)
+            self.fields['due_date'].initial = due_date
             self.fields['currency'].initial = 'USD'
 
-    def clean_creditor(self):
-        creditor = self.cleaned_data.get('creditor')
+    def clean(self):
+        cleaned_data = super().clean()
+        debt_type = cleaned_data.get('debt_type')
+        creditor = cleaned_data.get('creditor')
+        debtor = cleaned_data.get('debtor')
+        customer = cleaned_data.get('customer')
+        master = cleaned_data.get('master')
+        customer_name = cleaned_data.get('customer_name', '').strip()
+        customer_phone = cleaned_data.get('customer_phone', '').strip()
+        currency = cleaned_data.get('currency')
+        debt_amount = cleaned_data.get('debt_amount')
 
-        if not creditor:
-            raise ValidationError("Qarz beruvchi (Boshliq) tanlanishi shart!")
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
 
-        # O'zidan o'zi qarz ololmasligi
-        if self.user and creditor == self.user:
-            raise ValidationError("O'zingizdan o'zingizga qarz yarata olmaysiz!")
+        if user_role == 'seller':
+            if debt_type == 'seller_to_boss':
+                cleaned_data['debtor'] = self.user
 
-        return creditor
+                if not creditor:
+                    raise ValidationError({'creditor': "Boshliqni tanlang!"})
 
-    def clean_debt_amount(self):
-        debt_amount = self.cleaned_data.get('debt_amount')
-        currency = self.cleaned_data.get('currency', 'USD')
+                boss_ids = Shop.objects.values_list('owner_id', flat=True).distinct()
+                if creditor.id not in boss_ids:
+                    raise ValidationError({'creditor': "Faqat boshliqlardan qarz olish mumkin!"})
 
-        if not debt_amount or debt_amount <= 0:
-            raise ValidationError("Qarz summasi 0 dan katta bo'lishi kerak!")
+            elif debt_type == 'customer_to_seller':
+                cleaned_data['creditor'] = self.user
 
-        # Valyuta bo'yicha maksimal summa
-        if currency == 'USD' and debt_amount > 500:
-            raise ValidationError("Dollar qarz summasi maksimal 500$ bo'lishi kerak!")
-        elif currency == 'UZS' and debt_amount > 10000000:
-            raise ValidationError("So'm qarz summasi maksimal 10,000,000 so'm bo'lishi kerak!")
+                if not customer and not (customer_name and customer_phone):
+                    raise ValidationError({
+                        'customer_name': "Mijoz ismi va telefon raqami kerak!"
+                    })
 
-        return debt_amount
+        elif user_role in ['boss', 'finance']:
+            if debt_type == 'customer_to_seller':
+                if not creditor:
+                    raise ValidationError({'creditor': "Qarz beruvchini tanlang!"})
+
+                if not customer and not (customer_name and customer_phone):
+                    raise ValidationError({
+                        'customer_name': "Mijoz ma'lumotlari kerak!"
+                    })
+
+            elif debt_type == 'seller_to_boss':
+                if not debtor:
+                    raise ValidationError({'debtor': "Sotuvchini tanlang!"})
+                if not creditor:
+                    raise ValidationError({'creditor': "Boshliqni tanlang!"})
+
+            elif debt_type == 'boss_to_master':
+                if not master:
+                    raise ValidationError({'master': "Ustani tanlang!"})
+                if not creditor:
+                    raise ValidationError({'creditor': "Boshliqni tanlang!"})
+
+        if debt_amount:
+            if currency == 'USD' and debt_amount > 500:
+                raise ValidationError({'debt_amount': "Dollar qarz maksimal 500$!"})
+            elif currency == 'UZS' and debt_amount > 10000000:
+                raise ValidationError({'debt_amount': "So'm qarz maksimal 10,000,000!"})
+
+        return cleaned_data
 
     @transaction.atomic
     def save(self, commit=True):
         debt = super().save(commit=False)
 
-        # Avtomatik o'rnatish
-        debt.debt_type = 'seller_to_boss'
-        debt.debtor = self.user
-        debt.customer = None
-        debt.master = None
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        if debt.debt_type == 'customer_to_seller':
+            customer_name = self.cleaned_data.get('customer_name', '').strip()
+            customer_phone = self.cleaned_data.get('customer_phone', '').strip()
+
+            if customer_name and customer_phone:
+                debt.customer = get_or_create_customer(
+                    customer_phone,
+                    customer_name,
+                    self.user
+                )
+
+            if user_role == 'seller':
+                debt.creditor = self.user
+
+            debt.debtor = None
+            debt.master = None
+
+        elif debt.debt_type == 'seller_to_boss':
+            if user_role == 'seller':
+                debt.debtor = self.user
+
+            debt.customer = None
+            debt.master = None
+
+        elif debt.debt_type == 'boss_to_master':
+            debt.customer = None
+            debt.debtor = None
+
         debt.status = 'active'
         debt.paid_amount = Decimal('0')
 
@@ -998,13 +1276,15 @@ class DebtForm(forms.ModelForm):
 
 class ExpenseForm(forms.ModelForm):
     """Xarajat formi"""
+
     class Meta:
         model = Expense
         fields = ['shop', 'name', 'amount', 'expense_date', 'notes']
         widgets = {
             'shop': forms.Select(attrs={'class': 'form-control'}),
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Xarajat nomi'}),
-            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '1000', 'min': '0', 'placeholder': "Summa (so'm)"}),
+            'amount': forms.NumberInput(
+                attrs={'class': 'form-control', 'step': '1000', 'min': '0', 'placeholder': "Summa (so'm)"}),
             'expense_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Izoh...'})
         }
@@ -1037,3 +1317,4 @@ class CustomerSearchForm(forms.Form):
             'id': 'customerSearch'
         })
     )
+

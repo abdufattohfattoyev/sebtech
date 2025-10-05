@@ -20,13 +20,12 @@ def can_edit_inventory(user):
     return user.userprofile.role in ['boss', 'finance']
 
 
-# Dekorator yaratish
 def get_redirect_url(request):
     """URL yo'naltirish manzilini aniqlash"""
     if "phone" in request.path:
         return "inventory:phone_list"
     elif "supplier" in request.path:
-        return "suppliers:supplier_list"
+        return 'inventory:supplier_list'
     else:
         return "inventory:accessory_list"
 
@@ -62,9 +61,6 @@ class AccessoryFilter(filters.FilterSet):
         model = Accessory
         fields = ['code', 'name']
 
-
-# inventory/views.py - dashboard funksiyasi (YANGILANGAN)
-
 @login_required
 def dashboard(request):
     """Dashboard - faqat do'kondagi, ustadagi va qaytarilgan telefonlar"""
@@ -82,20 +78,16 @@ def dashboard(request):
     shop_stats = []
 
     for shop in shops:
-        # ✅ FAQAT DO'KONDAGI, USTADAGI VA QAYTARILGAN TELEFONLAR
         phones = shop.phones.filter(status__in=['shop', 'master', 'returned'])
 
         if status_filter:
             phones = phones.filter(status=status_filter)
 
         phone_count = phones.count()
-
-        # Qiymat hisoblash
         phone_cost_sum = phones.aggregate(
             total=Sum('cost_price', output_field=DecimalField(max_digits=15, decimal_places=2))
         )['total'] or Decimal('0.00')
 
-        # Aksessuarlar
         accessories = shop.accessories.all()
         accessory_count = accessories.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
         accessory_cost_sum = accessories.aggregate(
@@ -116,7 +108,6 @@ def dashboard(request):
             'total_value': phone_cost_sum + accessory_cost_sum,
         })
 
-    # Status statistikalari
     all_phones = Phone.objects.filter(shop__in=shops)
     phones_in_shop = all_phones.filter(status='shop').count()
     phones_sold = all_phones.filter(status='sold').count()
@@ -141,49 +132,6 @@ def dashboard(request):
         'phones_exchanged': phones_exchanged,
     }
     return render(request, 'inventory/dashboard.html', context)
-
-
-def _ajax_phone_search(request, phones_queryset):
-    """AJAX qidirish uchun yordamchi funksiya"""
-    page = request.GET.get('page', 1)
-
-    paginator = Paginator(phones_queryset, 10)
-    try:
-        phones_page = paginator.page(page)
-    except:
-        phones_page = paginator.page(1)
-
-    # Statistikalar
-    all_phones = Phone.objects.all()
-
-    results = {
-        'phones': [{
-            'id': phone.id,
-            'phone_model': str(phone.phone_model),
-            'memory_size': str(phone.memory_size),
-            'imei': phone.imei or 'N/A',
-            'status': phone.status,
-            'status_display': phone.get_status_display(),
-            'shop_name': phone.shop.name,
-            'cost_price': float(phone.cost_price),
-            'sale_price': float(phone.sale_price) if phone.sale_price else None,
-            'condition_percentage': phone.condition_percentage,
-            'image': phone.image.url if phone.image else None,
-            'can_edit': request.user == phone.shop.owner,
-        } for phone in phones_page],
-        'has_next': phones_page.has_next(),
-        'has_previous': phones_page.has_previous(),
-        'current_page': phones_page.number,
-        'total_pages': paginator.num_pages,
-        'total_count': paginator.count,
-        'stats': {
-            'total_phones': all_phones.count(),
-            'displayed': phones_page.paginator.count,
-            'phones_in_shop': all_phones.filter(status='shop').count(),
-            'phones_sold': all_phones.filter(status='sold').count(),
-        }
-    }
-    return JsonResponse(results)
 
 
 @login_required
@@ -217,8 +165,6 @@ def phone_list(request):
     }
 
     phone_models = PhoneModel.objects.all().order_by('model_name')
-
-    # ✅ FAQAT AJAX
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if is_ajax:
@@ -249,7 +195,6 @@ def phone_list(request):
         response['Expires'] = '0'
         return response
 
-    # ✅ HTML
     context = {
         'phones': page_obj,
         'phone_models': phone_models,
@@ -271,21 +216,15 @@ def phone_list(request):
 
 
 @login_required
+@boss_or_finance_required
 def phone_create(request):
-    """Yangi telefon qo'shish - FAQAT boss/finance"""
-
-
+    """Yangi telefon qo'shish"""
     if request.method == 'POST':
         form = PhoneForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             try:
                 phone = form.save(commit=False)
                 phone.created_by = request.user
-
-                if not phone.created_at:
-                    from django.utils import timezone
-                    phone.created_at = timezone.now().date()
-
                 phone.save()
                 messages.success(request, "Telefon muvaffaqiyatli qo'shildi!")
                 return redirect('inventory:phone_list')
@@ -311,29 +250,19 @@ def phone_create(request):
 @login_required
 @boss_or_finance_required
 def phone_update(request, pk):
-    """Telefonni tahrirlash - FAQAT boss/finance"""
+    """Telefonni tahrirlash"""
     phone = get_object_or_404(Phone, pk=pk)
 
     if request.method == 'POST':
         form = PhoneForm(request.POST, request.FILES, instance=phone, user=request.user)
         if form.is_valid():
             try:
-                # ✅ TO'G'RILANGAN - created_at ni saqlab qolish
-                updated_phone = form.save(commit=False)
-
-                # Agar formda yangi sana berilgan bo'lsa, uni ishlatamiz
-                # Aks holda, eski sanani saqlaymiz
-                if not form.cleaned_data.get('created_at'):
-                    updated_phone.created_at = phone.created_at
-
-                updated_phone.save()
+                phone = form.save(commit=True)
                 messages.success(request, "Telefon ma'lumotlari yangilandi!")
                 return redirect('inventory:phone_list')
             except Exception as e:
                 messages.error(request, f"Yangilashda xatolik: {str(e)}")
-                # Xatolik formani qayta ko'rsatish uchun
         else:
-            # Form xatolarini ko'rsatish
             for field, errors in form.errors.items():
                 for error in errors:
                     if field == '__all__':
@@ -354,7 +283,7 @@ def phone_update(request, pk):
 @login_required
 @boss_or_finance_required
 def phone_delete(request, pk):
-    """Telefonni o'chirish - FAQAT boss/finance"""
+    """Telefonni o'chirish"""
     phone = get_object_or_404(Phone, pk=pk)
 
     if request.method == 'POST':
@@ -367,7 +296,6 @@ def phone_delete(request, pk):
 
     return render(request, 'inventory/phone_confirm_delete.html', {'phone': phone})
 
-
 @login_required
 def accessory_list(request):
     """Aksessuarlar ro'yxati"""
@@ -379,7 +307,6 @@ def accessory_list(request):
 
     accessories = Accessory.objects.select_related('supplier', 'created_by', 'shop')
 
-    # Filterlar
     if shop_id:
         try:
             selected_shop = get_object_or_404(Shop, id=shop_id)
@@ -389,7 +316,6 @@ def accessory_list(request):
     else:
         selected_shop = None
 
-    # AJAX so'rov
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return accessory_search(request)
 
@@ -398,7 +324,6 @@ def accessory_list(request):
     if name_query:
         accessories = accessories.filter(name__icontains=name_query)
 
-    # Stock filterlari
     stock_filters = {
         'low': Q(quantity__lt=5),
         'medium': Q(quantity__gte=5, quantity__lte=10),
@@ -409,12 +334,10 @@ def accessory_list(request):
 
     accessories = accessories.order_by('-created_at')
 
-    # Umumiy qiymatni hisoblash
     total_accessory_cost = accessories.aggregate(
         total=Sum(F('purchase_price') * F('quantity'), output_field=DecimalField(max_digits=15, decimal_places=2))
     )['total'] or Decimal('0.00')
 
-    # Har bir aksessuar uchun total_cost qo'shish
     for accessory in accessories:
         accessory.total_cost = accessory.purchase_price * accessory.quantity
 
@@ -437,35 +360,24 @@ def accessory_list(request):
 @login_required
 @boss_or_finance_required
 def accessory_create(request):
-    """Yangi aksessuar qo'shish - FAQAT boss/finance (SODDALASHTIRILGAN)"""
-
-
+    """Yangi aksessuar qo'shish"""
     if request.method == 'POST':
         form = AccessoryForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             try:
-                # Form o'zi hamma narsani hal qiladi
                 accessory = form.save(commit=True)
 
-                # Mavjud aksessuar yoki yangi?
                 if hasattr(form, '_existing_accessory'):
                     quantity = form.cleaned_data.get('quantity', 0)
-                    messages.success(
-                        request,
-                        f"✅ Mavjud aksessuar ustiga {quantity} dona qo'shildi!"
-                    )
+                    messages.success(request, f"✅ Mavjud aksessuar ustiga {quantity} dona qo'shildi!")
                 else:
-                    messages.success(
-                        request,
-                        f"✅ Yangi aksessuar '{accessory.name}' muvaffaqiyatli qo'shildi!"
-                    )
+                    messages.success(request, f"✅ Yangi aksessuar '{accessory.name}' muvaffaqiyatli qo'shildi!")
 
                 return redirect('inventory:accessory_list')
 
             except Exception as e:
                 messages.error(request, f"❌ Aksessuar saqlashda xatolik: {str(e)}")
         else:
-            # Xatolarni ko'rsatish
             for field, errors in form.errors.items():
                 for error in errors:
                     if field == '__all__':
@@ -485,26 +397,20 @@ def accessory_create(request):
 @login_required
 @boss_or_finance_required
 def accessory_update(request, pk):
-    """Aksessuarni tahrirlash - FAQAT boss/finance (SODDALASHTIRILGAN)"""
+    """Aksessuarni tahrirlash"""
     accessory = get_object_or_404(Accessory, pk=pk)
 
     if request.method == 'POST':
         form = AccessoryForm(request.POST, request.FILES, instance=accessory, user=request.user)
         if form.is_valid():
             try:
-                # Form o'zi hamma narsani hal qiladi
                 form.save(commit=True)
-
-                messages.success(
-                    request,
-                    f"✅ '{accessory.name}' ma'lumotlari yangilandi!"
-                )
+                messages.success(request, f"✅ '{accessory.name}' ma'lumotlari yangilandi!")
                 return redirect('inventory:accessory_list')
 
             except Exception as e:
                 messages.error(request, f"❌ Yangilashda xatolik: {str(e)}")
         else:
-            # Xatolarni ko'rsatish
             for field, errors in form.errors.items():
                 for error in errors:
                     if field == '__all__':
@@ -525,7 +431,7 @@ def accessory_update(request, pk):
 @login_required
 @boss_or_finance_required
 def accessory_delete(request, pk):
-    """Aksessuarni o'chirish - FAQAT boss/finance"""
+    """Aksessuarni o'chirish"""
     accessory = get_object_or_404(Accessory, pk=pk)
 
     if request.method == 'POST':
@@ -543,7 +449,7 @@ def accessory_delete(request, pk):
 @login_required
 @boss_or_finance_required
 def accessory_add_quantity(request, pk):
-    """Mavjud aksessuar ustiga soni qo'shish - FAQAT boss/finance"""
+    """Mavjud aksessuar ustiga soni qo'shish"""
     accessory = get_object_or_404(Accessory, pk=pk)
 
     if request.method == 'POST':
@@ -552,17 +458,12 @@ def accessory_add_quantity(request, pk):
             try:
                 quantity = form.cleaned_data['quantity']
                 accessory = form.save(accessory=accessory, user=request.user, commit=True)
-
-                messages.success(
-                    request,
-                    f"✅ '{accessory.name}' ga {quantity} dona qo'shildi!"
-                )
+                messages.success(request, f"✅ '{accessory.name}' ga {quantity} dona qo'shildi!")
                 return redirect('inventory:accessory_list')
 
             except Exception as e:
                 messages.error(request, f"❌ Xatolik: {str(e)}")
         else:
-            # Xatolarni ko'rsatish
             for field, errors in form.errors.items():
                 for error in errors:
                     if field == '__all__':
@@ -570,34 +471,6 @@ def accessory_add_quantity(request, pk):
                     else:
                         field_label = form.fields.get(field, field).label or field
                         messages.error(request, f"❌ {field_label}: {error}")
-    else:
-        form = AccessoryAddQuantityForm()
-
-    return render(request, 'inventory/accessory_add_quantity.html', {
-        'accessory': accessory,
-        'form': form
-    })
-
-
-@login_required
-@boss_or_finance_required
-def accessory_add_quantity(request, pk):
-    """Mavjud aksessuar ustiga soni qo'shish - FAQAT boss/finance"""
-    accessory = get_object_or_404(Accessory, pk=pk)
-
-    if request.method == 'POST':
-        form = AccessoryAddQuantityForm(request.POST)
-        if form.is_valid():
-            try:
-                accessory = form.save(accessory=accessory, user=request.user, commit=True)
-                messages.success(request, f'{accessory.name} ga {form.cleaned_data["quantity"]} dona qo\'shildi!')
-                return redirect('inventory:accessory_list')
-            except Exception as e:
-                messages.error(request, f'Xatolik: {str(e)}')
-        else:
-            for field, errors in form.errors.items():
-                for error in errors:
-                    messages.error(request, f"{field}: {error}")
     else:
         form = AccessoryAddQuantityForm()
 
@@ -623,25 +496,18 @@ def accessory_quick_add(request):
             purchase_price = Decimal(purchase_price) if purchase_price else None
 
             if not purchase_price:
-                return JsonResponse({
-                    'success': False,
-                    'message': "Tannarx kiritilishi kerak!"
-                })
+                return JsonResponse({'success': False, 'message': "Tannarx kiritilishi kerak!"})
 
             if quantity <= 0:
-                return JsonResponse({
-                    'success': False,
-                    'message': "Soni 0 dan katta bo'lishi kerak!"
-                })
+                return JsonResponse({'success': False, 'message': "Soni 0 dan katta bo'lishi kerak!"})
 
-            # Sotib olish tarixini yaratish
             AccessoryPurchaseHistory.objects.create(
                 accessory=accessory,
                 quantity=quantity,
                 purchase_price=purchase_price,
                 created_by=request.user
             )
-            accessory.save()  # quantity va purchase_price yangilanadi
+            accessory.save()
 
             return JsonResponse({
                 'success': True,
@@ -659,19 +525,18 @@ def accessory_quick_add(request):
     shops = Shop.objects.filter(owner=request.user)
     return render(request, 'inventory/accessory_quick_add.html', {'shops': shops})
 
+
 @login_required
 def accessory_detail(request, pk):
     """Aksessuar tafsilotlari"""
     accessory = get_object_or_404(Accessory, pk=pk, shop__owner=request.user)
     return render(request, 'inventory/accessory_detail.html', {'accessory': accessory})
 
-
 @login_required
 def shop_detail(request, shop_id):
-    """Do'kon tafsilotlari - faqat do'kondagi, ustadagi va qaytarilgan"""
+    """Do'kon tafsilotlari"""
     shop = get_object_or_404(Shop, id=shop_id)
 
-    # ✅ FAQAT DO'KONDAGI, USTADAGI VA QAYTARILGAN TELEFONLAR
     phones = Phone.objects.filter(
         shop=shop,
         status__in=['shop', 'master', 'returned']
@@ -683,7 +548,6 @@ def shop_detail(request, shop_id):
         'supplier', 'created_by'
     ).order_by('-created_at')
 
-    # Statistikalar
     phone_cost_value = phones.aggregate(
         total=Sum('cost_price', output_field=DecimalField(max_digits=15, decimal_places=2))
     )['total'] or Decimal('0.00')
@@ -706,7 +570,6 @@ def shop_detail(request, shop_id):
     return render(request, 'inventory/shop_detail.html', context)
 
 
-# API Views
 @login_required
 def accessory_search(request):
     """Aksessuarlar AJAX qidirish"""
@@ -738,7 +601,6 @@ def accessory_search(request):
 
     accessories = accessories.order_by('-created_at')
 
-    # Umumiy qiymatni hisoblash
     total_accessory_cost = accessories.aggregate(
         total=Sum(F('purchase_price') * F('quantity'), output_field=DecimalField(max_digits=15, decimal_places=2))
     )['total'] or Decimal('0.00')
@@ -759,7 +621,7 @@ def accessory_search(request):
             'purchase_price': float(acc.purchase_price),
             'sale_price': float(acc.sale_price),
             'quantity': acc.quantity,
-            'total_cost': float(acc.purchase_price * acc.quantity),  # Har bir aksessuar uchun umumiy qiymat
+            'total_cost': float(acc.purchase_price * acc.quantity),
             'shop_name': acc.shop.name,
             'supplier_name': acc.supplier.name if acc.supplier else None,
             'created_at': acc.created_at.strftime('%d.%m.%Y') if acc.created_at else '',
@@ -853,10 +715,7 @@ def phone_details_api(request, phone_id):
         }
         return JsonResponse(data)
     except Phone.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'Telefon topilmadi'
-        }, status=404)
+        return JsonResponse({'success': False, 'error': 'Telefon topilmadi'}, status=404)
 
 
 @login_required
@@ -865,7 +724,6 @@ def phone_detail(request, pk):
     """Telefon tafsilotlari"""
     phone = get_object_or_404(Phone, pk=pk)
 
-    # Sales ma'lumotlarini olish
     phone_sale = None
     phone_return = None
     phone_exchange_new = None
@@ -897,7 +755,6 @@ def phone_detail(request, pk):
     except ImportError:
         pass
 
-    # Timeline yaratish
     timeline = [{
         'date': phone.created_at,
         'event': 'Telefon qo\'shildi',
@@ -908,7 +765,7 @@ def phone_detail(request, pk):
 
     if phone_sale:
         timeline.append({
-            'date': phone_sale.sale_date,  # ⬅ faqat sale_date ishlatyapmiz
+            'date': phone_sale.sale_date,
             'event': 'Sotildi',
             'description': f'{phone_sale.customer.name} ga {phone_sale.sale_price}$ ga sotildi',
             'user': getattr(phone_sale, 'salesman', phone_sale.customer),
@@ -917,7 +774,7 @@ def phone_detail(request, pk):
 
     if phone_return:
         timeline.append({
-            'date': getattr(phone_return, 'return_date', None),  # created_at o‘rniga return_date
+            'date': getattr(phone_return, 'return_date', None),
             'event': 'Qaytarildi',
             'description': f'{phone_return.return_amount}$ qaytarildi',
             'user': phone_return.created_by,
@@ -926,7 +783,6 @@ def phone_detail(request, pk):
 
     timeline.sort(key=lambda x: x['date'] if x['date'] else phone.created_at)
 
-    # Moliyaviy xulose
     financial_summary = {
         'total_cost': phone.cost_price,
         'purchase_price': phone.purchase_price,
@@ -958,14 +814,14 @@ def phone_detail(request, pk):
 
 
 @login_required
-def search_external_seller_api(request):  # YANGI: nomini o'zgartirdik
+def search_external_seller_api(request):
     """Tashqi sotuvchilarni qidirish API"""
     query = request.GET.get("q", "").strip()
 
     if len(query) < 2:
         return JsonResponse([], safe=False)
 
-    sellers = ExternalSeller.objects.filter(  # O'ZGARTIRILDI
+    sellers = ExternalSeller.objects.filter(
         Q(phone_number__icontains=query) | Q(name__icontains=query)
     ).order_by('name')[:10]
 
@@ -981,7 +837,7 @@ def search_external_seller_api(request):  # YANGI: nomini o'zgartirdik
 
 
 @login_required
-def check_external_seller_phone_api(request):  # YANGI: nomini o'zgartirdik
+def check_external_seller_phone_api(request):
     """Tashqi sotuvchi telefon raqami tekshirish API"""
     phone = request.GET.get("phone", "").strip()
 
@@ -989,7 +845,7 @@ def check_external_seller_phone_api(request):  # YANGI: nomini o'zgartirdik
         return JsonResponse({'exists': False, 'message': ''})
 
     try:
-        seller = ExternalSeller.objects.get(phone_number=phone)  # O'ZGARTIRILDI
+        seller = ExternalSeller.objects.get(phone_number=phone)
         return JsonResponse({
             'exists': True,
             'seller': {
@@ -1000,12 +856,11 @@ def check_external_seller_phone_api(request):  # YANGI: nomini o'zgartirdik
             },
             'message': f'Bu telefon raqam allaqachon mavjud: {seller.name}'
         })
-    except ExternalSeller.DoesNotExist:  # O'ZGARTIRILDI
+    except ExternalSeller.DoesNotExist:
         return JsonResponse({
             'exists': False,
             'message': 'Telefon raqam mavjud emas. Yangi tashqi sotuvchi yaratiladi.'
         })
-
 
 
 @login_required
@@ -1034,93 +889,3 @@ def check_daily_seller_phone_api(request):
             'message': 'Telefon raqam mavjud emas. Yangi kunlik sotuvchi yaratiladi.'
         })
 
-
-@login_required
-def supplier_list(request):
-    """Taminotchilar ro'yxati"""
-    suppliers = Supplier.objects.all().order_by('-created_at')
-
-    # Qidiruv
-    search_query = request.GET.get('search', '').strip()
-    if search_query:
-        suppliers = suppliers.filter(
-            Q(name__icontains=search_query) |
-            Q(phone_number__icontains=search_query) |
-            Q(notes__icontains=search_query)
-        )
-
-    # Pagination
-    paginator = Paginator(suppliers, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        'page_obj': page_obj,
-        'search_query': search_query,
-        'total_suppliers': suppliers.count(),
-    }
-
-    return render(request, 'inventory/supplier_list.html', context)
-
-
-@login_required
-@boss_or_finance_required
-def supplier_create(request):
-    """Yangi taminotchi qo'shish"""
-    if request.method == 'POST':
-        form = SupplierForm(request.POST)
-        if form.is_valid():
-            supplier = form.save()
-            messages.success(request, f"✅ {supplier.name} muvaffaqiyatli qo'shildi!")
-            return redirect('inventory:supplier_list')
-    else:
-        form = SupplierForm()
-
-    context = {
-        'form': form,
-        'title': 'Yangi Taminotchi',
-        'is_edit': False
-    }
-    return render(request, 'inventory/supplier_form.html', context)
-
-
-@login_required
-@boss_or_finance_required
-def supplier_update(request, pk):
-    """Taminotchini tahrirlash"""
-    supplier = get_object_or_404(Supplier, pk=pk)
-
-    if request.method == 'POST':
-        form = SupplierForm(request.POST, instance=supplier)
-        if form.is_valid():
-            supplier = form.save()
-            messages.success(request, f"✅ {supplier.name} ma'lumotlari yangilandi!")
-            return redirect('inventory:supplier_list')
-    else:
-        form = SupplierForm(instance=supplier)
-
-    context = {
-        'form': form,
-        'supplier': supplier,
-        'title': 'Taminotchini Tahrirlash',
-        'is_edit': True
-    }
-    return render(request, 'inventory/supplier_form.html', context)
-
-
-@login_required
-@boss_or_finance_required
-def supplier_delete(request, pk):
-    """Taminotchini o'chirish"""
-    supplier = get_object_or_404(Supplier, pk=pk)
-
-    if request.method == 'POST':
-        supplier_name = supplier.name
-        supplier.delete()
-        messages.success(request, f"✅ {supplier_name} muvaffaqiyatli o'chirildi!")
-        return redirect('inventory:supplier_list')
-
-    context = {
-        'supplier': supplier
-    }
-    return render(request, 'inventory/supplier_confirm_delete.html', context)
