@@ -44,19 +44,19 @@
                         <label class="form-label fw-bold">Mavjud Kod (ixtiyoriy)</label>
                         {{ form.existing_code }}
                         {% if form.existing_code.errors %}<div class="text-danger small">{{ form.existing_code.errors.0 }}</div>{% endif %}
-                        <div class="form-text">Mavjud aksessuar ustiga qo'shish uchun</div>
+                        <div class="form-text">Mavjud aksessuar ustiga qo'shish uchun kodini kiriting</div>
                     </div>
                     {% else %}
                     <!-- Kod (tahrirlashda) -->
                     <div class="col-md-6">
                         <label class="form-label fw-bold">Kod</label>
-                        {{ form.code }}
-                        {% if form.code.errors %}<div class="text-danger small">{{ form.code.errors.0 }}</div>{% endif %}
+                        <input type="text" class="form-control" value="{{ accessory.code }}" disabled>
+                        <div class="form-text">Kod o'zgartirib bo'lmaydi</div>
                     </div>
                     {% endif %}
 
                     <!-- Nomi -->
-                    <div class="col-md-6">
+                    <div class="col-md-{% if is_edit %}6{% else %}12{% endif %}">
                         <label class="form-label fw-bold">Nomi <span class="text-danger">*</span></label>
                         {{ form.name }}
                         {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors.0 }}</div>{% endif %}
@@ -65,10 +65,17 @@
                     {% if not is_edit %}
                     <!-- Kod (yangi yaratishda) -->
                     <div class="col-md-6" id="code-field">
-                        <label class="form-label fw-bold">Kod</label>
+                        <label class="form-label fw-bold">Kod (ixtiyoriy)</label>
                         {{ form.code }}
                         {% if form.code.errors %}<div class="text-danger small">{{ form.code.errors.0 }}</div>{% endif %}
-                        <div class="form-text">Avtomatik beriladi</div>
+                        <div class="form-text">Bo'sh qoldirilsa avtomatik beriladi</div>
+                    </div>
+
+                    <!-- Taminotchi -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Taminotchi</label>
+                        {{ form.supplier }}
+                        {% if form.supplier.errors %}<div class="text-danger small">{{ form.supplier.errors.0 }}</div>{% endif %}
                     </div>
                     {% else %}
                     <!-- Taminotchi (tahrirlashda) -->
@@ -80,53 +87,67 @@
                     {% endif %}
 
                     {% if not is_edit %}
-                    <!-- Taminotchi (yangi yaratishda) -->
-                    <div class="col-12">
-                        <label class="form-label fw-bold">Taminotchi</label>
-                        {{ form.supplier }}
-                        {% if form.supplier.errors %}<div class="text-danger small">{{ form.supplier.errors.0 }}</div>{% endif %}
-                    </div>
-                    {% endif %}
-
-                    <!-- Tannarx -->
+                    <!-- YANGI YARATISH - 3 TA MAYDON -->
                     <div class="col-md-4">
                         <label class="form-label fw-bold">
-                            Tannarx (so'm)
-                            {% if not is_edit %}<span class="text-danger">*</span>{% endif %}
+                            Tannarx (so'm) <span class="text-danger">*</span>
                         </label>
-                        {{ form.initial_purchase_price }}
-                        {% if form.initial_purchase_price.errors %}<div class="text-danger small">{{ form.initial_purchase_price.errors.0 }}</div>{% endif %}
-                        {% if is_edit %}
-                            <div class="form-text">Hozirgi: {{ accessory.purchase_price|floatformat:0 }} so'm</div>
-                        {% endif %}
+                        {{ form.purchase_price }}
+                        {% if form.purchase_price.errors %}<div class="text-danger small">{{ form.purchase_price.errors.0 }}</div>{% endif %}
+                        <div class="form-text">Mingga yaxlitlanadi</div>
                     </div>
 
-                    <!-- Soni -->
                     <div class="col-md-4">
                         <label class="form-label fw-bold">
-                            Soni
-                            {% if not is_edit %}<span class="text-danger">*</span>{% endif %}
+                            Soni <span class="text-danger">*</span>
                         </label>
-                        {{ form.initial_quantity }}
-                        {% if form.initial_quantity.errors %}<div class="text-danger small">{{ form.initial_quantity.errors.0 }}</div>{% endif %}
-                        {% if is_edit %}
-                            <div class="form-text">Hozirgi: {{ accessory.quantity }} dona</div>
-                        {% endif %}
+                        {{ form.quantity }}
+                        {% if form.quantity.errors %}<div class="text-danger small">{{ form.quantity.errors.0 }}</div>{% endif %}
                     </div>
 
-                    <!-- Sotish Narxi -->
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">Sotish Narxi (so'm) <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold">
+                            Sotish Narxi (so'm) <span class="text-danger">*</span>
+                        </label>
                         {{ form.sale_price }}
                         {% if form.sale_price.errors %}<div class="text-danger small">{{ form.sale_price.errors.0 }}</div>{% endif %}
+                        <div class="form-text">Mingga yaxlitlanadi</div>
                     </div>
+
+                    {% else %}
+                    <!-- TAHRIRLASH - FAQAT SOTISH NARXI -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Hozirgi Tannarx</label>
+                        <input type="text" class="form-control" value="{{ accessory.purchase_price|floatformat:0 }} so'm" disabled>
+                        <div class="form-text text-muted">O'rtacha tannarx</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Hozirgi Soni</label>
+                        <input type="text" class="form-control" value="{{ accessory.quantity }} dona" disabled>
+                        <div class="form-text text-muted">
+                            <a href="{% url 'inventory:accessory_add_quantity' accessory.pk %}" class="text-decoration-none">
+                                <i class="fas fa-plus-circle"></i> Qo'shish
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">
+                            Sotish Narxi (so'm) <span class="text-danger">*</span>
+                        </label>
+                        {{ form.sale_price }}
+                        {% if form.sale_price.errors %}<div class="text-danger small">{{ form.sale_price.errors.0 }}</div>{% endif %}
+                        <div class="form-text">Mingga yaxlitlanadi</div>
+                    </div>
+                    {% endif %}
 
                     <!-- Rasm -->
                     <div class="col-12">
                         <label class="form-label fw-bold">Rasm</label>
-                        {% if form.instance.image %}
+                        {% if is_edit and accessory.image %}
                             <div class="mb-2">
-                                <img src="{{ form.instance.image.url }}" class="rounded" style="max-height: 120px;">
+                                <img src="{{ accessory.image.url }}" class="rounded" style="max-height: 120px;" alt="{{ accessory.name }}">
                             </div>
                         {% endif %}
                         {{ form.image }}
@@ -151,4 +172,24 @@
         </div>
     </div>
 </div>
+
+<script>
+// Mavjud kod kiritilganda, yangi kod maydonini yashirish
+{% if not is_edit %}
+document.addEventListener('DOMContentLoaded', function() {
+    const existingCodeInput = document.getElementById('existing_code_input');
+    const codeField = document.getElementById('code-field');
+
+    if (existingCodeInput && codeField) {
+        existingCodeInput.addEventListener('input', function() {
+            if (this.value.trim()) {
+                codeField.style.display = 'none';
+            } else {
+                codeField.style.display = 'block';
+            }
+        });
+    }
+});
+{% endif %}
+</script>
 {% endblock %}

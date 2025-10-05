@@ -1,7 +1,10 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from decimal import Decimal
-from .models import Phone, Accessory, ExternalSeller, DailySeller, AccessoryPurchaseHistory, Supplier
+from .models import (
+    Phone, Accessory, ExternalSeller, DailySeller,
+    AccessoryPurchaseHistory, Supplier, SupplierPayment
+)
 from shops.models import Shop
 
 
@@ -41,6 +44,97 @@ class SupplierForm(forms.ModelForm):
             if len(phone_number) < 9:
                 raise forms.ValidationError("Telefon raqami noto'g'ri formatda")
         return phone_number
+
+
+class SupplierPaymentForm(forms.ModelForm):
+    """Taminotchiga to'lov formasi"""
+
+    selected_phones = forms.ModelMultipleChoiceField(
+        queryset=Phone.objects.none(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'phone-checkbox'
+        }),
+        label="Telefonlarni tanlang"
+    )
+
+    class Meta:
+        model = SupplierPayment
+        fields = ['supplier', 'amount', 'payment_type', 'payment_date', 'notes']
+        widgets = {
+            'supplier': forms.Select(attrs={
+                'class': 'form-control',
+                'id': 'supplier_select'
+            }),
+            'amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0.01',
+                'placeholder': 'To\'lov summasi ($)'
+            }),
+            'payment_type': forms.RadioSelect(attrs={
+                'class': 'payment-type-radio'
+            }),
+            'payment_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Izoh (ixtiyoriy)...'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        supplier = kwargs.pop('supplier', None)
+        super().__init__(*args, **kwargs)
+
+        if supplier:
+            self.fields['supplier'].initial = supplier
+            self.fields['supplier'].widget.attrs['readonly'] = True
+
+            # Faqat qarzda turgan telefonlarni ko'rsatish
+            debt_phones = Phone.objects.filter(
+                supplier=supplier,
+                source_type='supplier',
+                payment_status__in=['debt', 'partial']
+            ).order_by('created_at')
+
+            self.fields['selected_phones'].queryset = debt_phones
+
+    def clean(self):
+        cleaned_data = super().clean()
+        payment_type = cleaned_data.get('payment_type')
+        selected_phones = cleaned_data.get('selected_phones')
+        amount = cleaned_data.get('amount')
+        supplier = cleaned_data.get('supplier')
+
+        if not supplier:
+            raise ValidationError({'supplier': 'Taminotchi tanlanishi kerak'})
+
+        if not amount or amount <= 0:
+            raise ValidationError({'amount': 'To\'lov summasi 0 dan katta bo\'lishi kerak'})
+
+        # Taminotchining qarz qoldigi
+        if amount > supplier.balance:
+            raise ValidationError({
+                'amount': f'To\'lov summasi qarzdan ({supplier.balance:.2f} $) oshib ketdi'
+            })
+
+        if payment_type == 'specific':
+            if not selected_phones:
+                raise ValidationError({
+                    'selected_phones': 'Kamida bitta telefon tanlanishi kerak'
+                })
+
+            total_debt = sum(phone.debt_balance for phone in selected_phones)
+            if amount > total_debt:
+                raise ValidationError({
+                    'amount': f'To\'lov summasi tanlangan telefonlar qarzidan ({total_debt:.2f} $) oshib ketdi'
+                })
+
+        return cleaned_data
 
 
 class PhoneForm(forms.ModelForm):
@@ -103,6 +197,17 @@ class PhoneForm(forms.ModelForm):
             'required': "Qo'shilgan sana kiritilishi shart!",
             'invalid': "Noto'g'ri sana formati!"
         }
+    )
+
+    # QARZ MAYDONLARI
+    is_debt = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input',
+            'id': 'is_debt_checkbox'
+        }),
+        label="Qarzga olish"
     )
 
     class Meta:
@@ -217,6 +322,10 @@ class PhoneForm(forms.ModelForm):
                 self.fields['daily_seller_name'].initial = self.instance.daily_seller.name
                 self.fields['daily_seller_phone'].initial = self.instance.daily_seller.phone_number
 
+            # Tahrirlashda qarz checkboxni o'chirish
+            if 'is_debt' in self.fields:
+                del self.fields['is_debt']
+
     def clean_imei(self):
         imei = self.cleaned_data.get('imei')
 
@@ -268,6 +377,7 @@ class PhoneForm(forms.ModelForm):
         original_owner_name = cleaned_data.get('original_owner_name')
         original_owner_phone = cleaned_data.get('original_owner_phone')
         shop = cleaned_data.get('shop')
+        is_debt = cleaned_data.get('is_debt', False)
 
         if not shop:
             raise ValidationError({'shop': "Do'kon tanlanishi shart"})
@@ -308,11 +418,24 @@ class PhoneForm(forms.ModelForm):
                     'original_owner_phone': "Almashtirish uchun asl egasi telefon raqami kiritilishi kerak."
                 })
 
+        # Qarz logikasini saqlash
+        cleaned_data['_is_debt'] = is_debt
+
         return cleaned_data
 
     def save(self, commit=True):
         phone = super().save(commit=False)
         phone.created_at = self.cleaned_data['created_at']
+
+        # Qarz holati (faqat yangi telefon uchun)
+        if not self.instance.pk and phone.source_type == 'supplier':
+            is_debt = self.cleaned_data.get('_is_debt', False)
+            if is_debt:
+                phone.payment_status = 'debt'
+                phone.paid_amount = Decimal('0')
+            else:
+                phone.payment_status = 'paid'
+                phone.paid_amount = phone.cost_price
 
         if (phone.source_type == 'external_seller' and
                 not self.cleaned_data.get('external_seller') and
@@ -349,8 +472,17 @@ class PhoneForm(forms.ModelForm):
 
         if commit:
             phone.save()
+
+            # Taminotchining qarzini yangilash (faqat yangi telefon va qarzda bo'lsa)
+            if not self.instance.pk and phone.source_type == 'supplier' and phone.payment_status == 'debt':
+                supplier = phone.supplier
+                supplier.total_debt += phone.cost_price
+                supplier.save(update_fields=['total_debt'])
+
         return phone
 
+
+# Qolgan formalar o'zgarishsiz...
 class AccessoryForm(forms.ModelForm):
     """Aksessuar formasi - SO'M"""
 

@@ -6,107 +6,51 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Sarlavha -->
+    <!-- Sarlavha va Qo'shish tugmasi -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">
-                        <i class="fas fa-truck me-2"></i>Taminotchilar
-                    </h4>
-                    <span class="badge bg-primary">{{ total_suppliers }} ta</span>
+                    <div>
+                        <h4 class="mb-0">
+                            <i class="fas fa-truck me-2"></i>Taminotchilar
+                        </h4>
+                        <small class="text-muted">Barcha taminotchilar ro'yxati</small>
+                    </div>
+                    <div>
+                        <a href="{% url 'inventory:supplier_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Yangi Taminotchi
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Qidiruv va Forma -->
+    <!-- Qidiruv -->
     <div class="row mb-4">
-        <!-- Qidiruv -->
-        <div class="col-md-6">
+        <div class="col-12">
             <div class="card">
                 <div class="card-body">
-                    <form method="get" class="d-flex">
-                        <input type="text"
-                               name="search"
-                               value="{{ search_query }}"
-                               class="form-control me-2"
-                               placeholder="Taminotchi nomi, telefon yoki izoh bo'yicha qidirish...">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-search"></i>
-                        </button>
-                        {% if search_query %}
-                        <a href="{% url 'inventory:supplier_list' %}" class="btn btn-outline-secondary ms-2">
-                            <i class="fas fa-times"></i>
-                        </a>
-                        {% endif %}
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Yangi qo'shish/Tahrirlash formasi -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        {% if editing_supplier %}
-                            <i class="fas fa-edit me-2"></i>Taminotchini Tahrirlash
-                        {% else %}
-                            <i class="fas fa-plus me-2"></i>Yangi Taminotchi
-                        {% endif %}
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form method="post" id="supplierForm">
-                        {% csrf_token %}
-
-                        {% if editing_supplier %}
-                            <input type="hidden" name="supplier_id" value="{{ editing_supplier.id }}">
-                        {% endif %}
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Nomi *</label>
-                                    {{ form.name }}
-                                    {% if form.name.errors %}
-                                        <div class="text-danger small">{{ form.name.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Telefon Raqami *</label>
-                                    {{ form.phone_number }}
-                                    {% if form.phone_number.errors %}
-                                        <div class="text-danger small">{{ form.phone_number.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
+                    <form method="get" class="row">
+                        <div class="col-md-8">
+                            <input type="text"
+                                   name="search"
+                                   value="{{ search_query }}"
+                                   class="form-control"
+                                   placeholder="Taminotchi nomi, telefon yoki izoh bo'yicha qidirish...">
                         </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Izoh</label>
-                            {{ form.notes }}
-                            {% if form.notes.errors %}
-                                <div class="text-danger small">{{ form.notes.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="d-flex gap-2">
-                            {% if editing_supplier %}
-                                <button type="submit" name="edit" class="btn btn-success">
-                                    <i class="fas fa-save me-1"></i>Yangilash
+                        <div class="col-md-4">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-1"></i>Qidirish
                                 </button>
-                                <a href="{% url 'inventory:supplier_list' %}" class="btn btn-secondary">
-                                    <i class="fas fa-times me-1"></i>Bekor qilish
+                                {% if search_query %}
+                                <a href="{% url 'inventory:supplier_list' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-1"></i>Tozalash
                                 </a>
-                            {% else %}
-                                <button type="submit" name="add" class="btn btn-primary">
-                                    <i class="fas fa-plus me-1"></i>Qo'shish
-                                </button>
-                            {% endif %}
+                                {% endif %}
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -118,8 +62,9 @@
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Taminotchilar Ro'yxati</h5>
+                    <span class="badge bg-primary">{{ total_suppliers }} ta</span>
                 </div>
                 <div class="card-body p-0">
                     {% if page_obj %}
@@ -127,28 +72,30 @@
                         <table class="table table-hover table-striped mb-0">
                             <thead class="table-light">
                                 <tr>
+                                    <th>#</th>
                                     <th>Nomi</th>
                                     <th>Telefon</th>
                                     <th>Izoh</th>
                                     <th>Qo'shilgan sana</th>
-                                    <th width="120">Harakatlar</th>
+                                    <th width="150">Harakatlar</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for supplier in page_obj %}
                                 <tr>
+                                    <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                                     <td>
                                         <strong>{{ supplier.name }}</strong>
                                     </td>
                                     <td>
                                         <a href="tel:{{ supplier.phone_number }}" class="text-decoration-none">
-                                            <i class="fas fa-phone me-1"></i>{{ supplier.phone_number }}
+                                            <i class="fas fa-phone me-1 text-muted"></i>{{ supplier.phone_number }}
                                         </a>
                                     </td>
                                     <td>
                                         {% if supplier.notes %}
                                             <span class="text-muted" title="{{ supplier.notes }}">
-                                                {{ supplier.notes|truncatewords:5 }}
+                                                {{ supplier.notes|truncatewords:8 }}
                                             </span>
                                         {% else %}
                                             <span class="text-muted">-</span>
@@ -161,7 +108,7 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'inventory:supplier_list' %}?start_edit=1&supplier_id={{ supplier.id }}"
+                                            <a href="{% url 'inventory:supplier_update' supplier.id %}"
                                                class="btn btn-outline-primary"
                                                title="Tahrirlash">
                                                 <i class="fas fa-edit"></i>
@@ -177,26 +124,34 @@
 
                                         <!-- O'chirish modali -->
                                         <div class="modal fade" id="deleteModal{{ supplier.id }}" tabindex="-1">
-                                            <div class="modal-dialog">
+                                            <div class="modal-dialog modal-dialog-centered">
                                                 <div class="modal-content">
                                                     <div class="modal-header">
                                                         <h5 class="modal-title">O'chirishni tasdiqlang</h5>
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                     </div>
                                                     <div class="modal-body">
-                                                        <p>
+                                                        <div class="alert alert-warning">
+                                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                                            <strong>Diqqat!</strong> Bu harakatni ortga qaytarib bo'lmaydi!
+                                                        </div>
+                                                        <p class="mb-0">
                                                             <strong>"{{ supplier.name }}"</strong> ni rostdan ham o'chirmoqchimisiz?
                                                         </p>
-                                                        <p class="text-danger small">
-                                                            <i class="fas fa-exclamation-triangle me-1"></i>
-                                                            Bu harakatni ortga qaytarib bo'lmaydi!
-                                                        </p>
+                                                        {% if supplier.phone_set.exists or supplier.accessory_set.exists %}
+                                                        <div class="alert alert-danger mt-2">
+                                                            <small>
+                                                                <i class="fas fa-info-circle me-1"></i>
+                                                                Bu taminotchiga bog'langan {{ supplier.phone_set.count }} ta telefon va
+                                                                {{ supplier.accessory_set.count }} ta aksessuar mavjud!
+                                                            </small>
+                                                        </div>
+                                                        {% endif %}
                                                     </div>
                                                     <div class="modal-footer">
-                                                        <form method="post" class="d-inline">
+                                                        <form method="post" action="{% url 'inventory:supplier_delete' supplier.id %}">
                                                             {% csrf_token %}
-                                                            <input type="hidden" name="supplier_id" value="{{ supplier.id }}">
-                                                            <button type="submit" name="delete" class="btn btn-danger">
+                                                            <button type="submit" class="btn btn-danger">
                                                                 <i class="fas fa-trash me-1"></i>O'chirish
                                                             </button>
                                                         </form>
@@ -217,13 +172,18 @@
                     <div class="text-center py-5">
                         <i class="fas fa-truck fa-3x text-muted mb-3"></i>
                         <h5 class="text-muted">Taminotchilar topilmadi</h5>
-                        <p class="text-muted">
+                        <p class="text-muted mb-4">
                             {% if search_query %}
                                 "{{ search_query }}" bo'yicha hech narsa topilmadi
                             {% else %}
                                 Hozircha taminotchilar mavjud emas
                             {% endif %}
                         </p>
+                        {% if not search_query %}
+                        <a href="{% url 'inventory:supplier_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Birinchi Taminotchini Qo'shing
+                        </a>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>

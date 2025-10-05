@@ -1,53 +1,126 @@
-<!-- templates/inventory/supplier_list.html -->
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Taminotchilar{% endblock %}
+{% block title %}Taminotchilar Ro'yxati{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Sarlavha va Qo'shish tugmasi -->
+    <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h4 class="mb-0">
-                            <i class="fas fa-truck me-2"></i>Taminotchilar
-                        </h4>
-                        <small class="text-muted">Barcha taminotchilar ro'yxati</small>
-                    </div>
-                    <div>
-                        <a href="{% url 'inventory:supplier_create' %}" class="btn btn-primary">
-                            <i class="fas fa-plus me-1"></i>Yangi Taminotchi
-                        </a>
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-1">
+                                <i class="fas fa-truck me-2"></i>Taminotchilar
+                            </h4>
+                            <small class="opacity-75">Barcha taminotchilar ro'yxati va qarz statistikasi</small>
+                        </div>
+                        <div>
+                            <a href="{% url 'inventory:supplier_create' %}" class="btn btn-light btn-sm">
+                                <i class="fas fa-plus me-1"></i>Yangi Taminotchi
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Qidiruv -->
+    <!-- Statistika Kartalari -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Jami Taminotchilar</h6>
+                            <h3 class="mb-0 text-primary">{{ total_suppliers }}</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-truck fa-2x text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Qarzda</h6>
+                            <h3 class="mb-0 text-warning">
+                                {% widthratio page_obj.object_list|length 1 1 as suppliers_with_debt %}
+                                {{ suppliers_with_debt|default:0 }}
+                            </h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">To'langan</h6>
+                            <h3 class="mb-0 text-success">-</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Faol To'lovlar</h6>
+                            <h3 class="mb-0 text-info">-</h3>
+                        </div>
+                        <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-dollar-sign fa-2x text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Qidiruv va Filterlar -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <form method="get" class="row">
+                    <form method="get" class="row g-3">
                         <div class="col-md-8">
-                            <input type="text"
-                                   name="search"
-                                   value="{{ search_query }}"
-                                   class="form-control"
-                                   placeholder="Taminotchi nomi, telefon yoki izoh bo'yicha qidirish...">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white">
+                                    <i class="fas fa-search text-muted"></i>
+                                </span>
+                                <input type="text"
+                                       name="search"
+                                       value="{{ search_query }}"
+                                       class="form-control border-start-0"
+                                       placeholder="Taminotchi nomi, telefon raqami yoki izoh bo'yicha qidirish...">
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary flex-fill">
                                     <i class="fas fa-search me-1"></i>Qidirish
                                 </button>
                                 {% if search_query %}
                                 <a href="{% url 'inventory:supplier_list' %}" class="btn btn-outline-secondary">
-                                    <i class="fas fa-times me-1"></i>Tozalash
+                                    <i class="fas fa-times"></i>
                                 </a>
                                 {% endif %}
                             </div>
@@ -58,58 +131,104 @@
         </div>
     </div>
 
-    <!-- Taminotchilar jadvali -->
+    <!-- Taminotchilar Jadvali -->
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Taminotchilar Ro'yxati</h5>
-                    <span class="badge bg-primary">{{ total_suppliers }} ta</span>
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-list me-2 text-primary"></i>
+                            Taminotchilar Ro'yxati
+                        </h5>
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="badge bg-primary rounded-pill">{{ total_suppliers }} ta</span>
+                            {% if search_query %}
+                            <span class="badge bg-info rounded-pill">
+                                <i class="fas fa-filter me-1"></i>Filtrlangan
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     {% if page_obj %}
                     <div class="table-responsive">
-                        <table class="table table-hover table-striped mb-0">
+                        <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>#</th>
-                                    <th>Nomi</th>
-                                    <th>Telefon</th>
+                                    <th width="60" class="text-center">#</th>
+                                    <th>Taminotchi</th>
+                                    <th width="200">Aloqa</th>
+                                    <th>Qarz Holati</th>
                                     <th>Izoh</th>
-                                    <th>Qo'shilgan sana</th>
-                                    <th width="150">Harakatlar</th>
+                                    <th width="120">Qo'shilgan</th>
+                                    <th width="150" class="text-center">Harakatlar</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for supplier in page_obj %}
                                 <tr>
-                                    <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
-                                    <td>
-                                        <strong>{{ supplier.name }}</strong>
+                                    <td class="text-center">
+                                        <span class="badge bg-light text-dark">
+                                            {{ forloop.counter|add:page_obj.start_index|add:"-1" }}
+                                        </span>
                                     </td>
                                     <td>
-                                        <a href="tel:{{ supplier.phone_number }}" class="text-decoration-none">
-                                            <i class="fas fa-phone me-1 text-muted"></i>{{ supplier.phone_number }}
+                                        <a href="{% url 'inventory:supplier_detail' supplier.id %}" 
+                                           class="text-decoration-none">
+                                            <strong class="text-dark">{{ supplier.name }}</strong>
                                         </a>
                                     </td>
                                     <td>
+                                        <a href="tel:{{ supplier.phone_number }}" 
+                                           class="text-decoration-none text-muted">
+                                            <i class="fas fa-phone me-2 text-primary"></i>
+                                            {{ supplier.phone_number }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if supplier.balance > 0 %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                            Qarz: ${{ supplier.balance|floatformat:2 }}
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>
+                                            Qarz yo'q
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
                                         {% if supplier.notes %}
-                                            <span class="text-muted" title="{{ supplier.notes }}">
-                                                {{ supplier.notes|truncatewords:8 }}
+                                            <span class="text-muted small" 
+                                                  data-bs-toggle="tooltip" 
+                                                  data-bs-placement="top"
+                                                  title="{{ supplier.notes }}">
+                                                {{ supplier.notes|truncatewords:5 }}
                                             </span>
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                            <span class="text-muted small">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         <small class="text-muted">
+                                            <i class="far fa-calendar me-1"></i>
                                             {{ supplier.created_at|date:"d.m.Y" }}
                                         </small>
                                     </td>
                                     <td>
-                                        <div class="btn-group btn-group-sm">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{% url 'inventory:supplier_detail' supplier.id %}"
+                                               class="btn btn-outline-info"
+                                               data-bs-toggle="tooltip"
+                                               title="Ko'rish">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
                                             <a href="{% url 'inventory:supplier_update' supplier.id %}"
                                                class="btn btn-outline-primary"
+                                               data-bs-toggle="tooltip"
                                                title="Tahrirlash">
                                                 <i class="fas fa-edit"></i>
                                             </a>
@@ -122,42 +241,59 @@
                                             </button>
                                         </div>
 
-                                        <!-- O'chirish modali -->
-                                        <div class="modal fade" id="deleteModal{{ supplier.id }}" tabindex="-1">
+                                        <!-- O'chirish Modal -->
+                                        <div class="modal fade" id="deleteModal{{ supplier.id }}" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-dialog-centered">
                                                 <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">O'chirishni tasdiqlang</h5>
+                                                    <div class="modal-header border-0">
+                                                        <h5 class="modal-title">
+                                                            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                                            O'chirishni Tasdiqlang
+                                                        </h5>
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                     </div>
                                                     <div class="modal-body">
-                                                        <div class="alert alert-warning">
-                                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        <div class="alert alert-warning border-0">
+                                                            <i class="fas fa-info-circle me-2"></i>
                                                             <strong>Diqqat!</strong> Bu harakatni ortga qaytarib bo'lmaydi!
                                                         </div>
-                                                        <p class="mb-0">
-                                                            <strong>"{{ supplier.name }}"</strong> ni rostdan ham o'chirmoqchimisiz?
-                                                        </p>
+                                                        
+                                                        <div class="text-center mb-3">
+                                                            <i class="fas fa-truck fa-3x text-muted mb-3"></i>
+                                                            <p class="mb-0">
+                                                                <strong>"{{ supplier.name }}"</strong> ni o'chirmoqchimisiz?
+                                                            </p>
+                                                        </div>
+
+                                                        {% if supplier.balance > 0 %}
+                                                        <div class="alert alert-danger border-0">
+                                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                                            <strong>Qarz mavjud:</strong> Bu taminotchida 
+                                                            ${{ supplier.balance|floatformat:2 }} qarz bor!
+                                                        </div>
+                                                        {% endif %}
+
                                                         {% if supplier.phone_set.exists or supplier.accessory_set.exists %}
-                                                        <div class="alert alert-danger mt-2">
+                                                        <div class="alert alert-info border-0">
                                                             <small>
-                                                                <i class="fas fa-info-circle me-1"></i>
-                                                                Bu taminotchiga bog'langan {{ supplier.phone_set.count }} ta telefon va
-                                                                {{ supplier.accessory_set.count }} ta aksessuar mavjud!
+                                                                <i class="fas fa-link me-1"></i>
+                                                                Bog'langan ma'lumotlar: 
+                                                                {{ supplier.phone_set.count }} telefon, 
+                                                                {{ supplier.accessory_set.count }} aksessuar
                                                             </small>
                                                         </div>
                                                         {% endif %}
                                                     </div>
-                                                    <div class="modal-footer">
-                                                        <form method="post" action="{% url 'inventory:supplier_delete' supplier.id %}">
+                                                    <div class="modal-footer border-0">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                            <i class="fas fa-times me-1"></i>Bekor Qilish
+                                                        </button>
+                                                        <form method="post" action="{% url 'inventory:supplier_delete' supplier.id %}" class="d-inline">
                                                             {% csrf_token %}
                                                             <button type="submit" class="btn btn-danger">
                                                                 <i class="fas fa-trash me-1"></i>O'chirish
                                                             </button>
                                                         </form>
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                            Bekor qilish
-                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -170,8 +306,10 @@
                     </div>
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-truck fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">Taminotchilar topilmadi</h5>
+                        <div class="mb-4">
+                            <i class="fas fa-truck fa-4x text-muted opacity-50"></i>
+                        </div>
+                        <h5 class="text-muted mb-2">Taminotchilar Topilmadi</h5>
                         <p class="text-muted mb-4">
                             {% if search_query %}
                                 "{{ search_query }}" bo'yicha hech narsa topilmadi
@@ -190,8 +328,8 @@
 
                 <!-- Pagination -->
                 {% if page_obj.has_other_pages %}
-                <div class="card-footer">
-                    <nav aria-label="Page navigation">
+                <div class="card-footer bg-white border-top">
+                    <nav aria-label="Sahifa navigatsiyasi">
                         <ul class="pagination pagination-sm justify-content-center mb-0">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
@@ -232,6 +370,13 @@
                             {% endif %}
                         </ul>
                     </nav>
+                    
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            Sahifa {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                            (Jami: {{ total_suppliers }} taminotchi)
+                        </small>
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -240,11 +385,106 @@
 </div>
 
 <style>
-.table td {
-    vertical-align: middle;
+/* Gradient Header */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
+
+/* Table Styles */
+.table thead th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+    transform: translateX(2px);
+}
+
+/* Card Shadows */
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* Button Group Styles */
 .btn-group-sm > .btn {
     padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Search Input */
+.input-group .form-control:focus {
+    box-shadow: none;
+    border-color: #ced4da;
+}
+
+.input-group .form-control:focus + .input-group-text,
+.input-group-text:has(+ .form-control:focus) {
+    border-color: #86b7fe;
+}
+
+/* Badge Styles */
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+.badge.rounded-pill {
+    padding: 0.35em 0.85em;
+}
+
+/* Modal Improvements */
+.modal-content {
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Pagination */
+.pagination .page-link {
+    border-radius: 0.25rem;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+/* Tooltips */
+[data-bs-toggle="tooltip"] {
+    cursor: help;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .btn-group-sm > .btn {
+        width: 100%;
+        margin-bottom: 0.25rem;
+    }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Bootstrap tooltips ni faollashtirish
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
 {% endblock %}

@@ -1,0 +1,381 @@
+<!-- templates/inventory/supplier_payment_form.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Taminotchiga To'lov - {{ supplier.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-1">
+                                <i class="fas fa-money-bill-wave me-2"></i>
+                                To'lov Qilish
+                            </h4>
+                            <small class="text-muted">Taminotchi: <strong>{{ supplier.name }}</strong></small>
+                        </div>
+                        <a href="{% url 'inventory:supplier_detail' supplier.id %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Ortga
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Qarz Ma'lumotlari -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card border-danger">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">Umumiy Qarz</h6>
+                            <h3 class="mb-0 text-danger">
+                                ${{ supplier.total_debt|floatformat:2 }}
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">To'langan</h6>
+                            <h3 class="mb-0 text-success">
+                                ${{ supplier.total_paid|floatformat:2 }}
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-warning">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">Qoldiq Qarz</h6>
+                            <h3 class="mb-0 text-warning">
+                                ${{ supplier.balance|floatformat:2 }}
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- To'lov Formasi -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>
+                        To'lov Ma'lumotlari
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="paymentForm" novalidate>
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            {% for error in form.non_field_errors %}
+                                <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Taminotchi (hidden) -->
+                        {{ form.supplier }}
+
+                        <div class="row">
+                            <!-- To'lov Summasi -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.amount.id_for_label }}" class="form-label">
+                                        To'lov Summasi ($) *
+                                    </label>
+                                    {{ form.amount }}
+                                    {% if form.amount.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {% for error in form.amount.errors %}
+                                                <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        Maksimal: ${{ supplier.balance|floatformat:2 }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- To'lov Sanasi -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.payment_date.id_for_label }}" class="form-label">
+                                        To'lov Sanasi *
+                                    </label>
+                                    {{ form.payment_date }}
+                                    {% if form.payment_date.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {% for error in form.payment_date.errors %}
+                                                <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- To'lov Turi -->
+                        <div class="mb-4">
+                            <label class="form-label d-block">To'lov Turi *</label>
+                            <div class="btn-group w-100" role="group">
+                                {% for radio in form.payment_type %}
+                                <div class="flex-fill">
+                                    {{ radio.tag }}
+                                    <label class="btn btn-outline-primary w-100" for="{{ radio.id_for_label }}">
+                                        {% if radio.choice_value == 'general' %}
+                                            <i class="fas fa-list me-2"></i>Umumiy (FIFO)
+                                        {% else %}
+                                            <i class="fas fa-check-square me-2"></i>Maxsus Telefonlar
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if form.payment_type.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.payment_type.errors %}
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text mt-2">
+                                <strong>Umumiy:</strong> Eng eski qarzli telefonlardan boshlab to'lanadi (FIFO)<br>
+                                <strong>Maxsus:</strong> Siz tanlagan telefonlar uchun to'lov
+                            </div>
+                        </div>
+
+                        <!-- Telefonlar Ro'yxati (faqat 'specific' turi uchun) -->
+                        <div id="phoneSelectionBlock" style="display: none;">
+                            <div class="card border-info mb-4">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-mobile-alt me-2"></i>
+                                        Telefonlarni Tanlang
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    {% if debt_phones %}
+                                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                        <table class="table table-hover table-sm mb-0">
+                                            <thead class="sticky-top bg-light">
+                                                <tr>
+                                                    <th width="50">
+                                                        <input type="checkbox" id="selectAll" class="form-check-input">
+                                                    </th>
+                                                    <th>Model</th>
+                                                    <th>IMEI</th>
+                                                    <th>Tan Narx</th>
+                                                    <th>To'langan</th>
+                                                    <th>Qarz</th>
+                                                    <th>Sana</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for phone in debt_phones %}
+                                                <tr>
+                                                    <td>
+                                                        <div class="form-check">
+                                                            <input type="checkbox"
+                                                                   name="selected_phones"
+                                                                   value="{{ phone.id }}"
+                                                                   class="form-check-input phone-checkbox"
+                                                                   data-debt="{{ phone.debt_balance }}">
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <strong>{{ phone.phone_model }}</strong><br>
+                                                        <small class="text-muted">{{ phone.memory_size }}</small>
+                                                    </td>
+                                                    <td>
+                                                        <small class="font-monospace">{{ phone.imei }}</small>
+                                                    </td>
+                                                    <td>${{ phone.cost_price|floatformat:2 }}</td>
+                                                    <td class="text-success">
+                                                        ${{ phone.paid_amount|floatformat:2 }}
+                                                    </td>
+                                                    <td class="text-danger">
+                                                        <strong>${{ phone.debt_balance|floatformat:2 }}</strong>
+                                                    </td>
+                                                    <td>
+                                                        <small>{{ phone.created_at|date:"d.m.Y" }}</small>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Tanlangan Telefonlar Statistikasi -->
+                                    <div class="alert alert-info mt-3 mb-0">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <strong>Tanlangan telefonlar:</strong>
+                                                <span id="selectedCount">0</span> ta
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>Tanlangan qarz:</strong>
+                                                $<span id="selectedDebt">0.00</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {% if form.selected_phones.errors %}
+                                        <div class="text-danger small mt-2">
+                                            {% for error in form.selected_phones.errors %}
+                                                <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    {% else %}
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                        <h6 class="text-muted">Qarzda telefon yo'q</h6>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Izoh -->
+                        <div class="mb-4">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                Izoh (ixtiyoriy)
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.notes.errors %}
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Tugmalar -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'inventory:supplier_detail' supplier.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>Bekor qilish
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check-circle me-1"></i>To'lovni Amalga Oshirish
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.btn-group input[type="radio"] {
+    display: none;
+}
+
+.btn-group input[type="radio"]:checked + label {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.phone-checkbox {
+    cursor: pointer;
+}
+
+#selectAll {
+    cursor: pointer;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentTypeRadios = document.querySelectorAll('input[name="payment_type"]');
+    const phoneSelectionBlock = document.getElementById('phoneSelectionBlock');
+    const phoneCheckboxes = document.querySelectorAll('.phone-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const selectedCountSpan = document.getElementById('selectedCount');
+    const selectedDebtSpan = document.getElementById('selectedDebt');
+
+    // To'lov turi o'zgarganda
+    paymentTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'specific') {
+                phoneSelectionBlock.style.display = 'block';
+            } else {
+                phoneSelectionBlock.style.display = 'none';
+                // Umumiy turida barcha checkboxlarni o'chirish
+                phoneCheckboxes.forEach(cb => cb.checked = false);
+                updateSelectedStats();
+            }
+        });
+    });
+
+    // Sahifa yuklanganda to'lov turini tekshirish
+    const selectedPaymentType = document.querySelector('input[name="payment_type"]:checked');
+    if (selectedPaymentType && selectedPaymentType.value === 'specific') {
+        phoneSelectionBlock.style.display = 'block';
+    }
+
+    // "Hammasini tanlash" checkbox
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            phoneCheckboxes.forEach(cb => {
+                cb.checked = this.checked;
+            });
+            updateSelectedStats();
+        });
+    }
+
+    // Har bir telefon checkboxi
+    phoneCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            updateSelectedStats();
+
+            // Agar bitta ham checkboxni olib tashlasak, "Hammasini tanlash" ni o'chirish
+            if (!this.checked && selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+            }
+
+            // Agar barcha checkboxlar tanlangan bo'lsa, "Hammasini tanlash" ni yoqish
+            const allChecked = Array.from(phoneCheckboxes).every(cb => cb.checked);
+            if (allChecked && selectAllCheckbox) {
+                selectAllCheckbox.checked = true;
+            }
+        });
+    });
+
+    // Tanlangan telefonlar statistikasini yangilash
+    function updateSelectedStats() {
+        let count = 0;
+        let totalDebt = 0;
+
+        phoneCheckboxes.forEach(cb => {
+            if (cb.checked) {
+                count++;
+                totalDebt += parseFloat(cb.dataset.debt);
+            }
+        });
+
+        if (selectedCountSpan) selectedCountSpan.textContent = count;
+        if (selectedDebtSpan) selectedDebtSpan.textContent = totalDebt.toFixed(2);
+    }
+
+    // Boshlang'ich holatni yangilash
+    updateSelectedStats();
+});
+</script>
+{% endblock %}

@@ -35,6 +35,9 @@ urlpatterns = [
     path('suppliers/create/', views.supplier_create, name='supplier_create'),
     path('suppliers/<int:pk>/edit/', views.supplier_update, name='supplier_update'),
     path('suppliers/<int:pk>/delete/', views.supplier_delete, name='supplier_delete'),
+    path('supplier/<int:pk>/', views.supplier_detail, name='supplier_detail'),
+    path('supplier/<int:supplier_id>/payment/', views.supplier_payment_create, name='supplier_payment_create'),
+    path('payment/<int:payment_id>/', views.supplier_payment_detail, name='supplier_payment_detail'),
 
     # API URLs
     path('search/', views.search, name='search'),

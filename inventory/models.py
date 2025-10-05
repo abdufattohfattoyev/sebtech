@@ -2,7 +2,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.core.validators import MinValueValidator, RegexValidator, MaxValueValidator
-from django.db.models import Sum, F, DecimalField
+from django.db.models import Sum, F, Q, DecimalField
 from django.utils import timezone
 from django.contrib.auth.models import User
 from shops.models import Shop
@@ -15,17 +15,125 @@ def get_current_date():
 
 class Supplier(models.Model):
     """Taminotchi - telefon/aksessuar yetkazib beruvchi tashkilot"""
-    name = models.CharField(max_length=100, verbose_name="Taminotchi nomi")
-    phone_number = models.CharField(max_length=15, verbose_name="Telefon raqami")
-    notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
-    created_at = models.DateField(default=get_current_date, verbose_name="Yaratilgan sana")
+    name = models.CharField(
+        max_length=100,
+        verbose_name="Taminotchi nomi"
+    )
+    phone_number = models.CharField(
+        max_length=15,
+        verbose_name="Telefon raqami"
+    )
+    notes = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Izoh"
+    )
+    created_at = models.DateField(
+        default=get_current_date,
+        verbose_name="Yaratilgan sana"
+    )
 
     class Meta:
         verbose_name = "Taminotchi"
         verbose_name_plural = "Taminotchilar"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['name'], name='supplier_name_idx'),
+            models.Index(fields=['phone_number'], name='supplier_phone_idx'),
+        ]
 
     def __str__(self):
         return f"{self.name} - {self.phone_number}"
+
+    @property
+    def total_debt(self):
+        """Umumiy qarz - barcha qarzli telefonlar tan narxi yig'indisi"""
+        from .models import Phone  # Circular import oldini olish
+
+        debt_sum = Phone.objects.filter(
+            supplier=self,
+            source_type='supplier',
+            payment_status__in=['debt', 'partial']
+        ).aggregate(
+            total=Sum('cost_price')
+        )['total'] or Decimal('0')
+
+        return debt_sum
+
+    @property
+    def total_paid(self):
+        """To'langan - barcha to'lovlar yig'indisi"""
+        from .models import SupplierPayment  # Circular import oldini olish
+
+        paid_sum = SupplierPayment.objects.filter(
+            supplier=self
+        ).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0')
+
+        return paid_sum
+
+    @property
+    def balance(self):
+        """Qoldiq qarz - haqiqiy qarz balans"""
+        debt_sum = self.get_debt_phones().aggregate(
+            total=Sum('debt_balance')
+        )['total'] or Decimal('0')
+
+        return debt_sum
+
+    def get_debt_phones(self):
+        """Qarzda turgan telefonlar"""
+        from .models import Phone  # Circular import oldini olish
+
+        return Phone.objects.filter(
+            supplier=self,
+            source_type='supplier',
+            payment_status__in=['debt', 'partial']
+        ).select_related(
+            'phone_model',
+            'memory_size'
+        ).order_by('created_at')
+
+    def get_paid_phones(self):
+        """To'langan telefonlar"""
+        from .models import Phone  # Circular import oldini olish
+
+        return Phone.objects.filter(
+            supplier=self,
+            source_type='supplier',
+            payment_status='paid'
+        ).select_related(
+            'phone_model',
+            'memory_size'
+        ).order_by('-created_at')
+
+    def get_total_phones_count(self):
+        """Jami telefonlar soni"""
+        from .models import Phone  # Circular import oldini olish
+
+        return Phone.objects.filter(
+            supplier=self,
+            source_type='supplier'
+        ).count()
+
+    def clean(self):
+        """Validatsiya"""
+        super().clean()
+
+        # Telefon raqamini tozalash
+        if self.phone_number:
+            self.phone_number = ''.join(filter(str.isdigit, self.phone_number))
+            if len(self.phone_number) < 9:
+                raise ValidationError({
+                    'phone_number': "Telefon raqami kamida 9 ta raqamdan iborat bo'lishi kerak"
+                })
+
+        # Ismni tekshirish
+        if not self.name or not self.name.strip():
+            raise ValidationError({
+                'name': "Taminotchi nomi kiritilishi shart"
+            })
 
 
 class ExternalSeller(models.Model):
@@ -269,6 +377,11 @@ class Phone(models.Model):
         ('daily_seller', 'Kunlik sotuvchi'),
         ('exchange', 'Almashtirish'),
     ]
+    PAYMENT_STATUS_CHOICES = [
+        ('paid', 'To\'langan'),
+        ('debt', 'Qarzda'),
+        ('partial', 'Qisman to\'langan'),
+    ]
 
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="phones", verbose_name="Do'kon")
     phone_model = models.ForeignKey(PhoneModel, on_delete=models.CASCADE, verbose_name="iPhone modeli")
@@ -400,6 +513,29 @@ class Phone(models.Model):
         verbose_name="Asl egasi telefon raqami"
     )
 
+    # QARZ MAYDONLARI
+    payment_status = models.CharField(
+        max_length=10,
+        choices=PAYMENT_STATUS_CHOICES,
+        default='paid',
+        verbose_name="To'lov holati",
+        db_index=True
+    )
+    paid_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="To'langan summa ($)",
+        help_text="Bu telefonга to'langan summa"
+    )
+    debt_balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Qarz qoldig'i ($)",
+        help_text="Bu telefon uchun qolgan qarz"
+    )
+
     class Meta:
         verbose_name = "Telefon"
         verbose_name_plural = "Telefonlar"
@@ -407,6 +543,8 @@ class Phone(models.Model):
             models.Index(fields=['imei'], name='phone_imei_idx'),
             models.Index(fields=['status'], name='phone_status_idx'),
             models.Index(fields=['shop', 'status'], name='phone_shop_status_idx'),
+            models.Index(fields=['payment_status'], name='phone_payment_status_idx'),
+            models.Index(fields=['supplier', 'payment_status'], name='phone_supplier_payment_idx'),
         ]
 
     def __str__(self):
@@ -414,6 +552,25 @@ class Phone(models.Model):
 
     def save(self, *args, **kwargs):
         self.cost_price = self.purchase_price + self.imei_cost + self.repair_cost
+
+        # Qarz balansini hisoblash
+        if self.source_type == 'supplier':
+            self.debt_balance = self.cost_price - self.paid_amount
+
+            # To'lov holatini yangilash
+            if self.paid_amount >= self.cost_price:
+                self.payment_status = 'paid'
+                self.debt_balance = Decimal('0')
+            elif self.paid_amount > 0:
+                self.payment_status = 'partial'
+            else:
+                self.payment_status = 'debt'
+        else:
+            # Boshqa manbalar uchun avtomatik to'langan
+            self.payment_status = 'paid'
+            self.paid_amount = self.cost_price
+            self.debt_balance = Decimal('0')
+
         super().save(*args, **kwargs)
 
     def clean(self):
@@ -429,7 +586,8 @@ class Phone(models.Model):
             raise ValidationError({'supplier': "Taminotchi manba turi uchun taminotchi tanlanishi kerak."})
 
         if self.source_type == 'external_seller' and not self.external_seller:
-            raise ValidationError({'external_seller': "Tashqi sotuvchi manba turi uchun tashqi sotuvchi tanlanishi kerak."})
+            raise ValidationError(
+                {'external_seller': "Tashqi sotuvchi manba turi uchun tashqi sotuvchi tanlanishi kerak."})
 
         if self.source_type == 'daily_seller':
             if not self.daily_payment_amount or self.daily_payment_amount <= 0:
@@ -440,3 +598,97 @@ class Phone(models.Model):
                 'original_owner_name': "Almashtirish manbasi uchun asl egasi ismi kiritilishi kerak.",
                 'original_owner_phone': "Almashtirish manbasi uchun telefon raqami kiritilishi kerak."
             })
+
+
+class SupplierPayment(models.Model):
+    """Taminotchiga to'lov"""
+    PAYMENT_TYPE_CHOICES = [
+        ('general', 'Umumiy to\'lov (FIFO)'),
+        ('specific', 'Tanlangan telefonlar'),
+    ]
+
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.CASCADE,
+        related_name='payments',
+        verbose_name="Taminotchi"
+    )
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        verbose_name="To'lov summasi ($)"
+    )
+    payment_type = models.CharField(
+        max_length=10,
+        choices=PAYMENT_TYPE_CHOICES,
+        default='general',
+        verbose_name="To'lov turi"
+    )
+    payment_date = models.DateField(
+        default=get_current_date,
+        verbose_name="To'lov sanasi"
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Izoh"
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Amalga oshirgan"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Yaratilgan vaqt"
+    )
+
+    class Meta:
+        verbose_name = "Taminotchiga to'lov"
+        verbose_name_plural = "Taminotchiga to'lovlar"
+        ordering = ['-payment_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.supplier.name} - ${self.amount} ({self.payment_date})"
+
+
+class SupplierPaymentDetail(models.Model):
+    """To'lov tafsiloti - qaysi telefonga qancha to'landi"""
+    payment = models.ForeignKey(
+        SupplierPayment,
+        on_delete=models.CASCADE,
+        related_name='details',
+        verbose_name="To'lov"
+    )
+    phone = models.ForeignKey(
+        Phone,
+        on_delete=models.CASCADE,
+        related_name='payment_details',
+        verbose_name="Telefon"
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Bu telefonga to'langan ($)"
+    )
+    previous_balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Oldingi qarz ($)"
+    )
+    new_balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Yangi qarz ($)"
+    )
+
+    class Meta:
+        verbose_name = "To'lov tafsiloti"
+        verbose_name_plural = "To'lov tafsilotlari"
+        ordering = ['payment', 'phone']
+
+    def __str__(self):
+        return f"{self.phone} - ${self.amount}"

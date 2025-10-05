@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -8,8 +9,9 @@ from django.db.models import Sum, F, DecimalField, Q
 from decimal import Decimal
 from django_filters import rest_framework as filters
 
-from .forms import PhoneForm, AccessoryForm, AccessoryAddQuantityForm, SupplierForm
-from .models import Phone, Accessory, AccessoryPurchaseHistory, ExternalSeller, DailySeller, PhoneModel, Supplier
+from .forms import PhoneForm, AccessoryForm, AccessoryAddQuantityForm, SupplierForm, SupplierPaymentForm
+from .models import Phone, Accessory, AccessoryPurchaseHistory, ExternalSeller, DailySeller, PhoneModel, Supplier, \
+    SupplierPaymentDetail, SupplierPayment
 from shops.models import Shop
 
 
@@ -889,6 +891,7 @@ def check_daily_seller_phone_api(request):
             'message': 'Telefon raqam mavjud emas. Yangi kunlik sotuvchi yaratiladi.'
         })
 
+
 @login_required
 def supplier_list(request):
     """Taminotchilar ro'yxati"""
@@ -906,13 +909,157 @@ def supplier_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
+    # Statistika hisoblash
+    suppliers_with_debt = 0
+    for supplier in page_obj:
+        if supplier.balance > 0:
+            suppliers_with_debt += 1
+
     context = {
         'page_obj': page_obj,
         'search_query': search_query,
         'total_suppliers': suppliers.count(),
+        'suppliers_with_debt': suppliers_with_debt,
     }
 
     return render(request, 'inventory/supplier_list.html', context)
+
+
+@login_required
+def supplier_detail(request, pk):
+    """Taminotchi tafsilotlari - qarzlar va to'lovlar"""
+    supplier = get_object_or_404(Supplier, pk=pk)
+
+    # Qarzda turgan telefonlar
+    debt_phones = supplier.get_debt_phones()
+
+    # To'langan telefonlar (pagination)
+    paid_phones_all = supplier.get_paid_phones()
+
+    # Pagination - har sahifada 20 ta
+    from django.core.paginator import Paginator
+    paginator = Paginator(paid_phones_all, 20)
+    page_number = request.GET.get('page')
+    paid_phones_page = paginator.get_page(page_number)
+
+    # To'lov tarixi
+    payments = SupplierPayment.objects.filter(
+        supplier=supplier
+    ).prefetch_related('details__phone').order_by('-payment_date')
+
+    # Statistika
+    total_phones = Phone.objects.filter(
+        supplier=supplier,
+        source_type='supplier'
+    ).count()
+
+    context = {
+        'supplier': supplier,
+        'debt_phones': debt_phones,
+        'paid_phones': paid_phones_page,
+        'paid_phones_total': paid_phones_all.count(),
+        'payments': payments,
+        'total_phones': total_phones,
+        'balance': supplier.balance,
+        'can_edit': can_edit_inventory(request.user),
+    }
+
+    return render(request, 'inventory/supplier_detail.html', context)
+
+
+@login_required
+@boss_or_finance_required
+def supplier_payment_create(request, supplier_id):
+    """Taminotchiga to'lov qilish"""
+    supplier = get_object_or_404(Supplier, pk=supplier_id)
+
+    if supplier.balance <= 0:
+        messages.warning(request, "Bu taminotchida qarz yo'q!")
+        return redirect('inventory:supplier_detail', pk=supplier_id)
+
+    if request.method == 'POST':
+        form = SupplierPaymentForm(request.POST, supplier=supplier)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    payment = form.save(commit=False)
+                    payment.created_by = request.user
+                    payment.save()
+
+                    # To'lovni telefonlarga tarqatish
+                    amount_remaining = payment.amount
+
+                    if payment.payment_type == 'general':
+                        # FIFO - eng eski qarzli telefonlardan boshlanadi
+                        phones = supplier.get_debt_phones()
+                    else:
+                        # Tanlangan telefonlar
+                        phones = form.cleaned_data['selected_phones']
+
+                    for phone in phones:
+                        if amount_remaining <= 0:
+                            break
+
+                        previous_balance = phone.debt_balance
+                        payment_for_phone = min(amount_remaining, phone.debt_balance)
+
+                        # Telefon qarzini kamaytirish
+                        phone.paid_amount += payment_for_phone
+                        phone.save()  # save() metodida debt_balance va payment_status avtomatik yangilanadi
+
+                        # To'lov tafsilotini saqlash
+                        SupplierPaymentDetail.objects.create(
+                            payment=payment,
+                            phone=phone,
+                            amount=payment_for_phone,
+                            previous_balance=previous_balance,
+                            new_balance=phone.debt_balance
+                        )
+
+                        amount_remaining -= payment_for_phone
+
+                    # Taminotchining to'langan summasi
+                    supplier.total_paid += payment.amount
+                    supplier.save(update_fields=['total_paid'])
+
+                    messages.success(
+                        request,
+                        f"✅ {supplier.name} ga ${payment.amount} to'lov qilindi! "
+                        f"Qoldiq qarz: ${supplier.balance}"
+                    )
+                    return redirect('inventory:supplier_detail', pk=supplier_id)
+
+            except Exception as e:
+                messages.error(request, f"❌ To'lov qilishda xatolik: {str(e)}")
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{error}")
+    else:
+        form = SupplierPaymentForm(supplier=supplier)
+
+    context = {
+        'form': form,
+        'supplier': supplier,
+        'debt_phones': supplier.get_debt_phones(),
+    }
+
+    return render(request, 'inventory/supplier_payment_form.html', context)
+
+
+@login_required
+def supplier_payment_detail(request, payment_id):
+    """To'lov tafsilotlari"""
+    payment = get_object_or_404(
+        SupplierPayment.objects.prefetch_related('details__phone'),
+        pk=payment_id
+    )
+
+    context = {
+        'payment': payment,
+    }
+
+    return render(request, 'inventory/supplier_payment_detail.html', context)
 
 
 @login_required
@@ -947,7 +1094,7 @@ def supplier_update(request, pk):
         if form.is_valid():
             supplier = form.save()
             messages.success(request, f"✅ {supplier.name} ma'lumotlari yangilandi!")
-            return redirect('inventory:supplier_list')
+            return redirect('inventory:supplier_detail', pk=pk)
     else:
         form = SupplierForm(instance=supplier)
 
@@ -965,6 +1112,25 @@ def supplier_update(request, pk):
 def supplier_delete(request, pk):
     """Taminotchini o'chirish"""
     supplier = get_object_or_404(Supplier, pk=pk)
+
+    # Qarzli telefonlar borligini tekshirish
+    if supplier.balance > 0:
+        messages.error(
+            request,
+            f"❌ Bu taminotchida ${supplier.balance} qarz bor. "
+            "Avval qarzni to'lang!"
+        )
+        return redirect('inventory:supplier_detail', pk=pk)
+
+    # Bog'liq telefonlar borligini tekshirish
+    phones_count = Phone.objects.filter(supplier=supplier).count()
+    if phones_count > 0:
+        messages.error(
+            request,
+            f"❌ Bu taminotchiga {phones_count} ta telefon bog'langan. "
+            "Avval telefonlarni o'chiring yoki boshqa taminotchiga o'tkazing!"
+        )
+        return redirect('inventory:supplier_detail', pk=pk)
 
     if request.method == 'POST':
         supplier_name = supplier.name
