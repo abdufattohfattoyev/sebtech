@@ -351,99 +351,50 @@ class ReportCalculator:
         }
 
     def _get_daily_cashflow(self, target_date):
-        """Kunlik cash flow - TO'G'RILANGAN VERSIYA"""
+        """Kunlik cash flow"""
         transactions = CashFlowTransaction.objects.filter(
             shop=self.shop,
             transaction_date=target_date
         )
 
-        # REAL PUL HARAKATLARI UCHUN - "exchange_old_phone_value" ni CHIQARISH
-        real_cash_transactions = transactions.exclude(
-            transaction_type='exchange_old_phone_value'
-        )
-
-        # USD KIRIM/CHIQIM (faqat real pul harakatlari)
-        usd_income = real_cash_transactions.filter(
-            amount_usd__gt=0
-        ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
-
+        usd_income = transactions.filter(amount_usd__gt=0).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         usd_expense = abs(
-            real_cash_transactions.filter(
-                amount_usd__lt=0
-            ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
-        )
+            transactions.filter(amount_usd__lt=0).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0'))
 
-        # UZS KIRIM/CHIQIM
-        uzs_income = transactions.filter(
-            amount_uzs__gt=0
-        ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
-
+        uzs_income = transactions.filter(amount_uzs__gt=0).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
         uzs_expense = abs(
-            transactions.filter(
-                amount_uzs__lt=0
-            ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
-        )
+            transactions.filter(amount_uzs__lt=0).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0'))
 
-        # TAFSILOTLAR (barcha transaksiyalar, faqat ko'rsatish uchun)
         details = {
-            'phone_sales': transactions.filter(
-                transaction_type='phone_sale'
-            ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0'),
-
-            'accessory_sales': transactions.filter(
-                transaction_type='accessory_sale'
-            ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0'),
-
-            'exchange_income': transactions.filter(
-                transaction_type='exchange_income'
-            ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0'),
-
+            'phone_sales': transactions.filter(transaction_type='phone_sale').aggregate(total=Sum('amount_usd'))[
+                               'total'] or Decimal('0'),
+            'accessory_sales':
+                transactions.filter(transaction_type='accessory_sale').aggregate(total=Sum('amount_uzs'))[
+                    'total'] or Decimal('0'),
+            'exchange_income':
+                transactions.filter(transaction_type='exchange_income').aggregate(total=Sum('amount_usd'))[
+                    'total'] or Decimal('0'),
             'exchange_old_phone_value': abs(
-                transactions.filter(
-                    transaction_type='exchange_old_phone_value'
-                ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
-            ),  # ← Ma'lumot uchun, lekin chiqimga QOSHILMAYDI
-
-            'exchange_equal': transactions.filter(
-                transaction_type='exchange_equal'
-            ).count(),
-
+                transactions.filter(transaction_type='exchange_old_phone_value').aggregate(total=Sum('amount_usd'))[
+                    'total'] or Decimal('0')),
+            'exchange_equal': transactions.filter(transaction_type='exchange_equal').count(),
             'daily_seller_payments': abs(
-                transactions.filter(
-                    transaction_type='daily_seller_payment'
-                ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
-            ),
-
+                transactions.filter(transaction_type='daily_seller_payment').aggregate(total=Sum('amount_usd'))[
+                    'total'] or Decimal('0')),
             'exchange_expenses': abs(
-                transactions.filter(
-                    transaction_type='exchange_expense'
-                ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
-            ),
-
+                transactions.filter(transaction_type='exchange_expense').aggregate(total=Sum('amount_usd'))[
+                    'total'] or Decimal('0')),
             'phone_returns': abs(
-                transactions.filter(
-                    transaction_type='phone_return'
-                ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
-            ),
-
+                transactions.filter(transaction_type='phone_return').aggregate(total=Sum('amount_usd'))[
+                    'total'] or Decimal('0')),
             'daily_expenses': abs(
-                transactions.filter(
-                    transaction_type='daily_expense'
-                ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
-            ),
+                transactions.filter(transaction_type='daily_expense').aggregate(total=Sum('amount_uzs'))[
+                    'total'] or Decimal('0')),
         }
 
         return {
-            'usd': {
-                'income': usd_income,
-                'expense': usd_expense,
-                'net': usd_income - usd_expense
-            },
-            'uzs': {
-                'income': uzs_income,
-                'expense': uzs_expense,
-                'net': uzs_income - uzs_expense
-            },
+            'usd': {'income': usd_income, 'expense': usd_expense, 'net': usd_income - usd_expense},
+            'uzs': {'income': uzs_income, 'expense': uzs_expense, 'net': uzs_income - uzs_expense},
             'details': details,
             'transactions': transactions
         }
