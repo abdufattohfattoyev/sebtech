@@ -777,4 +777,9 @@ class AccessoryAddQuantityForm(forms.Form):
 
         if sale_price is not None:
             accessory.sale_price = sale_price
-            
+
+        if commit:
+            history.save()
+            accessory.save()
+
+        return accessory

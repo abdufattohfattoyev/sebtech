@@ -427,6 +427,13 @@ class PhoneForm(forms.ModelForm):
         phone = super().save(commit=False)
         phone.created_at = self.cleaned_data['created_at']
 
+        # ✅ AVVAL cost_price ni hisoblash
+        phone.cost_price = (
+                phone.purchase_price +
+                (phone.imei_cost or Decimal('0')) +
+                (phone.repair_cost or Decimal('0'))
+        )
+
         # Qarz holati (faqat yangi telefon uchun)
         if not self.instance.pk and phone.source_type == 'supplier':
             is_debt = self.cleaned_data.get('_is_debt', False)
@@ -437,6 +444,7 @@ class PhoneForm(forms.ModelForm):
                 phone.payment_status = 'paid'
                 phone.paid_amount = phone.cost_price
 
+        # External seller
         if (phone.source_type == 'external_seller' and
                 not self.cleaned_data.get('external_seller') and
                 self.cleaned_data.get('external_seller_name') and
@@ -453,6 +461,7 @@ class PhoneForm(forms.ModelForm):
                 external_seller.save(update_fields=['name'])
             phone.external_seller = external_seller
 
+        # Daily seller
         if (phone.source_type == 'daily_seller' and
                 self.cleaned_data.get('daily_seller_name') and
                 self.cleaned_data.get('daily_seller_phone')):
@@ -472,12 +481,6 @@ class PhoneForm(forms.ModelForm):
 
         if commit:
             phone.save()
-
-            # Taminotchining qarzini yangilash (faqat yangi telefon va qarzda bo'lsa)
-            if not self.instance.pk and phone.source_type == 'supplier' and phone.payment_status == 'debt':
-                supplier = phone.supplier
-                supplier.total_debt += phone.cost_price
-                supplier.save(update_fields=['total_debt'])
 
         return phone
 
