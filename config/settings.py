@@ -33,7 +33,6 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
 
     # Loyihangdagi app'lar
-    'users.apps.UsersConfig',
     'shops.apps.ShopsConfig',
     'inventory.apps.InventoryConfig',
     'services.apps.ServicesConfig',
@@ -41,6 +40,7 @@ INSTALLED_APPS = [
     'reports.apps.ReportsConfig',
 
     'django_filters',
+    'users'
 ]
 
 MIDDLEWARE = [

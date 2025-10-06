@@ -115,7 +115,7 @@ def dashboard(request):
         'total_phones': total_phones,
         'total_accessories': total_accessories,
     }
-    return render(request, 'shop/dashboard_list.html', context)
+    return render(request, 'shop/dashboard.html', context)
 
 
 @login_required

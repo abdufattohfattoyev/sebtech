@@ -1,4 +1,3 @@
-<!-- users/templates/users/dashboard.html -->
 {% extends 'base.html' %}
 {% block page_title %}Foydalanuvchilar{% endblock %}
 
@@ -39,12 +38,14 @@
 .btn-view { background: #3b82f6; color: white; }
 .btn-edit { background: #f59e0b; color: white; }
 .btn-delete { background: #ef4444; color: white; }
+.btn-stats { background: #10b981; color: white; }
 
 /* Mobile Cards */
 .user-cards { display: none; padding: 1rem; }
 .user-card { background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem; }
 .card-details { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.card-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
 
 .empty { text-align: center; padding: 3rem; color: #9ca3af; }
 
@@ -136,6 +137,9 @@
                     <td>
                         <div class="btn-actions">
                             <a href="{% url 'users:user_detail' profile.pk %}" class="btn-action btn-view"><i class="fas fa-eye"></i></a>
+                            {% if profile.role == 'seller' %}
+                            <a href="{% url 'users:seller_statistics' profile.pk %}" class="btn-action btn-stats"><i class="fas fa-chart-bar"></i></a>
+                            {% endif %}
                             <a href="{% url 'users:user_edit' profile.pk %}" class="btn-action btn-edit"><i class="fas fa-edit"></i></a>
                             <a href="{% url 'users:user_delete' profile.pk %}" class="btn-action btn-delete" onclick="return confirm('O\'chirmoqchimisiz?')"><i class="fas fa-trash"></i></a>
                         </div>
@@ -157,11 +161,6 @@
                             <div class="user-username">@{{ profile.user.username }}</div>
                         </div>
                     </div>
-                    <div class="btn-actions">
-                        <a href="{% url 'users:user_detail' profile.pk %}" class="btn-action btn-view"><i class="fas fa-eye"></i></a>
-                        <a href="{% url 'users:user_edit' profile.pk %}" class="btn-action btn-edit"><i class="fas fa-edit"></i></a>
-                        <a href="{% url 'users:user_delete' profile.pk %}" class="btn-action btn-delete" onclick="return confirm('O\'chirmoqchimisiz?')"><i class="fas fa-trash"></i></a>
-                    </div>
                 </div>
                 <div class="card-details">
                     <span class="badge badge-role">{{ profile.get_role_display }}</span>
@@ -173,6 +172,14 @@
                     {% if profile.phone_number %}
                     <small>{{ profile.phone_number }}</small>
                     {% endif %}
+                </div>
+                <div class="card-actions">
+                    <a href="{% url 'users:user_detail' profile.pk %}" class="btn-action btn-view"><i class="fas fa-eye"></i></a>
+                    {% if profile.role == 'seller' %}
+                    <a href="{% url 'users:seller_statistics' profile.pk %}" class="btn-action btn-stats"><i class="fas fa-chart-bar"></i></a>
+                    {% endif %}
+                    <a href="{% url 'users:user_edit' profile.pk %}" class="btn-action btn-edit"><i class="fas fa-edit"></i></a>
+                    <a href="{% url 'users:user_delete' profile.pk %}" class="btn-action btn-delete" onclick="return confirm('O\'chirmoqchimisiz?')"><i class="fas fa-trash"></i></a>
                 </div>
             </div>
             {% endfor %}

@@ -154,7 +154,7 @@ def dashboard(request):
         'phones_returned': phones_returned,
         'phones_exchanged': phones_exchanged,
     }
-    return render(request, 'inventory/dashboard.html', context)
+    return render(request, 'inventory/dashboard_list.html', context)
 
 
 @login_required

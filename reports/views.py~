@@ -22,7 +22,6 @@ def is_boss_or_finance(user):
         return user.userprofile.role in ['boss', 'finance']
     return False
 
-
 def check_report_access(view_func):
     """Hisobot sahifalariga kirish huquqini tekshirish"""
     @login_required
@@ -30,7 +29,6 @@ def check_report_access(view_func):
     def wrapper(request, *args, **kwargs):
         return view_func(request, *args, **kwargs)
     return wrapper
-
 
 def no_access(request):
     """Kirish rad etildi sahifasi"""
@@ -550,7 +548,6 @@ def seller_salary_report(request, seller_id):
         }
     })
 
-
 @login_required
 def phone_sales_api(request):
     """Telefon sotuvlari API"""
@@ -696,7 +693,6 @@ def exchange_sales_api(request):
         'has_next': page_obj.has_next(),
         'has_previous': page_obj.has_previous()
     })
-
 
 @login_required
 def comparison_report(request):

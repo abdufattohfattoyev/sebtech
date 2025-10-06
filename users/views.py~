@@ -39,16 +39,23 @@ def is_boss(user):
 
 @login_required
 def dashboard(request):
-    """Dashboard - foydalanuvchi turiga qarab ko'rsatish"""
+    """
+    Dashboard - foydalanuvchi turiga qarab ko'rsatish:
+    - Boss/Finance: barcha sotuvchilar ro'yxati
+    - Sotuvchi: o'zining to'liq statistikasi
+    """
     profile = UserProfile.objects.get_or_create(user=request.user)[0]
 
+    # Boss uchun - ro'yxat ko'rinishi
     if is_boss(request.user):
-        # Boss uchun - ro'yxat
         users = UserProfile.objects.select_related('user').all()
+
+        # Filter
         role_filter = request.GET.get('role')
         if role_filter:
             users = users.filter(role=role_filter)
 
+        # Search
         search = request.GET.get('search')
         if search:
             users = users.filter(
@@ -58,9 +65,11 @@ def dashboard(request):
                 Q(phone_number__icontains=search)
             )
 
+        # Pagination
         paginator = Paginator(users, 15)
         page_obj = paginator.get_page(request.GET.get('page', 1))
 
+        # Statistics
         stats = {
             'total': UserProfile.objects.count(),
             'active': UserProfile.objects.filter(user__is_active=True).count(),
@@ -86,6 +95,8 @@ def dashboard(request):
             })
 
         selected_shop = shops.first()
+
+        # Oy va yil parametrlarini olish
         current_year = int(request.GET.get('year', timezone.now().year))
         current_month = int(request.GET.get('month', timezone.now().month))
 
@@ -104,10 +115,8 @@ def dashboard(request):
 
         monthly_phone_data = []
         monthly_accessory_data = []
-        monthly_phone_profit_data = []
-        monthly_accessory_profit_data = []
-        monthly_phone_sales_amount = []  # YANGI: Oylik telefon savdo summasi
-        monthly_accessory_sales_amount = []  # YANGI: Oylik aksessuar savdo summasi
+        monthly_phone_profit_data = []  # Yangi: oylik telefon foydasi
+        monthly_accessory_profit_data = []  # Yangi: oylik aksessuar foydasi
 
         for month in range(1, 13):
             try:
@@ -123,91 +132,56 @@ def dashboard(request):
                 monthly_phone_data.append(net_phones)
                 monthly_accessory_data.append(month_salary['sales']['accessory_count'])
 
+                # Yangi: Foyda ma'lumotlarini qo'shish
                 phone_profit = month_salary['profits']['phone_profit'] + month_salary['profits']['exchange_profit']
                 accessory_profit = month_salary['profits']['accessory_profit']
-                monthly_phone_profit_data.append(float(phone_profit))
+                monthly_phone_profit_data.append(float(phone_profit))  # Decimal ni float ga o'tkazish JSON uchun
                 monthly_accessory_profit_data.append(float(accessory_profit))
 
-                # YANGI: Savdo summalarini qo'shish
-                phone_sales_total = month_salary['sales']['phone_total']  # USD
-                accessory_sales_total = month_salary['sales']['accessory_total']  # UZS
-                monthly_phone_sales_amount.append(float(phone_sales_total))
-                monthly_accessory_sales_amount.append(float(accessory_sales_total))
-
-            except Exception:
+            except Exception as e:
+                # Agar oy ma'lumotlari topilmasa, 0 qo'shamiz
                 monthly_phone_data.append(0)
                 monthly_accessory_data.append(0)
                 monthly_phone_profit_data.append(0.0)
                 monthly_accessory_profit_data.append(0.0)
-                monthly_phone_sales_amount.append(0.0)
-                monthly_accessory_sales_amount.append(0.0)
 
-        # KUNLIK MA'LUMOT
+        # KUNLIK MA'LUMOT - Tanlangan oy uchun
         _, last_day = monthrange(current_year, current_month)
         daily_phone_data = []
         daily_accessory_data = []
-        daily_phone_profit_data = []  # YANGI
-        daily_accessory_profit_data = []  # YANGI
-        daily_phone_sales_amount = []  # YANGI
-        daily_accessory_sales_amount = []  # YANGI
-        daily_salary_data = []  # YANGI: Kunlik maosh
-        daily_sales_data = []
+        daily_sales_data = []  # Kunlik sotuvlar jadvali uchun
 
         for day in range(1, last_day + 1):
             try:
                 day_date = date(current_year, current_month, day)
                 day_report = calculator.get_seller_daily_report(request.user, day_date)
 
+                # Telefon + Almashtirish = Jami telefon sotuvlar
                 total_phones = day_report['counts']['phone'] + day_report['counts']['exchange']
                 accessories = day_report['counts']['accessory']
 
                 daily_phone_data.append(total_phones)
                 daily_accessory_data.append(accessories)
 
+                # Foydalarni alohida hisoblaymiz
                 phone_profit = day_report['profits']['phone_profit'] + day_report['profits']['exchange_profit']
                 accessory_profit = day_report['profits']['accessory_profit']
-
-                daily_phone_profit_data.append(float(phone_profit))
-                daily_accessory_profit_data.append(float(accessory_profit))
-
-                # Kunlik savdo summasi
-                phone_sales = day_report['sales']['phone_total_usd']
-                accessory_sales = day_report['sales']['accessory_total_uzs']
-                daily_phone_sales_amount.append(float(phone_sales))
-                daily_accessory_sales_amount.append(float(accessory_sales))
-
-                # Kunlik maosh hisoblash
-                if hasattr(request.user, 'userprofile'):
-                    rates = request.user.userprofile.get_commission_rates_for_date(day_date)
-                    phone_comm = (phone_profit * rates['phone_rate'] / 100)
-                    accessory_comm = (accessory_profit * rates['accessory_rate'] / 100)
-                    daily_salary = float(phone_comm + (rates['base_salary_usd'] / last_day))
-                    daily_salary_data.append(daily_salary)
-                else:
-                    daily_salary_data.append(0.0)
-
                 total_profit = phone_profit + accessory_profit
 
+                # Kunlik sotuvlar jadvali uchun ma'lumot
                 daily_sales_data.append({
                     'day': day,
-                    'phone_count': total_phones,
+                    'phone_count': total_phones,  # Telefon + Almashtirish
                     'accessory_count': accessories,
                     'total_count': total_phones + accessories,
                     'phone_profit': phone_profit,
                     'accessory_profit': accessory_profit,
-                    'total_profit': total_profit,
-                    'phone_sales': phone_sales,
-                    'accessory_sales': accessory_sales,
-                    'daily_salary': daily_salary_data[-1] if daily_salary_data else 0,
+                    'total_profit': total_profit
                 })
-            except Exception:
+            except Exception as e:
+                # Agar kun ma'lumotlari topilmasa, 0 qo'shamiz
                 daily_phone_data.append(0)
                 daily_accessory_data.append(0)
-                daily_phone_profit_data.append(0.0)
-                daily_accessory_profit_data.append(0.0)
-                daily_phone_sales_amount.append(0.0)
-                daily_accessory_sales_amount.append(0.0)
-                daily_salary_data.append(0.0)
                 daily_sales_data.append({
                     'day': day,
                     'phone_count': 0,
@@ -215,14 +189,11 @@ def dashboard(request):
                     'total_count': 0,
                     'phone_profit': 0,
                     'accessory_profit': 0,
-                    'total_profit': 0,
-                    'phone_sales': 0,
-                    'accessory_sales': 0,
-                    'daily_salary': 0,
+                    'total_profit': 0
                 })
 
-        total_monthly_phone_profit = monthly_data['profits']['phone_profit'] + monthly_data['profits'][
-            'exchange_profit']
+        # Jami foydalarni hisoblaymiz
+        total_monthly_phone_profit = monthly_data['profits']['phone_profit'] + monthly_data['profits']['exchange_profit']
         total_monthly_profit = total_monthly_phone_profit + monthly_data['profits']['accessory_profit']
 
         seller_data = {
@@ -233,14 +204,11 @@ def dashboard(request):
                 'phone_profit': total_monthly_phone_profit,
                 'accessory_profit': monthly_data['profits']['accessory_profit'],
                 'total_profit': total_monthly_profit,
-                'phone_sales': monthly_data['sales']['phone_total'],
-                'accessory_sales': monthly_data['sales']['accessory_total'],
                 'total_salary_usd': monthly_data['commission']['total_salary_usd'],
                 'total_salary_uzs': monthly_data['commission']['total_salary_uzs'],
                 'base_salary_usd': monthly_data['commission']['base_salary_usd'],
                 'base_salary_uzs': monthly_data['commission']['base_salary_uzs'],
-                'phone_commission': monthly_data['commission']['phone_commission'] + monthly_data['commission'][
-                    'exchange_commission'],
+                'phone_commission': monthly_data['commission']['phone_commission'] + monthly_data['commission']['exchange_commission'],
                 'accessory_commission': monthly_data['commission']['accessory_commission'],
             },
             'yearly': {
@@ -253,17 +221,10 @@ def dashboard(request):
             'charts': {
                 'daily_phone': json.dumps(daily_phone_data),
                 'daily_accessory': json.dumps(daily_accessory_data),
-                'daily_phone_profit': json.dumps(daily_phone_profit_data),
-                'daily_accessory_profit': json.dumps(daily_accessory_profit_data),
-                'daily_phone_sales': json.dumps(daily_phone_sales_amount),
-                'daily_accessory_sales': json.dumps(daily_accessory_sales_amount),
-                'daily_salary': json.dumps(daily_salary_data),
                 'monthly_phone': json.dumps(monthly_phone_data),
                 'monthly_accessory': json.dumps(monthly_accessory_data),
-                'monthly_phone_profit': json.dumps(monthly_phone_profit_data),
-                'monthly_accessory_profit': json.dumps(monthly_accessory_profit_data),
-                'monthly_phone_sales': json.dumps(monthly_phone_sales_amount),
-                'monthly_accessory_sales': json.dumps(monthly_accessory_sales_amount),
+                'monthly_phone_profit': json.dumps(monthly_phone_profit_data),  # Yangi
+                'monthly_accessory_profit': json.dumps(monthly_accessory_profit_data),  # Yangi
             }
         }
 
@@ -273,6 +234,7 @@ def dashboard(request):
             9: 'Sentabr', 10: 'Oktabr', 11: 'Noyabr', 12: 'Dekabr'
         }
 
+        # Mavjud yillar ro'yxati
         current_year_now = timezone.now().year
         available_years = list(range(2020, current_year_now + 2))
 
