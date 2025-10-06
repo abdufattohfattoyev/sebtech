@@ -1,4 +1,3 @@
-<!-- templates/inventory/supplier_form.html -->
 {% extends 'base.html' %}
 {% load static %}
 
@@ -8,14 +7,14 @@
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
-            <div class="card">
-                <div class="card-header">
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient-primary text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">
                             <i class="fas fa-{% if is_edit %}edit{% else %}plus{% endif %} me-2"></i>
                             {{ title }}
                         </h4>
-                        <a href="{% url 'inventory:supplier_list' %}" class="btn btn-outline-secondary btn-sm">
+                        <a href="{% url 'inventory:supplier_list' %}" class="btn btn-outline-light btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Ortga
                         </a>
                     </div>
@@ -25,7 +24,7 @@
                         {% csrf_token %}
 
                         {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
+                        <div class="alert alert-danger border-0">
                             {% for error in form.non_field_errors %}
                                 <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
                             {% endfor %}
@@ -36,7 +35,7 @@
                             <!-- Nomi -->
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="{{ form.name.id_for_label }}" class="form-label">
+                                    <label for="{{ form.name.id_for_label }}" class="form-label fw-bold">
                                         Taminotchi nomi *
                                     </label>
                                     {{ form.name }}
@@ -48,7 +47,7 @@
                                         </div>
                                     {% endif %}
                                     <div class="form-text">
-                                        Taminotchining to'liq nomi yoki kompaniya nomi
+                                        <i class="fas fa-info-circle me-1"></i>Taminotchining to'liq nomi
                                     </div>
                                 </div>
                             </div>
@@ -56,7 +55,7 @@
                             <!-- Telefon raqami -->
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="{{ form.phone_number.id_for_label }}" class="form-label">
+                                    <label for="{{ form.phone_number.id_for_label }}" class="form-label fw-bold">
                                         Telefon raqami *
                                     </label>
                                     {{ form.phone_number }}
@@ -68,16 +67,42 @@
                                         </div>
                                     {% endif %}
                                     <div class="form-text">
-                                        Bog'lanish uchun telefon raqami
+                                        <i class="fas fa-phone me-1"></i>Bog'lanish uchun raqam
                                     </div>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Boshlang'ich Qarz -->
+                        <div class="mb-3">
+                            <label for="{{ form.initial_debt.id_for_label }}" class="form-label fw-bold">
+                                Boshlang'ich qarz ($)
+                                <span class="badge bg-secondary ms-2">Ixtiyoriy</span>
+                            </label>
+                            {{ form.initial_debt }}
+                            {% if form.initial_debt.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.initial_debt.errors %}
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="alert alert-info border-0 mt-2">
+                                <i class="fas fa-lightbulb me-2"></i>
+                                <strong>Izoh:</strong> Bu tizimga kiritishdan OLDINGI qarz.
+                                Agar taminotchidan oldin qarz bo'lgan bo'lsa, shu yerga kiriting.
+                                {% if is_edit %}
+                                <br><small class="text-muted">Keyinchalik yangilash mumkin.</small>
+                                {% else %}
+                                <br><small class="text-muted">0 qoldirish mumkin, keyinchalik tahrirlash mumkin.</small>
+                                {% endif %}
+                            </div>
+                        </div>
+
                         <!-- Izoh -->
                         <div class="mb-4">
-                            <label for="{{ form.notes.id_for_label }}" class="form-label">
-                                Izoh
+                            <label for="{{ form.notes.id_for_label }}" class="form-label fw-bold">
+                                Izoh <span class="text-muted">(ixtiyoriy)</span>
                             </label>
                             {{ form.notes }}
                             {% if form.notes.errors %}
@@ -88,9 +113,11 @@
                                 </div>
                             {% endif %}
                             <div class="form-text">
-                                Taminotchi haqida qo'shimcha ma'lumotlar (ixtiyoriy)
+                                <i class="fas fa-comment me-1"></i>Taminotchi haqida qo'shimcha ma'lumotlar
                             </div>
                         </div>
+
+                        <hr>
 
                         <!-- Tugmalar -->
                         <div class="d-flex justify-content-between align-items-center">
@@ -119,17 +146,19 @@
 
             <!-- Qo'shimcha ma'lumot -->
             {% if is_edit and supplier %}
-            <div class="card mt-4">
-                <div class="card-header">
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header bg-light">
                     <h6 class="mb-0">
-                        <i class="fas fa-info-circle me-2"></i>Qo'shimcha Ma'lumot
+                        <i class="fas fa-info-circle me-2 text-primary"></i>Qo'shimcha Ma'lumot
                     </h6>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
-                            <small class="text-muted">Yaratilgan sana:</small>
-                            <p class="mb-2">
+                        <div class="col-md-4">
+                            <small class="text-muted d-block mb-1">
+                                <i class="fas fa-calendar me-1"></i>Yaratilgan sana:
+                            </small>
+                            <p class="mb-0 fw-bold">
                                 {% if supplier.created_at %}
                                     {{ supplier.created_at|date:"d.m.Y" }}
                                 {% else %}
@@ -137,11 +166,39 @@
                                 {% endif %}
                             </p>
                         </div>
-                        <div class="col-md-6">
-                            <small class="text-muted">ID:</small>
-                            <p class="mb-0">{{ supplier.id }}</p>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block mb-1">
+                                <i class="fas fa-hashtag me-1"></i>ID:
+                            </small>
+                            <p class="mb-0 fw-bold">{{ supplier.id }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block mb-1">
+                                <i class="fas fa-dollar-sign me-1"></i>Joriy qarz:
+                            </small>
+                            <p class="mb-0">
+                                <span class="badge bg-{% if supplier.balance > 0 %}warning text-dark{% else %}success{% endif %} fs-6">
+                                    ${{ supplier.balance|floatformat:2 }}
+                                </span>
+                            </p>
                         </div>
                     </div>
+
+                    {% if supplier.balance > 0 %}
+                    <hr class="my-3">
+                    <div class="alert alert-warning border-0 mb-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Qarz mavjud:</strong> Bu taminotchida qarz bor
+                            </div>
+                            <a href="{% url 'inventory:supplier_detail' supplier.id %}"
+                               class="btn btn-sm btn-warning">
+                                Tafsilotlar
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -150,9 +207,90 @@
 </div>
 
 <style>
-.form-control:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+/* Gradient Header */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Form Control Focus */
+.form-control:focus,
+.form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Card Shadow */
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* Alert Info */
+.alert-info {
+    background-color: #cfe2ff;
+    color: #084298;
+}
+
+/* Form Text */
+.form-text {
+    font-size: 0.875em;
+    color: #6c757d;
+}
+
+/* Label Bold */
+.form-label.fw-bold {
+    font-weight: 600;
+}
+
+/* Required Asterisk */
+.form-label::after {
+    content: none;
+}
+
+/* Button Hover Effects */
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+/* Badge */
+.badge.bg-secondary {
+    font-size: 0.7em;
+    vertical-align: middle;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Telefon raqami input mask (ixtiyoriy)
+    const phoneInput = document.querySelector('input[name="phone_number"]');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            // Faqat raqamlar va + belgisini qoldirish
+            let value = e.target.value.replace(/[^\d+]/g, '');
+            e.target.value = value;
+        });
+    }
+
+    // Boshlang'ich qarz input validation
+    const debtInput = document.querySelector('input[name="initial_debt"]');
+    if (debtInput) {
+        debtInput.addEventListener('input', function(e) {
+            // Manfiy qiymat kiritishni oldini olish
+            if (parseFloat(e.target.value) < 0) {
+                e.target.value = 0;
+            }
+        });
+
+        // Focus qilganda placeholder o'chirish
+        debtInput.addEventListener('focus', function(e) {
+            if (e.target.value === '0' || e.target.value === '0.00') {
+                e.target.select();
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

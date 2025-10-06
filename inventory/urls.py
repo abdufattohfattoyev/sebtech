@@ -38,6 +38,8 @@ urlpatterns = [
     path('supplier/<int:pk>/', views.supplier_detail, name='supplier_detail'),
     path('supplier/<int:supplier_id>/payment/', views.supplier_payment_create, name='supplier_payment_create'),
     path('payment/<int:payment_id>/', views.supplier_payment_detail, name='supplier_payment_detail'),
+    path('payment/<int:payment_id>/edit/', views.supplier_payment_update, name='supplier_payment_update'),
+    path('payment/<int:payment_id>/delete/', views.supplier_payment_delete, name='supplier_payment_delete'),
 
     # API URLs
     path('search/', views.search, name='search'),

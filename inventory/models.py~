@@ -20,22 +20,13 @@ class Supplier(models.Model):
     notes = models.TextField(null=True, blank=True, verbose_name="Izoh")
     created_at = models.DateField(default=get_current_date, verbose_name="Yaratilgan sana")
 
-    # ✅ YANGI - Boshlang'ich qarz (telefonga bog'liq emas)
-    initial_debt = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
-        verbose_name="Boshlang'ich qarz ($)",
-        help_text="Tizimga kiritishdan oldingi qarz"
-    )
-
-    # Qarz maydonlari (telefonlarga bog'liq)
+    # Qarz maydonlari
     total_debt = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         default=0,
-        verbose_name="Telefonlar qarzi ($)",
-        help_text="Telefon olishlardan kelib chiqqan qarz"
+        verbose_name="Umumiy qarz ($)",
+        help_text="Taminotchiga umumiy qarz miqdori"
     )
     total_paid = models.DecimalField(
         max_digits=12,
@@ -55,11 +46,11 @@ class Supplier(models.Model):
 
     @property
     def balance(self):
-        """Qoldiq qarz = Boshlang'ich qarz + Telefonlar qarzi"""
-        return self.initial_debt + self.total_debt
+        """Qoldiq qarz"""
+        return self.total_debt
 
     def update_total_debt(self):
-        """Taminotchining telefonlar qarzini hisoblash"""
+        """Taminotchining umumiy qarzini hisoblash"""
         total = self.phone_set.filter(
             source_type='supplier',
             payment_status__in=['debt', 'partial']
@@ -73,7 +64,7 @@ class Supplier(models.Model):
 
     def recalculate_debt_and_payments(self):
         """Taminotchining qarz va to'lovlarini qayta hisoblash"""
-        # Telefonlar qarzi
+        # 1. Haqiqiy umumiy qarz (barcha qarzda turgan telefonlar)
         total_debt = self.phone_set.filter(
             source_type='supplier',
             payment_status__in=['debt', 'partial']
@@ -81,13 +72,14 @@ class Supplier(models.Model):
             total=Sum('debt_balance', output_field=DecimalField(max_digits=15, decimal_places=2))
         )['total'] or Decimal('0.00')
 
-        # To'langan
+        # 2. Haqiqiy umumiy to'langan (barcha telefonlar bo'yicha)
         total_paid = self.phone_set.filter(
             source_type='supplier'
         ).aggregate(
             total=Sum('paid_amount', output_field=DecimalField(max_digits=15, decimal_places=2))
         )['total'] or Decimal('0.00')
 
+        # 3. Yangilash
         self.total_debt = total_debt
         self.total_paid = total_paid
         self.save(update_fields=['total_debt', 'total_paid'])
@@ -95,8 +87,7 @@ class Supplier(models.Model):
         return {
             'total_debt': total_debt,
             'total_paid': total_paid,
-            'initial_debt': self.initial_debt,
-            'balance': self.balance
+            'balance': total_debt
         }
 
     def get_debt_phones(self):

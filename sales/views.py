@@ -1017,9 +1017,11 @@ def search_phone_by_imei_api(request):
     if len(query) < 3:
         return JsonResponse([], safe=False)
 
+    # ✅ Master va sold dan tashqari BARCHA statuslar
     phones = Phone.objects.filter(
-        imei__icontains=query,
-        status__in=['shop', 'returned']
+        imei__icontains=query
+    ).exclude(
+        status__in=['master', 'sold']  # Faqat bularni exclude qilish
     ).select_related('phone_model', 'memory_size', 'shop')[:10]
 
     data = [
@@ -1033,7 +1035,11 @@ def search_phone_by_imei_api(request):
             "sale_price": str(phone.sale_price) if phone.sale_price else "",
             "shop": phone.shop.name,
             "status": phone.status,
-            "status_display": "Qaytarilgan" if phone.status == 'returned' else "Do'konda"
+            "status_display": (
+                "Qaytarilgan" if phone.status == 'returned'
+                else "Almashtirilgan" if phone.status == 'exchanged_in'
+                else "Do'konda"
+            )
         }
         for phone in phones
     ]

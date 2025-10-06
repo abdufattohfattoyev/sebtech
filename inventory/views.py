@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -929,17 +930,27 @@ def supplier_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Statistika hisoblash
+    # ✅ TO'G'RI STATISTIKA - Barcha supplierlar bo'yicha (faqat filter qilinganlar emas!)
+    all_suppliers = Supplier.objects.all()
+
     suppliers_with_debt = 0
-    for supplier in page_obj:
-        if supplier.balance > 0:
+    total_debt = Decimal('0.00')
+    total_paid = Decimal('0.00')
+
+    for supplier in all_suppliers:
+        balance = supplier.balance  # initial_debt + total_debt
+        if balance > 0:
             suppliers_with_debt += 1
+            total_debt += balance
+        total_paid += supplier.total_paid
 
     context = {
         'page_obj': page_obj,
         'search_query': search_query,
-        'total_suppliers': suppliers.count(),
+        'total_suppliers': all_suppliers.count(),  # Barcha taminotchilar
         'suppliers_with_debt': suppliers_with_debt,
+        'total_debt': total_debt,
+        'total_paid': total_paid,
     }
 
     return render(request, 'inventory/supplier_list.html', context)
@@ -957,7 +968,6 @@ def supplier_detail(request, pk):
     paid_phones_all = supplier.get_paid_phones()
 
     # Pagination - har sahifada 20 ta
-    from django.core.paginator import Paginator
     paginator = Paginator(paid_phones_all, 20)
     page_number = request.GET.get('page')
     paid_phones_page = paginator.get_page(page_number)
@@ -1007,22 +1017,28 @@ def supplier_payment_create(request, supplier_id):
                     payment.save()
 
                     amount_remaining = payment.amount
+                    initial_payment_made = Decimal('0.00')
+                    paid_phones_count = 0
 
+                    # 1. AVVAL TELEFONLAR QARZINI TO'LASH (FIFO - eng eski telefonlardan)
                     if payment.payment_type == 'general':
-                        phones = supplier.get_debt_phones()
+                        phones = supplier.get_debt_phones().order_by('created_at')  # Eng eskilar birinchi
                     else:
-                        phones = form.cleaned_data['selected_phones']
+                        phones = sorted(form.cleaned_data['selected_phones'], key=lambda p: p.created_at)
 
                     for phone in phones:
                         if amount_remaining <= 0:
                             break
 
-                        previous_balance = phone.debt_balance
-                        payment_for_phone = min(amount_remaining, phone.debt_balance)
+                        previous_balance = phone.debt_balance  # Joriy qarz (property yoki field)
+                        payment_for_phone = min(amount_remaining, previous_balance)
 
                         # Telefon qarzini kamaytirish
                         phone.paid_amount += payment_for_phone
-                        phone.save()
+                        phone.save(update_fields=['paid_amount'])
+
+                        # Yangi balansni hisoblash (agar debt_balance property bo'lsa, avtomatik yangilanadi)
+                        new_balance = phone.cost_price - phone.paid_amount  # Agar modelda shunday bo'lsa
 
                         # To'lov tafsilotini saqlash
                         SupplierPaymentDetail.objects.create(
@@ -1030,31 +1046,52 @@ def supplier_payment_create(request, supplier_id):
                             phone=phone,
                             amount=payment_for_phone,
                             previous_balance=previous_balance,
-                            new_balance=phone.debt_balance
+                            new_balance=new_balance
                         )
 
                         amount_remaining -= payment_for_phone
+                        paid_phones_count += 1
 
-                    # Taminotchining to'langan summasi
+                    # 2. AGAR PUL QOLGAN BO'LSA, BOSHLANG'ICH QARZNI TO'LASH
+                    if amount_remaining > 0 and supplier.initial_debt > 0:
+                        initial_payment_made = min(amount_remaining, supplier.initial_debt)
+                        supplier.initial_debt -= initial_payment_made
+                        amount_remaining -= initial_payment_made
+
+                    # 3. TAMINOTCHINI YANGILASH
                     supplier.total_paid += payment.amount
-                    supplier.save(update_fields=['total_paid'])
+                    supplier.save(update_fields=['total_paid', 'initial_debt'])
 
-                    # ✅ BU QATORNI QO'SHING - Taminotchining umumiy qarzini yangilash
+                    # Telefonlar qarzini yangilash va balansni refresh qilish
                     supplier.update_total_debt()
+                    supplier.refresh_from_db()  # Balans property'ni yangilash uchun
 
-                    messages.success(
-                        request,
-                        f"✅ {supplier.name} ga ${payment.amount} to'lov qilindi! "
-                        f"Qoldiq qarz: ${supplier.balance}"
-                    )
+                    # Overpayment tekshirish (qolgan pul 0 bo'lishi kerak)
+                    if amount_remaining > 0:
+                        raise ValidationError(f"Overpayment: {amount_remaining} $ qolgan pul sarflanmadi!")
+
+                    # Success xabar
+                    success_msg = f"{supplier.name} ga ${payment.amount} to'lov qilindi!"
+                    if paid_phones_count > 0:
+                        success_msg += f" {paid_phones_count} ta telefon qarzi to'landi."
+                    if initial_payment_made > 0:
+                        success_msg += f" Boshlang'ich qarzdan ${initial_payment_made} to'landi."
+                    success_msg += f" Qoldiq qarz: ${supplier.balance}"
+
+                    messages.success(request, success_msg)
                     return redirect('inventory:supplier_detail', pk=supplier_id)
 
+            except ValidationError as ve:
+                messages.error(request, f"Validatsiya xatosi: {str(ve)}")
             except Exception as e:
-                messages.error(request, f"❌ To'lov qilishda xatolik: {str(e)}")
+                messages.error(request, f"To'lov qilishda xatolik: {str(e)}")
+                # Tranzaksiya rollback avtomatik bo'ladi
         else:
+            # Form xatolarini yaxshiroq ko'rsatish (field label bilan)
             for field, errors in form.errors.items():
+                field_label = form.fields.get(field, field).label or field.replace('_', ' ').title()
                 for error in errors:
-                    messages.error(request, f"{error}")
+                    messages.error(request, f"{field_label}: {error}")
     else:
         form = SupplierPaymentForm(supplier=supplier)
 
@@ -1062,6 +1099,7 @@ def supplier_payment_create(request, supplier_id):
         'form': form,
         'supplier': supplier,
         'debt_phones': supplier.get_debt_phones(),
+        'is_edit': False,  # Template uchun
     }
 
     return render(request, 'inventory/supplier_payment_form.html', context)
@@ -1090,8 +1128,21 @@ def supplier_create(request):
         form = SupplierForm(request.POST)
         if form.is_valid():
             supplier = form.save()
-            messages.success(request, f"✅ {supplier.name} muvaffaqiyatli qo'shildi!")
+
+            success_msg = f"{supplier.name} muvaffaqiyatli qo'shildi!"
+            if supplier.initial_debt > 0:
+                success_msg += f" Boshlang'ich qarz: ${supplier.initial_debt}"
+
+            messages.success(request, success_msg)
             return redirect('inventory:supplier_list')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                        messages.error(request, f"{error}")
+                    else:
+                        field_label = form.fields.get(field, field).label or field
+                        messages.error(request, f"{field_label}: {error}")
     else:
         form = SupplierForm()
 
@@ -1109,12 +1160,34 @@ def supplier_update(request, pk):
     """Taminotchini tahrirlash"""
     supplier = get_object_or_404(Supplier, pk=pk)
 
+    # Oldingi qarzni saqlash
+    old_initial_debt = supplier.initial_debt
+
     if request.method == 'POST':
         form = SupplierForm(request.POST, instance=supplier)
         if form.is_valid():
             supplier = form.save()
-            messages.success(request, f"✅ {supplier.name} ma'lumotlari yangilandi!")
+
+            success_msg = f"{supplier.name} ma'lumotlari yangilandi!"
+
+            # Agar boshlang'ich qarz o'zgargan bo'lsa
+            if old_initial_debt != supplier.initial_debt:
+                debt_change = supplier.initial_debt - old_initial_debt
+                if debt_change > 0:
+                    success_msg += f" Boshlang'ich qarz +${debt_change} oshdi."
+                elif debt_change < 0:
+                    success_msg += f" Boshlang'ich qarz ${abs(debt_change)} kamaydi."
+
+            messages.success(request, success_msg)
             return redirect('inventory:supplier_detail', pk=pk)
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                        messages.error(request, f"{error}")
+                    else:
+                        field_label = form.fields.get(field, field).label or field
+                        messages.error(request, f"{field_label}: {error}")
     else:
         form = SupplierForm(instance=supplier)
 
@@ -1137,7 +1210,7 @@ def supplier_delete(request, pk):
     if supplier.balance > 0:
         messages.error(
             request,
-            f"❌ Bu taminotchida ${supplier.balance} qarz bor. "
+            f"Bu taminotchida ${supplier.balance} qarz bor. "
             "Avval qarzni to'lang!"
         )
         return redirect('inventory:supplier_detail', pk=pk)
@@ -1147,7 +1220,7 @@ def supplier_delete(request, pk):
     if phones_count > 0:
         messages.error(
             request,
-            f"❌ Bu taminotchiga {phones_count} ta telefon bog'langan. "
+            f"Bu taminotchiga {phones_count} ta telefon bog'langan. "
             "Avval telefonlarni o'chiring yoki boshqa taminotchiga o'tkazing!"
         )
         return redirect('inventory:supplier_detail', pk=pk)
@@ -1155,10 +1228,165 @@ def supplier_delete(request, pk):
     if request.method == 'POST':
         supplier_name = supplier.name
         supplier.delete()
-        messages.success(request, f"✅ {supplier_name} muvaffaqiyatli o'chirildi!")
+        messages.success(request, f"{supplier_name} muvaffaqiyatli o'chirildi!")
         return redirect('inventory:supplier_list')
 
     context = {
         'supplier': supplier
     }
     return render(request, 'inventory/supplier_confirm_delete.html', context)
+
+
+@login_required
+@boss_or_finance_required
+def supplier_payment_update(request, payment_id):
+    """To'lovni tahrirlash"""
+    payment = get_object_or_404(SupplierPayment, pk=payment_id)
+    supplier = payment.supplier
+
+    if request.method == 'POST':
+        # Eski to'lov ma'lumotlarini saqlash
+        old_amount = payment.amount
+        old_payment_type = payment.payment_type
+
+        form = SupplierPaymentForm(request.POST, instance=payment, supplier=supplier)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Eski to'lovni bekor qilish
+                    # 1. Telefon to'lovlarini qaytarish
+                    for detail in payment.details.all():
+                        phone = detail.phone
+                        phone.paid_amount -= detail.amount
+                        phone.save()
+
+                    # 2. Agar boshlang'ich qarzga to'langan bo'lsa, uni qaytarish
+                    if old_amount > payment.details.aggregate(total=Sum('amount'))['total'] or Decimal('0.00'):
+                        initial_paid = old_amount - (
+                                    payment.details.aggregate(total=Sum('amount'))['total'] or Decimal('0.00'))
+                        supplier.initial_debt += initial_paid
+
+                    # 3. Supplier total_paid ni kamaytirish
+                    supplier.total_paid -= old_amount
+                    supplier.save(update_fields=['total_paid', 'initial_debt'])
+
+                    # Eski tafsilotlarni o'chirish
+                    payment.details.all().delete()
+
+                    # Yangi to'lovni qo'llash
+                    new_payment = form.save(commit=False)
+                    new_payment.save()
+
+                    amount_remaining = new_payment.amount
+                    initial_payment_made = Decimal('0.00')
+
+                    # Yangi to'lovni telefonlarga tarqatish
+                    if new_payment.payment_type == 'general':
+                        phones = supplier.get_debt_phones()
+                    else:
+                        phones = form.cleaned_data['selected_phones']
+
+                    for phone in phones:
+                        if amount_remaining <= 0:
+                            break
+
+                        previous_balance = phone.debt_balance
+                        payment_for_phone = min(amount_remaining, phone.debt_balance)
+
+                        phone.paid_amount += payment_for_phone
+                        phone.save()
+
+                        SupplierPaymentDetail.objects.create(
+                            payment=new_payment,
+                            phone=phone,
+                            amount=payment_for_phone,
+                            previous_balance=previous_balance,
+                            new_balance=phone.debt_balance
+                        )
+
+                        amount_remaining -= payment_for_phone
+
+                    # Boshlang'ich qarzga to'lov
+                    if amount_remaining > 0 and supplier.initial_debt > 0:
+                        initial_payment_made = min(amount_remaining, supplier.initial_debt)
+                        supplier.initial_debt -= initial_payment_made
+                        amount_remaining -= initial_payment_made
+
+                    # Supplier yangilash
+                    supplier.total_paid += new_payment.amount
+                    supplier.save(update_fields=['total_paid', 'initial_debt'])
+                    supplier.update_total_debt()
+
+                    messages.success(request, f"To'lov muvaffaqiyatli yangilandi!")
+                    return redirect('inventory:supplier_detail', pk=supplier.id)
+
+            except Exception as e:
+                messages.error(request, f"Yangilashda xatolik: {str(e)}")
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{error}")
+    else:
+        form = SupplierPaymentForm(instance=payment, supplier=supplier)
+
+    context = {
+        'form': form,
+        'payment': payment,
+        'supplier': supplier,
+        'debt_phones': supplier.get_debt_phones(),
+        'is_edit': True,
+    }
+
+    return render(request, 'inventory/supplier_payment_form.html', context)
+
+
+@login_required
+@boss_or_finance_required
+def supplier_payment_delete(request, payment_id):
+    """To'lovni o'chirish"""
+    payment = get_object_or_404(SupplierPayment, pk=payment_id)
+    supplier = payment.supplier
+
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # 1. Telefon to'lovlarini qaytarish
+                total_phone_payment = Decimal('0.00')
+                for detail in payment.details.all():
+                    phone = detail.phone
+                    phone.paid_amount -= detail.amount
+                    phone.save()
+                    total_phone_payment += detail.amount
+
+                # 2. Agar boshlang'ich qarzga to'langan bo'lsa, uni qaytarish
+                initial_paid = payment.amount - total_phone_payment
+                if initial_paid > 0:
+                    supplier.initial_debt += initial_paid
+
+                # 3. Supplier total_paid ni kamaytirish
+                supplier.total_paid -= payment.amount
+                supplier.save(update_fields=['total_paid', 'initial_debt'])
+
+                # 4. To'lovni o'chirish
+                payment_amount = payment.amount
+                payment.delete()
+
+                # 5. Supplier qarzini yangilash
+                supplier.update_total_debt()
+
+                messages.success(
+                    request,
+                    f"${payment_amount} to'lov o'chirildi. Qarz qaytarildi: ${supplier.balance}"
+                )
+                return redirect('inventory:supplier_detail', pk=supplier.id)
+
+        except Exception as e:
+            messages.error(request, f"O'chirishda xatolik: {str(e)}")
+            return redirect('inventory:supplier_payment_detail', payment_id=payment_id)
+
+    context = {
+        'payment': payment,
+        'supplier': supplier,
+    }
+
+    return render(request, 'inventory/supplier_payment_confirm_delete.html', context)

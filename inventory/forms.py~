@@ -131,24 +131,16 @@ class SupplierPaymentForm(forms.ModelForm):
         amount = cleaned_data.get('amount')
         supplier = cleaned_data.get('supplier')
 
-        # Agar tahrirlash bo'lsa, instance (eski to'lov) mavjud
-        old_amount = Decimal('0.00')
-        if self.instance and self.instance.pk:
-            old_amount = self.instance.amount
-
         if not supplier:
             raise ValidationError({'supplier': 'Taminotchi tanlanishi kerak'})
 
         if not amount or amount <= 0:
             raise ValidationError({'amount': 'To\'lov summasi 0 dan katta bo\'lishi kerak'})
 
-        # Joriy balansni hisoblash: eski to'lovni qaytarib, yangi qarzni hisoblaymiz
-        adjusted_balance = supplier.balance + old_amount
-
-        # Yangi to'lov summasi adjusted_balance dan oshmasligi kerak
-        if amount > adjusted_balance:
+        # Taminotchining qarz qoldigi
+        if amount > supplier.balance:
             raise ValidationError({
-                'amount': f'To\'lov summasi qarzdan ({adjusted_balance:.2f} $) oshib ketdi'
+                'amount': f'To\'lov summasi qarzdan ({supplier.balance:.2f} $) oshib ketdi'
             })
 
         if payment_type == 'specific':

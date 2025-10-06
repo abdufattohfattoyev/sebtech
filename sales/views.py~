@@ -480,6 +480,33 @@ def phone_return_delete(request, pk):
     })
 
 
+@login_required
+def phone_return_edit(request, pk):
+    """Telefon qaytarishni tahrirlash"""
+    phone_return = get_object_or_404(PhoneReturn, pk=pk)
+
+    if request.method == 'POST':
+        form = PhoneReturnForm(request.POST, instance=phone_return, user=request.user)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    form.save()
+                messages.success(request, 'Telefon qaytarish yangilandi!')
+                return redirect('sales:phone_return_detail', pk=phone_return.pk)
+            except Exception as e:
+                logger.error(f"Phone return edit error: {str(e)}", exc_info=True)
+                messages.error(request, f'Xatolik: {str(e)}')
+        else:
+            show_form_errors(request, form)
+    else:
+        form = PhoneReturnForm(instance=phone_return, user=request.user)
+
+    return render(request, 'sales/phone_return_form.html', {
+        'form': form,
+        'title': 'Telefon qaytarishni tahrirlash',
+        'phone_return': phone_return
+    })
+
 # ============ PHONE EXCHANGE ============
 @login_required
 def phone_exchange_list(request):

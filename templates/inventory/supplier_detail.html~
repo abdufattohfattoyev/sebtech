@@ -1,4 +1,3 @@
-<!-- templates/inventory/supplier_detail.html -->
 {% extends 'base.html' %}
 {% load static %}
 
@@ -9,26 +8,26 @@
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient-primary text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h4 class="mb-1">
                                 <i class="fas fa-truck me-2"></i>{{ supplier.name }}
                             </h4>
-                            <small class="text-muted">
+                            <small class="opacity-75">
                                 <i class="fas fa-phone me-1"></i>{{ supplier.phone_number }}
                             </small>
                         </div>
                         <div class="d-flex gap-2">
                             {% if can_edit %}
                             <a href="{% url 'inventory:supplier_update' supplier.id %}"
-                               class="btn btn-outline-primary">
+                               class="btn btn-light btn-sm">
                                 <i class="fas fa-edit me-1"></i>Tahrirlash
                             </a>
                             {% endif %}
                             <a href="{% url 'inventory:supplier_list' %}"
-                               class="btn btn-outline-secondary">
+                               class="btn btn-outline-light btn-sm">
                                 <i class="fas fa-arrow-left me-1"></i>Ortga
                             </a>
                         </div>
@@ -41,42 +40,70 @@
     <!-- Qarz Statistikasi -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card border-primary">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Umumiy Qarz</h6>
-                    <h3 class="mb-0 text-primary">
-                        ${{ supplier.total_debt|floatformat:2 }}
-                    </h3>
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Umumiy Qarz</h6>
+                            <h3 class="mb-0 text-danger">
+                                ${{ supplier.total_debt|floatformat:2 }}
+                            </h3>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-success">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">To'langan</h6>
-                    <h3 class="mb-0 text-success">
-                        ${{ supplier.total_paid|floatformat:2 }}
-                    </h3>
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">To'langan</h6>
+                            <h3 class="mb-0 text-success">
+                                ${{ supplier.total_paid|floatformat:2 }}
+                            </h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-{% if balance > 0 %}warning{% else %}secondary{% endif %}">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Qoldiq</h6>
-                    <h3 class="mb-0 text-{% if balance > 0 %}warning{% else %}secondary{% endif %}">
-                        ${{ balance|floatformat:2 }}
-                    </h3>
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Qoldiq Qarz</h6>
+                            <h3 class="mb-0 text-{% if balance > 0 %}warning{% else %}secondary{% endif %}">
+                                ${{ balance|floatformat:2 }}
+                            </h3>
+                        </div>
+                        <div class="bg-{% if balance > 0 %}warning{% else %}secondary{% endif %} bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-dollar-sign fa-2x text-{% if balance > 0 %}warning{% else %}secondary{% endif %}"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-info">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Jami Telefonlar</h6>
-                    <h3 class="mb-0 text-info">
-                        {{ total_phones }}
-                    </h3>
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Jami Telefonlar</h6>
+                            <h3 class="mb-0 text-info">
+                                {{ total_phones }}
+                            </h3>
+                        </div>
+                        <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-mobile-alt fa-2x text-info"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -86,7 +113,7 @@
     {% if balance > 0 and can_edit %}
     <div class="row mb-4">
         <div class="col-12">
-            <div class="alert alert-warning d-flex justify-content-between align-items-center">
+            <div class="alert alert-warning border-0 shadow-sm d-flex justify-content-between align-items-center">
                 <div>
                     <i class="fas fa-exclamation-triangle me-2"></i>
                     <strong>Qarz mavjud:</strong> Bu taminotchida ${{ balance|floatformat:2 }} qarz bor
@@ -103,9 +130,9 @@
     <div class="row">
         <!-- Qarzda turgan telefonlar -->
         <div class="col-md-6 mb-4">
-            <div class="card">
+            <div class="card shadow-sm">
                 <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0">
+                    <h5 class="mb-0 fw-bold">
                         <i class="fas fa-mobile-alt me-2"></i>
                         Qarzda Turgan Telefonlar
                         <span class="badge bg-dark ms-2">{{ debt_phones.count }}</span>
@@ -117,10 +144,10 @@
                         <table class="table table-hover table-sm mb-0">
                             <thead class="sticky-top bg-light">
                                 <tr>
-                                    <th>#</th>
+                                    <th width="50">#</th>
                                     <th>Model</th>
                                     <th>IMEI</th>
-                                    <th>Tan narx</th>
+                                    <th>Tan Narx</th>
                                     <th>To'langan</th>
                                     <th>Qarz</th>
                                     <th>Sana</th>
@@ -154,8 +181,7 @@
                                 <tr>
                                     <th colspan="5" class="text-end">Jami Qarz:</th>
                                     <th class="text-danger">
-                                        ${% widthratio debt_phones 1 1 as total %}
-                                        {{ balance|floatformat:2 }}
+                                        ${{ balance|floatformat:2 }}
                                     </th>
                                     <th></th>
                                 </tr>
@@ -164,8 +190,9 @@
                     </div>
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                        <h6 class="text-muted">Qarzda telefon yo'q</h6>
+                        <i class="fas fa-check-circle fa-4x text-success mb-3 opacity-50"></i>
+                        <h6 class="text-muted">Qarzda Telefon Yo'q</h6>
+                        <p class="text-muted small">Barcha telefonlar to'langan</p>
                     </div>
                     {% endif %}
                 </div>
@@ -173,13 +200,13 @@
         </div>
 
         <!-- To'langan telefonlar -->
-        <div class="col-md-6 mb-4">
-            <div class="card">
+        <div class="col-md-6 mb-4" id="paid-phones">
+            <div class="card shadow-sm">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">
+                    <h5 class="mb-0 fw-bold">
                         <i class="fas fa-check-circle me-2"></i>
                         To'langan Telefonlar
-                        <span class="badge bg-light text-dark ms-2">{{ paid_phones.count }}</span>
+                        <span class="badge bg-light text-dark ms-2">{{ paid_phones_total }}</span>
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -188,17 +215,17 @@
                         <table class="table table-hover table-sm mb-0">
                             <thead class="sticky-top bg-light">
                                 <tr>
-                                    <th>#</th>
+                                    <th width="50">#</th>
                                     <th>Model</th>
                                     <th>IMEI</th>
-                                    <th>Tan narx</th>
+                                    <th>Tan Narx</th>
                                     <th>Sana</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for phone in paid_phones|slice:":20" %}
+                                {% for phone in paid_phones %}
                                 <tr>
-                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ forloop.counter|add:paid_phones.start_index|add:"-1" }}</td>
                                     <td>
                                         <strong>{{ phone.phone_model }}</strong><br>
                                         <small class="text-muted">{{ phone.memory_size }}</small>
@@ -215,20 +242,67 @@
                             </tbody>
                         </table>
                     </div>
-                    {% if paid_phones.count > 20 %}
-                    <div class="card-footer text-center">
-                        <small class="text-muted">
-                            Ko'rsatilgan: 20 / {{ paid_phones.count }}
-                        </small>
-                    </div>
-                    {% endif %}
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-mobile-alt fa-3x text-muted mb-3"></i>
-                        <h6 class="text-muted">To'langan telefon yo'q</h6>
+                        <i class="fas fa-mobile-alt fa-4x text-muted mb-3 opacity-50"></i>
+                        <h6 class="text-muted">To'langan Telefon Yo'q</h6>
+                        <p class="text-muted small">Hozircha to'langan telefonlar mavjud emas</p>
                     </div>
                     {% endif %}
                 </div>
+
+                <!-- Pagination Footer -->
+                {% if paid_phones.has_other_pages %}
+                <div class="card-footer bg-white border-top">
+                    <nav aria-label="To'langan telefonlar sahifalari">
+                        <ul class="pagination pagination-sm justify-content-center mb-2">
+                            {% if paid_phones.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1#paid-phones">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ paid_phones.previous_page_number }}#paid-phones">
+                                    <i class="fas fa-angle-left"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in paid_phones.paginator.page_range %}
+                                {% if paid_phones.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                                {% elif num > paid_phones.number|add:'-3' and num < paid_phones.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}#paid-phones">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if paid_phones.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ paid_phones.next_page_number }}#paid-phones">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ paid_phones.paginator.num_pages }}#paid-phones">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    <div class="text-center">
+                        <small class="text-muted">
+                            Sahifa {{ paid_phones.number }} / {{ paid_phones.paginator.num_pages }}
+                            (Jami: {{ paid_phones_total }} ta)
+                        </small>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -236,28 +310,28 @@
     <!-- To'lovlar Tarixi -->
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-history me-2"></i>
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-history me-2 text-primary"></i>
                         To'lovlar Tarixi
-                        <span class="badge bg-primary ms-2">{{ payments.count }}</span>
+                        <span class="badge bg-primary rounded-pill ms-2">{{ payments.count }}</span>
                     </h5>
                 </div>
                 <div class="card-body p-0">
                     {% if payments %}
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>#</th>
+                                    <th width="50">#</th>
                                     <th>Sana</th>
                                     <th>Summa</th>
                                     <th>Turi</th>
                                     <th>Telefonlar</th>
-                                    <th>Amalga oshirgan</th>
+                                    <th>Amalga Oshirgan</th>
                                     <th>Izoh</th>
-                                    <th></th>
+                                    <th width="80" class="text-center">Harakat</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -268,21 +342,26 @@
                                         <strong>{{ payment.payment_date|date:"d.m.Y" }}</strong><br>
                                         <small class="text-muted">{{ payment.created_at|date:"H:i" }}</small>
                                     </td>
-                                    <td class="text-success">
-                                        <strong>${{ payment.amount|floatformat:2 }}</strong>
+                                    <td>
+                                        <span class="badge bg-success fs-6">
+                                            ${{ payment.amount|floatformat:2 }}
+                                        </span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-{% if payment.payment_type == 'general' %}info{% else %}warning{% endif %}">
+                                        <span class="badge bg-{% if payment.payment_type == 'general' %}info{% else %}warning text-dark{% endif %}">
                                             {{ payment.get_payment_type_display }}
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-secondary">
+                                        <span class="badge bg-secondary rounded-pill">
                                             {{ payment.details.count }} ta
                                         </span>
                                     </td>
                                     <td>
-                                        <small>{{ payment.created_by.username }}</small>
+                                        <small>
+                                            <i class="fas fa-user me-1 text-muted"></i>
+                                            {{ payment.created_by.username }}
+                                        </small>
                                     </td>
                                     <td>
                                         {% if payment.notes %}
@@ -291,9 +370,11 @@
                                             <small class="text-muted">-</small>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="text-center">
                                         <a href="{% url 'inventory:supplier_payment_detail' payment.id %}"
-                                           class="btn btn-sm btn-outline-primary">
+                                           class="btn btn-sm btn-outline-primary"
+                                           data-bs-toggle="tooltip"
+                                           title="Tafsilotlarni ko'rish">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                     </td>
@@ -304,9 +385,9 @@
                     </div>
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-file-invoice-dollar fa-3x text-muted mb-3"></i>
-                        <h6 class="text-muted">To'lovlar yo'q</h6>
-                        <p class="text-muted">Hozircha hech qanday to'lov amalga oshirilmagan</p>
+                        <i class="fas fa-file-invoice-dollar fa-4x text-muted mb-3 opacity-50"></i>
+                        <h6 class="text-muted">To'lovlar Yo'q</h6>
+                        <p class="text-muted small">Hozircha hech qanday to'lov amalga oshirilmagan</p>
                     </div>
                     {% endif %}
                 </div>
@@ -316,10 +397,80 @@
 </div>
 
 <style>
+/* Gradient Header */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Sticky Table Header */
 .sticky-top {
     position: sticky;
     top: 0;
     z-index: 10;
+    background-color: #f8f9fa;
+}
+
+/* Card Shadows */
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* Table Styles */
+.table thead th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Font Monospace */
+.font-monospace {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85em;
+}
+
+/* Pagination */
+.pagination .page-link {
+    border-radius: 0.25rem;
+    margin: 0 2px;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+/* Badge Improvements */
+.badge {
+    font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .table thead th {
+        font-size: 0.75rem;
+    }
+
+    .table tbody td {
+        font-size: 0.875rem;
+    }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Bootstrap tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
 {% endblock %}

@@ -267,7 +267,7 @@ class PhoneSaleForm(forms.ModelForm):
         required=False,
         input_formats=['%Y-%m-%d'],
         widget=forms.DateInput(
-            format='%Y-%m-%d',  # ✅ Output formati
+            format='%Y-%m-%d',
             attrs={
                 'class': 'form-control',
                 'type': 'date',
@@ -322,7 +322,7 @@ class PhoneSaleForm(forms.ModelForm):
                 'id': 'id_debt_amount'
             }),
             'sale_date': forms.DateInput(
-                format='%Y-%m-%d',  # ✅ Output formati
+                format='%Y-%m-%d',
                 attrs={
                     'class': 'form-control',
                     'type': 'date',
@@ -340,33 +340,29 @@ class PhoneSaleForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # ✅ SANA FORMATLARI - input va output formatlari
+        # Sana formatlari
         self.fields['sale_date'].input_formats = ['%Y-%m-%d']
         self.fields['sale_date'].widget.format = '%Y-%m-%d'
-
         self.fields['debt_due_date'].input_formats = ['%Y-%m-%d']
         self.fields['debt_due_date'].widget.format = '%Y-%m-%d'
 
-        # MUHIM: Yangi yaratishda salesman ni oldindan o'rnatish
+        # Salesman ni oldindan o'rnatish
         if not self.instance.pk and self.user:
             self.instance.salesman = self.user
 
         if not self.instance.pk:
-            # ✅ YANGI YARATISH
+            # YANGI YARATISH
             self.fields['sale_date'].initial = timezone.now().date()
             self.fields['debt_due_date'].initial = timezone.now().date() + timedelta(days=30)
         else:
-            # ✅ TAHRIRLASH - initial qiymatlarni to'g'ri formatda
-            # Mijoz ma'lumotlari
+            # TAHRIRLASH
             if self.instance.customer:
                 self.fields['customer_name'].initial = self.instance.customer.name
                 self.fields['customer_phone'].initial = self.instance.customer.phone_number
 
-            # ✅ SOTISH SANASI - date obyekt sifatida
             if self.instance.sale_date:
                 self.fields['sale_date'].initial = self.instance.sale_date
 
-            # ✅ Qarz muddati
             if self.instance.debt_amount > 0:
                 debt = Debt.objects.filter(
                     debt_type='customer_to_seller',
@@ -384,10 +380,12 @@ class PhoneSaleForm(forms.ModelForm):
 
         # Faqat yangi yaratishda telefon statusini tekshirish
         if not self.instance.pk:
-            if phone.status not in ['shop', 'returned']:
+            # ✅ Faqat 'master' va 'sold' sotish mumkin EMAS
+            if phone.status in ['master', 'sold']:
+                status_text = "ustada" if phone.status == 'master' else "sotilgan"
                 raise ValidationError(
-                    f"Bu telefon {phone.get_status_display()} holatida! "
-                    f"Faqat do'kondagi yoki qaytarilgan telefonlarni sotish mumkin."
+                    f"Bu telefon {status_text} holatida! "
+                    f"Ustada yoki sotilgan telefonlarni sotish mumkin emas."
                 )
         return phone
 
@@ -401,7 +399,7 @@ class PhoneSaleForm(forms.ModelForm):
         card_amount = cleaned_data.get('card_amount') or Decimal('0')
         credit_amount = cleaned_data.get('credit_amount') or Decimal('0')
 
-        # MUHIM: Mijozni validatsiya paytida yaratish/olish
+        # Mijozni validatsiya paytida yaratish/olish
         customer_phone = cleaned_data.get('customer_phone')
         customer_name = cleaned_data.get('customer_name')
 
@@ -433,11 +431,9 @@ class PhoneSaleForm(forms.ModelForm):
         is_new = not self.instance.pk
         phone_sale = super().save(commit=False)
 
-        # Salesman allaqachon __init__ da o'rnatilgan, lekin qayta o'rnatamiz
         if self.user:
             phone_sale.salesman = self.user
 
-        # Mijoz allaqachon clean() da yaratilgan
         if not phone_sale.customer:
             phone_sale.customer = get_or_create_customer(
                 self.cleaned_data.get('customer_phone'),

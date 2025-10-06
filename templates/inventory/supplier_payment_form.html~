@@ -1,24 +1,25 @@
+<!-- templates/inventory/supplier_payment_form.html -->
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{% if is_edit %}To'lovni Tahrirlash{% else %}Taminotchiga To'lov{% endif %} - {{ supplier.name }}{% endblock %}
+{% block title %}Taminotchiga To'lov - {{ supplier.name }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
         <div class="col-lg-8">
             <!-- Header -->
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-gradient-primary text-white">
+            <div class="card mb-4">
+                <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h4 class="mb-1">
-                                <i class="fas fa-{% if is_edit %}edit{% else %}money-bill-wave{% endif %} me-2"></i>
-                                {% if is_edit %}To'lovni Tahrirlash{% else %}To'lov Qilish{% endif %}
+                                <i class="fas fa-money-bill-wave me-2"></i>
+                                To'lov Qilish
                             </h4>
-                            <small class="opacity-75">Taminotchi: <strong>{{ supplier.name }}</strong></small>
+                            <small class="text-muted">Taminotchi: <strong>{{ supplier.name }}</strong></small>
                         </div>
-                        <a href="{% url 'inventory:supplier_detail' supplier.id %}" class="btn btn-outline-light btn-sm">
+                        <a href="{% url 'inventory:supplier_detail' supplier.id %}" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left me-1"></i>Ortga
                         </a>
                     </div>
@@ -28,30 +29,30 @@
             <!-- Qarz Ma'lumotlari -->
             <div class="row mb-4">
                 <div class="col-md-4">
-                    <div class="card border-warning shadow-sm">
+                    <div class="card border-danger">
                         <div class="card-body text-center">
-                            <h6 class="text-muted mb-2">Boshlang'ich Qarz</h6>
-                            <h3 class="mb-0 text-secondary">
-                                ${{ supplier.initial_debt|floatformat:2 }}
-                            </h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card border-danger shadow-sm">
-                        <div class="card-body text-center">
-                            <h6 class="text-muted mb-2">Telefonlar Qarzi</h6>
-                            <h3 class="mb-0 text-warning">
+                            <h6 class="text-muted mb-2">Umumiy Qarz</h6>
+                            <h3 class="mb-0 text-danger">
                                 ${{ supplier.total_debt|floatformat:2 }}
                             </h3>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card border-danger shadow-sm border-2">
+                    <div class="card border-success">
                         <div class="card-body text-center">
-                            <h6 class="text-muted mb-2">JAMI QARZ</h6>
-                            <h3 class="mb-0 text-danger">
+                            <h6 class="text-muted mb-2">To'langan</h6>
+                            <h3 class="mb-0 text-success">
+                                ${{ supplier.total_paid|floatformat:2 }}
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-warning">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">Qoldiq Qarz</h6>
+                            <h3 class="mb-0 text-warning">
                                 ${{ supplier.balance|floatformat:2 }}
                             </h3>
                         </div>
@@ -60,7 +61,7 @@
             </div>
 
             <!-- To'lov Formasi -->
-            <div class="card shadow-sm">
+            <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="fas fa-file-invoice-dollar me-2"></i>
@@ -72,7 +73,7 @@
                         {% csrf_token %}
 
                         {% if form.non_field_errors %}
-                        <div class="alert alert-danger alert-dismissible fade show border-0">
+                        <div class="alert alert-danger alert-dismissible fade show">
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             {% for error in form.non_field_errors %}
                                 <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
@@ -87,7 +88,7 @@
                             <!-- To'lov Summasi -->
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="{{ form.amount.id_for_label }}" class="form-label fw-bold">
+                                    <label for="{{ form.amount.id_for_label }}" class="form-label">
                                         To'lov Summasi ($) *
                                     </label>
                                     {{ form.amount }}
@@ -99,7 +100,7 @@
                                         </div>
                                     {% endif %}
                                     <div class="form-text">
-                                        <i class="fas fa-info-circle me-1"></i>Maksimal: ${{ supplier.balance|floatformat:2 }}
+                                        Maksimal: ${{ supplier.balance|floatformat:2 }}
                                     </div>
                                 </div>
                             </div>
@@ -107,7 +108,7 @@
                             <!-- To'lov Sanasi -->
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="{{ form.payment_date.id_for_label }}" class="form-label fw-bold">
+                                    <label for="{{ form.payment_date.id_for_label }}" class="form-label">
                                         To'lov Sanasi *
                                     </label>
                                     {{ form.payment_date }}
@@ -124,7 +125,7 @@
 
                         <!-- To'lov Turi -->
                         <div class="mb-4">
-                            <label class="form-label d-block fw-bold">To'lov Turi *</label>
+                            <label class="form-label d-block">To'lov Turi *</label>
                             <div class="btn-group w-100" role="group">
                                 {% for radio in form.payment_type %}
                                 <div class="flex-fill">
@@ -146,15 +147,13 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
-                            <div class="alert alert-info border-0 mt-2 mb-0">
-                                <small>
-                                    <strong>Umumiy:</strong> Eng eski qarzli telefonlardan boshlab to'lanadi<br>
-                                    <strong>Maxsus:</strong> Siz tanlagan telefonlar uchun to'lov
-                                </small>
+                            <div class="form-text mt-2">
+                                <strong>Umumiy:</strong> Eng eski qarzli telefonlardan boshlab to'lanadi (FIFO)<br>
+                                <strong>Maxsus:</strong> Siz tanlagan telefonlar uchun to'lov
                             </div>
                         </div>
 
-                        <!-- Telefonlar Ro'yxati -->
+                        <!-- Telefonlar Ro'yxati (faqat 'specific' turi uchun) -->
                         <div id="phoneSelectionBlock" style="display: none;">
                             <div class="card border-info mb-4">
                                 <div class="card-header bg-info text-white">
@@ -215,11 +214,11 @@
                                         </table>
                                     </div>
 
-                                    <!-- Statistika -->
+                                    <!-- Tanlangan Telefonlar Statistikasi -->
                                     <div class="alert alert-info mt-3 mb-0">
                                         <div class="row">
                                             <div class="col-md-6">
-                                                <strong>Tanlangan:</strong>
+                                                <strong>Tanlangan telefonlar:</strong>
                                                 <span id="selectedCount">0</span> ta
                                             </div>
                                             <div class="col-md-6">
@@ -248,8 +247,8 @@
 
                         <!-- Izoh -->
                         <div class="mb-4">
-                            <label for="{{ form.notes.id_for_label }}" class="form-label fw-bold">
-                                Izoh <span class="text-muted">(ixtiyoriy)</span>
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                Izoh (ixtiyoriy)
                             </label>
                             {{ form.notes }}
                             {% if form.notes.errors %}
@@ -261,16 +260,13 @@
                             {% endif %}
                         </div>
 
-                        <hr>
-
                         <!-- Tugmalar -->
                         <div class="d-flex justify-content-between">
                             <a href="{% url 'inventory:supplier_detail' supplier.id %}" class="btn btn-secondary">
                                 <i class="fas fa-times me-1"></i>Bekor qilish
                             </a>
                             <button type="submit" class="btn btn-success btn-lg">
-                                <i class="fas fa-{% if is_edit %}save{% else %}check-circle{% endif %} me-1"></i>
-                                {% if is_edit %}Yangilash{% else %}To'lovni Amalga Oshirish{% endif %}
+                                <i class="fas fa-check-circle me-1"></i>To'lovni Amalga Oshirish
                             </button>
                         </div>
                     </form>
@@ -281,10 +277,6 @@
 </div>
 
 <style>
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
 .sticky-top {
     position: sticky;
     top: 0;
@@ -300,12 +292,12 @@
     color: white;
 }
 
-.phone-checkbox, #selectAll {
+.phone-checkbox {
     cursor: pointer;
 }
 
-.font-monospace {
-    font-family: 'Courier New', monospace;
+#selectAll {
+    cursor: pointer;
 }
 </style>
 
@@ -325,19 +317,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 phoneSelectionBlock.style.display = 'block';
             } else {
                 phoneSelectionBlock.style.display = 'none';
+                // Umumiy turida barcha checkboxlarni o'chirish
                 phoneCheckboxes.forEach(cb => cb.checked = false);
                 updateSelectedStats();
             }
         });
     });
 
-    // Sahifa yuklanganda
+    // Sahifa yuklanganda to'lov turini tekshirish
     const selectedPaymentType = document.querySelector('input[name="payment_type"]:checked');
     if (selectedPaymentType && selectedPaymentType.value === 'specific') {
         phoneSelectionBlock.style.display = 'block';
     }
 
-    // Hammasini tanlash
+    // "Hammasini tanlash" checkbox
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
             phoneCheckboxes.forEach(cb => {
@@ -347,15 +340,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Har bir checkbox
+    // Har bir telefon checkboxi
     phoneCheckboxes.forEach(cb => {
         cb.addEventListener('change', function() {
             updateSelectedStats();
 
+            // Agar bitta ham checkboxni olib tashlasak, "Hammasini tanlash" ni o'chirish
             if (!this.checked && selectAllCheckbox) {
                 selectAllCheckbox.checked = false;
             }
 
+            // Agar barcha checkboxlar tanlangan bo'lsa, "Hammasini tanlash" ni yoqish
             const allChecked = Array.from(phoneCheckboxes).every(cb => cb.checked);
             if (allChecked && selectAllCheckbox) {
                 selectAllCheckbox.checked = true;
@@ -363,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Statistika yangilash
+    // Tanlangan telefonlar statistikasini yangilash
     function updateSelectedStats() {
         let count = 0;
         let totalDebt = 0;
@@ -379,6 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selectedDebtSpan) selectedDebtSpan.textContent = totalDebt.toFixed(2);
     }
 
+    // Boshlang'ich holatni yangilash
     updateSelectedStats();
 });
 </script>

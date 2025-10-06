@@ -305,14 +305,15 @@ class PhoneSale(models.Model):
             if abs(total_payments - self.sale_price) > Decimal('0.01'):
                 raise ValidationError("To'lovlar yig'indisi sotish narxiga teng bo'lishi kerak!")
 
-        # ✅ Faqat do'kon va qaytarilgan telefonlarni sotish mumkin
+        # ✅ Faqat 'master' va 'sold' statusini bloklash
         if not self.pk and self.phone_id:
             try:
                 phone = Phone.objects.get(id=self.phone_id)
-                if phone.status not in ['shop', 'returned']:
+                if phone.status in ['master', 'sold']:
+                    status_text = "ustada" if phone.status == 'master' else "sotilgan"
                     raise ValidationError(
-                        f"Bu telefon {phone.get_status_display()} holatida! "
-                        f"Faqat do'kondagi yoki qaytarilgan telefonlarni sotish mumkin."
+                        f"Bu telefon {status_text} holatida! "
+                        f"Ustada yoki sotilgan telefonlarni sotish mumkin emas."
                     )
             except Phone.DoesNotExist:
                 raise ValidationError("Telefon topilmadi!")
@@ -603,12 +604,12 @@ class PhoneExchange(models.Model):
                 memory_size=self.old_phone_memory,
                 imei=self.old_phone_imei,
                 condition_percentage=self.old_phone_condition_percentage,
-                status='exchanged_in',
+                status='shop',  # ✅ exchanged_in o'rniga shop
                 purchase_price=self.old_phone_accepted_price,
                 imei_cost=self.old_phone_imei_cost or 0,
                 repair_cost=self.old_phone_repair_cost or 0,
                 image=self.old_phone_image,
-                created_at=timezone.now().date(),  # ✅ Shu satrni qo‘shing
+                created_at=timezone.now().date(),
                 created_by=self.salesman,
                 source_type='exchange',
                 original_owner_name=self.customer_name,

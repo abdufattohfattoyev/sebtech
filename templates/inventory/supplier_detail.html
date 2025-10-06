@@ -39,15 +39,59 @@
 
     <!-- Qarz Statistikasi -->
     <div class="row mb-4">
+        <!-- Boshlang'ich Qarz -->
         <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-muted mb-1">Umumiy Qarz</h6>
-                            <h3 class="mb-0 text-danger">
+                            <h6 class="text-muted mb-1">Boshlang'ich Qarz</h6>
+                            <h3 class="mb-0 text-secondary">
+                                ${{ supplier.initial_debt|floatformat:2 }}
+                            </h3>
+                            <small class="text-muted">Oldingi qarz</small>
+                        </div>
+                        <div class="bg-secondary bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-history fa-2x text-secondary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telefonlar Qarzi -->
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Telefonlar Qarzi</h6>
+                            <h3 class="mb-0 text-warning">
                                 ${{ supplier.total_debt|floatformat:2 }}
                             </h3>
+                            <small class="text-muted">Telefon olishlar</small>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-mobile-alt fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Jami Qarz -->
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-danger">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">JAMI QARZ</h6>
+                            <h3 class="mb-0 text-danger">
+                                ${{ balance|floatformat:2 }}
+                            </h3>
+                            <small class="text-muted">
+                                ${{ supplier.initial_debt|floatformat:2 }} + ${{ supplier.total_debt|floatformat:2 }}
+                            </small>
                         </div>
                         <div class="bg-danger bg-opacity-10 rounded-circle p-3">
                             <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
@@ -56,40 +100,8 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-1">To'langan</h6>
-                            <h3 class="mb-0 text-success">
-                                ${{ supplier.total_paid|floatformat:2 }}
-                            </h3>
-                        </div>
-                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
-                            <i class="fas fa-check-circle fa-2x text-success"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-1">Qoldiq Qarz</h6>
-                            <h3 class="mb-0 text-{% if balance > 0 %}warning{% else %}secondary{% endif %}">
-                                ${{ balance|floatformat:2 }}
-                            </h3>
-                        </div>
-                        <div class="bg-{% if balance > 0 %}warning{% else %}secondary{% endif %} bg-opacity-10 rounded-circle p-3">
-                            <i class="fas fa-dollar-sign fa-2x text-{% if balance > 0 %}warning{% else %}secondary{% endif %}"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+
+        <!-- Jami Telefonlar -->
         <div class="col-md-3">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
@@ -99,6 +111,7 @@
                             <h3 class="mb-0 text-info">
                                 {{ total_phones }}
                             </h3>
+                            <small class="text-muted">Barcha telefonlar</small>
                         </div>
                         <div class="bg-info bg-opacity-10 rounded-circle p-3">
                             <i class="fas fa-mobile-alt fa-2x text-info"></i>
@@ -117,6 +130,12 @@
                 <div>
                     <i class="fas fa-exclamation-triangle me-2"></i>
                     <strong>Qarz mavjud:</strong> Bu taminotchida ${{ balance|floatformat:2 }} qarz bor
+                    {% if supplier.initial_debt > 0 %}
+                    <br>
+                    <small class="text-muted ms-4">
+                        (Boshlang'ich: ${{ supplier.initial_debt|floatformat:2 }}, Telefonlar: ${{ supplier.total_debt|floatformat:2 }})
+                    </small>
+                    {% endif %}
                 </div>
                 <a href="{% url 'inventory:supplier_payment_create' supplier.id %}"
                    class="btn btn-success">
@@ -179,9 +198,9 @@
                             </tbody>
                             <tfoot class="table-light">
                                 <tr>
-                                    <th colspan="5" class="text-end">Jami Qarz:</th>
-                                    <th class="text-danger">
-                                        ${{ balance|floatformat:2 }}
+                                    <th colspan="5" class="text-end">Telefonlar Qarzi:</th>
+                                    <th class="text-warning">
+                                        ${{ supplier.total_debt|floatformat:2 }}
                                     </th>
                                     <th></th>
                                 </tr>
@@ -450,6 +469,11 @@
 /* Badge Improvements */
 .badge {
     font-weight: 500;
+}
+
+/* Card Border Danger */
+.border-danger {
+    border: 2px solid #dc3545 !important;
 }
 
 /* Responsive */

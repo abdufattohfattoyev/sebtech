@@ -25,18 +25,6 @@
                             <button onclick="window.print()" class="btn btn-outline-primary">
                                 <i class="fas fa-print me-1"></i>Chop etish
                             </button>
-                            {% if request.user.userprofile.role in 'boss,finance' %}
-                            <a href="{% url 'inventory:supplier_payment_update' payment.id %}"
-                               class="btn btn-primary">
-                                <i class="fas fa-edit me-1"></i>Tahrirlash
-                            </a>
-                            <button type="button"
-                                    class="btn btn-danger"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#deleteModal">
-                                <i class="fas fa-trash me-1"></i>O'chirish
-                            </button>
-                            {% endif %}
                             <a href="{% url 'inventory:supplier_detail' payment.supplier.id %}"
                                class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-1"></i>Ortga
@@ -246,31 +234,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Delete Modal -->
-            {% if request.user.userprofile.role in 'boss,finance' %}
-            <div class="modal fade" id="deleteModal" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header border-0">
-                            <h5 class="modal-title">
-                                <i class="fas fa-exclamation-triangle text-danger me-2"></i>
-                                To'lovni O'chirish
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p>Ushbu to'lovni o'chirmoqchimisiz?</p>
-                            <p class="mb-0"><strong>Summa:</strong> <span class="text-danger">${{ payment.amount|floatformat:2 }}</span></p>
-                        </div>
-                        <div class="modal-footer border-0">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor Qilish</button>
-                            <a href="{% url 'inventory:supplier_payment_delete' payment.id %}" class="btn btn-danger">O'chirish</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -289,10 +252,6 @@
     body {
         background: white !important;
     }
-
-    .modal {
-        display: none !important;
-    }
 }
 
 .table td, .table th {
@@ -305,3 +264,48 @@
 }
 </style>
 {% endblock %}
+
+
+
+<!-- Header qismiga qo'shing -->
+<div class="d-flex gap-2">
+    {% if request.user.userprofile.role in 'boss,finance' %}
+    <a href="{% url 'inventory:supplier_payment_update' payment.id %}"
+       class="btn btn-primary btn-sm">
+        <i class="fas fa-edit me-1"></i>Tahrirlash
+    </a>
+    <button type="button"
+            class="btn btn-danger btn-sm"
+            data-bs-toggle="modal"
+            data-bs-target="#deleteModal">
+        <i class="fas fa-trash me-1"></i>O'chirish
+    </button>
+    {% endif %}
+    <a href="{% url 'inventory:supplier_detail' payment.supplier.id %}"
+       class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i>Ortga
+    </a>
+</div>
+
+<!-- Modal (sahifa pastida) -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                    To'lovni O'chirish
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ushbu to'lovni o'chirmoqchimisiz?</p>
+                <p class="mb-0"><strong>Summa:</strong> <span class="text-danger">${{ payment.amount|floatformat:2 }}</span></p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor Qilish</button>
+                <a href="{% url 'inventory:supplier_payment_delete' payment.id %}" class="btn btn-danger">O'chirish</a>
+            </div>
+        </div>
+    </div>
+</div>
