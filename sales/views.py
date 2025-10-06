@@ -110,7 +110,7 @@ def sales_dashboard(request):
         'active_debts_uzs_total': active_debts_uzs['total'] or Decimal('0'),
         'today_expenses_total': today_expenses['total'] or Decimal('0'),
     }
-    return render(request, 'sales/dashboard_list.html', context)
+    return render(request, 'sales/dashboard.html', context)
 
 
 # ============ PHONE SALES ============

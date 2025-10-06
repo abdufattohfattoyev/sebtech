@@ -104,12 +104,12 @@ def services_dashboard(request):
             'masters': masters,
             'recent_services': recent_services,
         }
-        return render(request, 'services/dashboard_list.html', context)
+        return render(request, 'services/dashboard.html', context)
 
     except Exception as e:
         logger.error(f"Dashboard error: {str(e)}")
         messages.error(request, "Dashboard yuklashda xatolik yuz berdi!")
-        return render(request, 'services/dashboard_list.html', {
+        return render(request, 'services/dashboard.html', {
             'total_masters': 0,
             'active_services': 0,
             'completed_services': 0,
