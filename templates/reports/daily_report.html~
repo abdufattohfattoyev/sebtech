@@ -601,10 +601,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="stats-section-title cashflow">CASH FLOW - DOLLAR</div>
       <div class="cashflow-grid">
         <div class="stat">
-  <div class="stat-label">Kirim</div>
-  <div class="stat-value income">${{ daily_stats.cashflow.usd.income|floatformat:0|intcomma }}</div>
-  <div class="stat-currency">USD</div>
-</div>
+          <div class="stat-label">Kirim (Naqd)</div>
+          <div class="stat-value income">${{ daily_stats.cashflow.usd.income|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD</div>
+          <div class="stat-subtitle">
+            Jami: ${{ daily_stats.cashflow.details.total_sales|floatformat:0|intcomma }}
+          </div>
+        </div>
         <div class="stat">
           <div class="stat-label">Chiqim</div>
           <div class="stat-value expense">${{ daily_stats.cashflow.usd.expense|floatformat:0|intcomma }}</div>
