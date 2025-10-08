@@ -357,7 +357,7 @@ class ReportCalculator:
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        total_usd_income = usd_income + old_phone_value
+        total_usd_income = usd_income
 
         usd_expense_without_old_phone = abs(
             transactions.filter(
@@ -367,7 +367,7 @@ class ReportCalculator:
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        total_usd_expense = usd_expense_without_old_phone + old_phone_value
+        total_usd_expense = usd_expense_without_old_phone
 
         uzs_income = transactions.filter(
             amount_uzs__gt=0

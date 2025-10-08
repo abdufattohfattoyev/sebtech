@@ -539,8 +539,7 @@ class ReportCalculator:
 
         total_phone_cash_usd = (
                 (phone_totals.get('cash') or Decimal('0')) +
-                (exchange_totals.get('cash') or Decimal('0')) +
-                (exchange_totals.get('old_phone_value') or Decimal('0'))
+                (exchange_totals.get('cash') or Decimal('0'))
         )
 
         total_phone_card_usd = (phone_totals.get('card') or Decimal('0')) + (
@@ -715,8 +714,7 @@ class ReportCalculator:
 
         total_phone_cash_usd = (
                 (phone_totals.get('cash') or Decimal('0')) +
-                (exchange_totals.get('cash') or Decimal('0')) +
-                (exchange_totals.get('old_phone_value') or Decimal('0'))
+                (exchange_totals.get('cash') or Decimal('0'))
         )
 
         total_phone_card_usd = (phone_totals.get('card') or Decimal('0')) + (
