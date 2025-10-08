@@ -347,28 +347,43 @@ class ReportCalculator:
             transaction_date=target_date
         )
 
-        usd_income = transactions.filter(
-            amount_usd__gt=0
+        # Telefon savdosi (jami)
+        phone_sales_total = transactions.filter(
+            transaction_type='phone_sale'
         ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
 
-        old_phone_value = abs(
+        # Karta orqali tushgan pul
+        card_sales = abs(
             transactions.filter(
-                transaction_type='exchange_old_phone_value'
+                transaction_type='card_sale'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        total_usd_income = usd_income
+        # Nasiya savdosi
+        credit_sales = abs(
+            transactions.filter(
+                transaction_type='credit_sale'
+            ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
+        )
 
-        usd_expense_without_old_phone = abs(
+        # Qarz (agar qarz ham yozilsa)
+        debt_sales = abs(
+            transactions.filter(
+                transaction_type='debt_sale'
+            ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
+        )
+
+        # ✅ KIRIM USD FORMULASI
+        kirim_usd = phone_sales_total - (card_sales + credit_sales + debt_sales)
+
+        # USD chiqim
+        usd_expense = abs(
             transactions.filter(
                 amount_usd__lt=0
-            ).exclude(
-                transaction_type='exchange_old_phone_value'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        total_usd_expense = usd_expense_without_old_phone
-
+        # UZS tushum va chiqim
         uzs_income = transactions.filter(
             amount_uzs__gt=0
         ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
@@ -380,10 +395,10 @@ class ReportCalculator:
         )
 
         details = {
-            'phone_sales': transactions.filter(
-                transaction_type='phone_sale'
-            ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0'),
-
+            'phone_sales': phone_sales_total,
+            'card_sales': card_sales,
+            'credit_sales': credit_sales,
+            'debt_sales': debt_sales,
             'accessory_sales': transactions.filter(
                 transaction_type='accessory_sale'
             ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0'),
@@ -392,7 +407,11 @@ class ReportCalculator:
                 transaction_type='exchange_income'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0'),
 
-            'exchange_old_phone_value': old_phone_value,
+            'exchange_old_phone_value': abs(
+                transactions.filter(
+                    transaction_type='exchange_old_phone_value'
+                ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
+            ),
 
             'exchange_equal': transactions.filter(
                 transaction_type='exchange_equal'
@@ -425,9 +444,9 @@ class ReportCalculator:
 
         return {
             'usd': {
-                'income': total_usd_income,
-                'expense': total_usd_expense,
-                'net': total_usd_income - total_usd_expense
+                'income': kirim_usd,  # ✅ formula bo‘yicha
+                'expense': usd_expense,
+                'net': kirim_usd - usd_expense  # ✅ SOF BALANS
             },
             'uzs': {
                 'income': uzs_income,

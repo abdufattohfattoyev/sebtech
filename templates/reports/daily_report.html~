@@ -3,7 +3,6 @@
 {% block page_title %}Kunlik Hisobot{% endblock %}
 
 {% block extra_css %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
@@ -82,28 +81,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .btn-secondary { background: #6b7280; color: white; }
 .btn-secondary:hover { background: #4b5563; }
 
-/* Charts */
-.chart-section {
-  background: white;
-  padding: 25px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-.chart-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 20px;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.chart-container {
-  height: 400px;
-  position: relative;
-}
-
 /* Stats Container */
 .stats-container {
   display: grid;
@@ -139,11 +116,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .stats-grid-3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-.stats-grid-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
 .stats-grid-5 {
@@ -186,6 +158,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   color: #9ca3af;
   margin-top: 6px;
   font-weight: 500;
+}
+
+/* JAMI FOYDA CARD */
+.total-profit-card {
+  grid-column: span 2;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border: 3px solid #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+.total-profit-card .stat-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #065f46;
+}
+.total-profit-card .stat-value {
+  font-size: 32px;
+  color: #065f46;
+}
+.total-profit-card .stat-currency {
+  font-size: 11px;
+  color: #059669;
 }
 
 /* Kassa Section */
@@ -370,7 +363,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .seller-amount.usd { color: #10b981; }
 .seller-count { font-size: 12px; color: #6b7280; font-weight: 500; }
 
-/* Sotuvchi detallari */
 .seller-details {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -409,6 +401,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   font-size: 13px;
 }
 
+/* Expense Details */
+.expense-detail {
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #e5e7eb;
+}
+
 /* Print */
 @media print {
   .filter, .nav, .btn { display: none !important; }
@@ -425,26 +426,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .stats-container { grid-template-columns: 1fr; }
   .main { grid-template-columns: 1fr; }
   .stats-grid-5 { grid-template-columns: repeat(3, 1fr); }
-  .chart-container { height: 350px; }
 }
 
 @media (max-width: 768px) {
   .filter-row { grid-template-columns: 1fr; }
   .stats-grid-5 { grid-template-columns: repeat(2, 1fr); }
   .seller-details { grid-template-columns: repeat(2, 1fr); }
-  .chart-container { height: 300px; }
   .sale-payment { grid-template-columns: repeat(3, 1fr); }
   .kassa-grid { grid-template-columns: 1fr; }
   .cashflow-grid { grid-template-columns: 1fr; }
+  .total-profit-card { grid-column: span 1; }
 }
 
 @media (max-width: 480px) {
   .container { padding: 10px; }
   .stats-grid-5 { grid-template-columns: 1fr; }
   .seller-details { grid-template-columns: repeat(2, 1fr); }
-  .chart-container { height: 250px; }
   .sale-payment { grid-template-columns: repeat(2, 1fr); }
-  .stats-grid, .stats-grid-3, .stats-grid-4 { grid-template-columns: 1fr; }
+  .stats-grid, .stats-grid-3 { grid-template-columns: 1fr; }
   .tabs { flex-direction: column; }
   .tab-btn { min-width: auto; }
 }
@@ -484,26 +483,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </form>
   </div>
 
-  <!-- ✅ YANGI: UMUMIY DO'KON GISTOGRAMMA -->
-  <div class="chart-section">
-    <div class="chart-title">📊 Bugungi Umumiy Savdo (Soni)</div>
-    <div class="chart-container">
-      <canvas id="shopChart"></canvas>
-    </div>
-  </div>
-
-  <!-- ✅ YANGI: SOTUVCHILAR GISTOGRAMMA -->
-  <div class="chart-section">
-    <div class="chart-title">👥 Sotuvchilar Reytingi (Soni)</div>
-    <div class="chart-container">
-      <canvas id="sellersChart"></canvas>
-    </div>
-  </div>
-
   <!-- TELEFON VA AKSESSUAR -->
   <div class="stats-container">
     <div class="stats-section">
-      <div class="stats-section-title usd">TELEFON (Dollar)</div>
+      <div class="stats-section-title usd">TELEFON + ALMASHTIRISH (Dollar)</div>
       <div class="stats-grid">
         <div class="stat">
           <div class="stat-label">Jami Savdo</div>
@@ -531,7 +514,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div class="stat-currency">USD</div>
         </div>
         <div class="stat">
-          <div class="stat-label">Soni</div>
+          <div class="stat-label">Telefon Soni</div>
           <div class="stat-value usd">{{ daily_stats.counts.phone|default:0 }}</div>
           <div class="stat-currency">dona</div>
         </div>
@@ -541,8 +524,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div class="stat-currency">dona</div>
         </div>
         <div class="stat">
-          <div class="stat-label">Foyda</div>
-          <div class="stat-value usd">${{ daily_stats.profits.phone_profit_usd|floatformat:0|intcomma }}</div>
+          <div class="stat-label">Qaytarish</div>
+          <div class="stat-value expense">{{ daily_stats.counts.returns|default:0 }}</div>
+          <div class="stat-currency">dona</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Tel. Foyda</div>
+          <div class="stat-value usd">${{ daily_stats.profits.phone_profit|floatformat:0|intcomma|default:"0" }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Alm. Foyda</div>
+          <div class="stat-value usd">${{ daily_stats.profits.exchange_profit|floatformat:0|intcomma|default:"0" }}</div>
+          <div class="stat-currency">USD</div>
+        </div>
+
+        <!-- JAMI FOYDA -->
+        <div class="stat total-profit-card">
+          <div class="stat-label">JAMI FOYDA (Tel + Alm)</div>
+          <div class="stat-value">${{ daily_stats.profits.total_phone_exchange_profit|floatformat:0|intcomma|default:"0" }}</div>
           <div class="stat-currency">USD</div>
         </div>
       </div>
@@ -588,7 +588,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div class="stat">
           <div class="stat-label">Foyda</div>
-          <div class="stat-value uzs">{{ daily_stats.profits.accessory_profit_uzs|floatformat:0|intcomma }}</div>
+          <div class="stat-value uzs">{{ daily_stats.profits.accessory_profit|floatformat:0|intcomma|default:"0" }}</div>
           <div class="stat-currency">UZS</div>
         </div>
       </div>
@@ -601,10 +601,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="stats-section-title cashflow">CASH FLOW - DOLLAR</div>
       <div class="cashflow-grid">
         <div class="stat">
-          <div class="stat-label">Kirim</div>
-          <div class="stat-value income">${{ daily_stats.cashflow.usd.income|floatformat:0|intcomma }}</div>
-          <div class="stat-currency">USD</div>
-        </div>
+  <div class="stat-label">Kirim</div>
+  <div class="stat-value income">${{ daily_stats.cashflow.usd.income|floatformat:0|intcomma }}</div>
+  <div class="stat-currency">USD</div>
+</div>
         <div class="stat">
           <div class="stat-label">Chiqim</div>
           <div class="stat-value expense">${{ daily_stats.cashflow.usd.expense|floatformat:0|intcomma }}</div>
@@ -643,10 +643,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <!-- KASSADA NAQD -->
   <div class="stats-container">
     <div class="stats-section kassa-section">
-      <div class="stats-section-title kassa-title">KASSADA NAQD</div>
+      <div class="stats-section-title kassa-title">KASSADA NAQD (Kirim)</div>
       <div class="kassa-grid">
         <div class="kassa-stat highlight">
-          <div class="stat-label">Dollar (Naqd)</div>
+          <div class="stat-label">Dollar (Naqd + Olingan Tel)</div>
           <div class="stat-value usd">${{ daily_stats.sales.phone_cash_usd|floatformat:0|intcomma }}</div>
           <div class="stat-currency">USD</div>
         </div>
@@ -659,6 +659,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <div class="stat-label">Teng Almashtirish</div>
           <div class="stat-value" style="color: #f59e0b; font-size: 24px;">{{ daily_stats.cashflow.details.exchange_equal|default:0 }}</div>
           <div class="stat-currency">dona</div>
+        </div>
+      </div>
+
+      <!-- CHIQIMLAR -->
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #10b981;">
+        <div style="font-size: 12px; font-weight: 700; color: #dc2626; margin-bottom: 12px; text-transform: uppercase;">CHIQIMLAR (Dollar)</div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+          <div class="kassa-stat" style="border: 2px solid #dc2626;">
+            <div class="stat-label" style="color: #dc2626;">Kunlik Sotuvchi</div>
+            <div class="stat-value expense">${{ daily_stats.cashflow.details.daily_seller_payments|floatformat:0|intcomma }}</div>
+            <div class="stat-currency">USD</div>
+          </div>
+          <div class="kassa-stat" style="border: 2px solid #dc2626;">
+            <div class="stat-label" style="color: #dc2626;">Olingan Telefon</div>
+            <div class="stat-value expense">${{ daily_stats.cashflow.details.exchange_old_phone_value|floatformat:0|intcomma }}</div>
+            <div class="stat-currency">USD</div>
+          </div>
         </div>
       </div>
     </div>
@@ -686,15 +703,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
                 <div class="sale-price usd">${{ sale.sale_price|floatformat:0|intcomma }}</div>
               </div>
               <div class="sale-details">
-                  <div class="detail-row">
-                      <span class="detail-label">Mijoz:</span> {{ sale.customer.name }}
-                  </div>
-                  <div class="detail-row">
-                      <span class="detail-label">Sotuvchi:</span> {{ sale.salesman.get_full_name|default:sale.salesman.username }}
-                  </div>
-                  <div class="detail-row">
-                      <span class="detail-label">IMEI:</span> {{ sale.phone.imei|default:"N/A" }}
-                  </div>
+                <div class="detail-row">
+                  <span class="detail-label">Mijoz:</span> {{ sale.customer.name }}
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Sotuvchi:</span> {{ sale.salesman.get_full_name|default:sale.salesman.username }}
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">IMEI:</span> {{ sale.phone.imei|default:"N/A" }}
+                </div>
               </div>
 
               <div class="sale-payment">
@@ -784,7 +801,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
               <div class="sale-details">
                 <div class="detail-row"><span class="detail-label">Mijoz:</span> {{ exchange.customer_name }}</div>
                 <div class="detail-row"><span class="detail-label">Sotuvchi:</span> {{ exchange.salesman.get_full_name|default:exchange.salesman.username }}</div>
-                <div class="detail-row"><span class="detail-label">Eski qiymati:</span> ${{ exchange.old_phone_value|floatformat:0|intcomma }}</div>
+                <div class="detail-row"><span class="detail-label">Eski qiymati:</span> ${{ exchange.old_phone_accepted_price|floatformat:0|intcomma }}</div>
                 <div class="detail-row"><span class="detail-label">Yangi narxi:</span> ${{ exchange.new_phone_price|floatformat:0|intcomma }}</div>
               </div>
               <div class="sale-payment">
@@ -890,8 +907,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </div>
         <div class="stat">
           <div class="stat-label">Olingan Telefon</div>
-          <div class="stat-value expense">${{ daily_stats.cashflow.details.exchange_old_phone_value|floatformat:0|intcomma }}</div>
-          <div class="stat-currency">USD (Chiqim)</div>
+          <div class="stat-value" style="color: #f59e0b;">${{ daily_stats.cashflow.details.exchange_old_phone_value|floatformat:0|intcomma }}</div>
+          <div class="stat-currency">USD (Info)</div>
         </div>
         <div class="stat">
           <div class="stat-label">Teng Almashtirish</div>
@@ -901,7 +918,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="stat">
           <div class="stat-label">Kunlik Sotuvchi</div>
           <div class="stat-value expense">${{ daily_stats.cashflow.details.daily_seller_payments|floatformat:0|intcomma }}</div>
-          <div class="stat-currency">USD</div>
+          <div class="stat-currency">USD (Chiqim)</div>
         </div>
         <div class="stat">
           <div class="stat-label">Almashtirish (Chiqim)</div>
@@ -924,114 +941,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 </div>
 
 <script>
-// UMUMIY DO'KON GISTOGRAMMA
-const shopData = {
-  labels: ['Telefonlar', 'Aksessuarlar', 'Almashtirish', 'Qaytarildi'],
-  datasets: [{
-    label: 'Soni',
-    data: [
-      {{ daily_stats.counts.phone|default:0 }},
-      {{ daily_stats.counts.accessory|default:0 }},
-      {{ daily_stats.counts.exchange|default:0 }},
-      0
-    ],
-    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
-    borderWidth: 2,
-    borderColor: ['#059669', '#2563eb', '#d97706', '#dc2626']
-  }]
-};
-
-new Chart(document.getElementById('shopChart'), {
-  type: 'bar',
-  data: shopData,
-  options: {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: (context) => `${context.parsed.x} dona`
-        }
-      }
-    },
-    scales: {
-      x: {
-        beginAtZero: true,
-        ticks: { stepSize: 1 }
-      }
-    }
-  }
-});
-
-// SOTUVCHILAR GISTOGRAMMA
-const sellersData = {
-  labels: [
-    {% for seller in seller_stats %}
-    '{{ seller.seller.get_full_name|default:seller.seller.username }}',
-    {% endfor %}
-  ],
-  datasets: [
-    {
-      label: 'Telefonlar',
-      data: [{% for seller in seller_stats %}{{ seller.counts.phone|default:0 }},{% endfor %}],
-      backgroundColor: '#10b981',
-      borderColor: '#059669',
-      borderWidth: 2
-    },
-    {
-      label: 'Aksessuarlar',
-      data: [{% for seller in seller_stats %}{{ seller.counts.accessory|default:0 }},{% endfor %}],
-      backgroundColor: '#3b82f6',
-      borderColor: '#2563eb',
-      borderWidth: 2
-    },
-    {
-      label: 'Almashtirish',
-      data: [{% for seller in seller_stats %}{{ seller.counts.exchange|default:0 }},{% endfor %}],
-      backgroundColor: '#f59e0b',
-      borderColor: '#d97706',
-      borderWidth: 2
-    },
-    {
-      label: 'Qaytarildi',
-      data: [{% for seller in seller_stats %}{{ seller.counts.returns|default:0 }},{% endfor %}],
-      backgroundColor: '#ef4444',
-      borderColor: '#dc2626',
-      borderWidth: 2
-    }
-  ]
-};
-
-new Chart(document.getElementById('sellersChart'), {
-  type: 'bar',
-  data: sellersData,
-  options: {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: 'top' },
-      tooltip: {
-        callbacks: {
-          label: (context) => `${context.dataset.label}: ${context.parsed.x} dona`
-        }
-      }
-    },
-    scales: {
-      x: {
-        beginAtZero: true,
-        stacked: false,
-        ticks: { stepSize: 1 }
-      },
-      y: {
-        stacked: false
-      }
-    }
-  }
-});
-
 function showTab(tabName) {
   document.querySelectorAll('.tab-pane').forEach(tab => tab.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
