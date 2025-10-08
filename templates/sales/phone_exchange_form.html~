@@ -43,33 +43,34 @@
         {% csrf_token %}
 
         <!-- Yangi telefon -->
-<div class="card mb-3">
-    <div class="card-header bg-success text-white">
-        <h6 class="mb-0"><i class="fas fa-mobile-alt"></i> Yangi telefon</h6>
-    </div>
-    <div class="card-body">
-        <div class="mb-3 search-box">
-            <label class="form-label fw-bold">IMEI qidirish</label>
-            <input type="text" id="phoneSearch" class="form-control" placeholder="IMEI..." autocomplete="off"
+        <div class="card mb-3">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0"><i class="fas fa-mobile-alt"></i> Yangi telefon</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3 search-box">
+                    <label class="form-label fw-bold">IMEI qidirish</label>
+                    <input type="text" id="phoneSearch" class="form-control" placeholder="IMEI..." autocomplete="off"
+                        {% if phone_exchange and phone_exchange.new_phone %}
+                        value="{{ phone_exchange.new_phone.phone_model }} {{ phone_exchange.new_phone.memory_size }} - IMEI: {{ phone_exchange.new_phone.imei }}"
+                        {% endif %}>
+                    <div id="phoneResults" class="search-results"></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Yangi telefon narxi ($) <span class="text-danger">*</span></label>
+                        {{ form.new_phone_price }}
+                    </div>
+                </div>
+                {{ form.new_phone }}
+                {{ form.shop_paid_amount }}  <!-- ✅ HIDDEN FIELD -->
+
+                {# ✅ EDIT HOLATIDA TELEFON ID NI KO'RSATISH #}
                 {% if phone_exchange and phone_exchange.new_phone %}
-                value="{{ phone_exchange.new_phone.phone_model }} {{ phone_exchange.new_phone.memory_size }} - IMEI: {{ phone_exchange.new_phone.imei }}"
-                {% endif %}>
-            <div id="phoneResults" class="search-results"></div>
-        </div>
-        <div class="row">
-            <div class="col-md-6">
-                <label class="form-label fw-bold">Yangi telefon narxi ($) <span class="text-danger">*</span></label>
-                {{ form.new_phone_price }}
+                <input type="hidden" id="existing_phone_id" value="{{ phone_exchange.new_phone.id }}">
+                {% endif %}
             </div>
         </div>
-
-        {# ✅ TO'G'RI HIDDEN INPUT - Django form o'rniga manual #}
-        <input type="hidden" name="new_phone" id="id_new_phone"
-            {% if phone_exchange and phone_exchange.new_phone %}
-            value="{{ phone_exchange.new_phone.id }}"
-            {% endif %}>
-    </div>
-</div>
 
         <!-- Eski telefon -->
         <div class="card mb-3">
@@ -143,6 +144,9 @@
                     <div class="mb-2"><strong>Narx farqi:</strong></div>
                     <h3 id="priceDiff">$0.00</h3>
                     <span id="priceDiffInfo" class="badge bg-secondary">Ma'lumot yo'q</span>
+                    <div class="mt-2" id="shopPaidInfo" style="display: none;">
+                        <strong>Do'kon to'lovi:</strong> <span id="shopPaidAmount">$0.00</span>
+                    </div>
                 </div>
 
                 <div class="mb-3">
@@ -239,8 +243,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const priceDiff = $('priceDiff');
     const priceDiffInfo = $('priceDiffInfo');
     const priceDiffBox = $('priceDiffBox');
+    const shopPaidInfo = $('shopPaidInfo');
+    const shopPaidAmount = $('shopPaidAmount');
+    const shopPaidField = $('id_shop_paid_amount');
     const debtAmount = $('id_debt_amount');
-    const debtDueDate = $('id_debt_due_date');
+    const debtDueDate = $('id_exchange_debt_due_date');  // ✅ TO'G'RI ID
     const debtDueField = $('debtDueField');
 
     const payments = ['cash_amount', 'card_amount', 'credit_amount', 'debt_amount'].map(id => $('id_' + id));
@@ -253,19 +260,25 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Edit mode: Phone ID set to', existingPhoneId.value);
     }
 
-    // Qarz muddati ko'rsatish
+    // Qarz muddati ko'rsatish - XATOLIKNI TO'G'RILASH
     function checkDebtDueField() {
         const debt = parseFloat(debtAmount.value) || 0;
         if (debt > 0 && exchangeType.value === 'customer_pays') {
             debtDueField.classList.add('show');
-            debtDueDate.required = true;
+            if (debtDueDate) {
+                debtDueDate.required = true;
+            }
         } else {
             debtDueField.classList.remove('show');
-            debtDueDate.required = false;
+            if (debtDueDate) {
+                debtDueDate.required = false;
+            }
         }
     }
 
-    debtAmount.addEventListener('input', checkDebtDueField);
+    if (debtAmount) {
+        debtAmount.addEventListener('input', checkDebtDueField);
+    }
 
     // IMEI qidirish
     phoneSearch.addEventListener('input', function() {
@@ -314,6 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
         priceDiff.textContent = `$${Math.abs(diff).toFixed(2)}`;
 
         if (diff > 0.01) {
+            // Mijoz to'laydi
             priceDiff.style.color = '#dc3545';
             priceDiffInfo.textContent = 'Mijoz to\'laydi';
             priceDiffInfo.className = 'badge bg-danger';
@@ -321,7 +335,10 @@ document.addEventListener('DOMContentLoaded', function() {
             priceDiffBox.style.backgroundColor = '#f8d7da';
             exchangeType.value = 'customer_pays';
             paymentSection.style.display = 'block';
+            shopPaidInfo.style.display = 'none';
+            shopPaidField.value = '0';
         } else if (diff < -0.01) {
+            // Do'kon to'laydi
             priceDiff.style.color = '#28a745';
             priceDiffInfo.textContent = 'Do\'kon to\'laydi';
             priceDiffInfo.className = 'badge bg-success';
@@ -329,8 +346,12 @@ document.addEventListener('DOMContentLoaded', function() {
             priceDiffBox.style.backgroundColor = '#d4edda';
             exchangeType.value = 'shop_pays';
             paymentSection.style.display = 'none';
+            shopPaidInfo.style.display = 'block';
+            shopPaidAmount.textContent = `$${Math.abs(diff).toFixed(2)}`;
+            shopPaidField.value = Math.abs(diff).toFixed(2);
             clearPayments();
         } else {
+            // Teng
             priceDiff.style.color = '#0d6efd';
             priceDiffInfo.textContent = 'Teng';
             priceDiffInfo.className = 'badge bg-primary';
@@ -338,6 +359,8 @@ document.addEventListener('DOMContentLoaded', function() {
             priceDiffBox.style.backgroundColor = '#cfe2ff';
             exchangeType.value = 'equal';
             paymentSection.style.display = 'none';
+            shopPaidInfo.style.display = 'none';
+            shopPaidField.value = '0';
             clearPayments();
         }
         checkDebtDueField();
@@ -385,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Qarz muddati validatsiyasi
         const debt = parseFloat(debtAmount.value) || 0;
-        if (debt > 0 && exchangeType.value === 'customer_pays' && !debtDueDate.value) {
+        if (debt > 0 && exchangeType.value === 'customer_pays' && debtDueDate && !debtDueDate.value) {
             e.preventDefault();
             alert('Qarz uchun qaytarish muddati kiriting!');
             debtDueDate.focus();

@@ -133,7 +133,7 @@ class Debt(models.Model):
         errors = {}
 
         # Valyuta limiti
-        if self.currency == 'USD' and self.debt_amount > 500:
+        if self.currency == 'USD' and self.debt_amount > 1100:
             errors['debt_amount'] = "Dollar qarz maksimal 500$!"
         elif self.currency == 'UZS' and self.debt_amount > 10000000:
             errors['debt_amount'] = "So'm qarz maksimal 10,000,000!"
@@ -266,7 +266,7 @@ class PhoneSale(models.Model):
                                         verbose_name="Nasiya ($)")
     debt_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=0,
-        validators=[MinValueValidator(0), MaxValueValidator(500)],
+        validators=[MinValueValidator(0), MaxValueValidator(1100)],
         verbose_name="Qarz (max 500$)"
     )
 
@@ -479,7 +479,7 @@ class PhoneExchange(models.Model):
                                         verbose_name="Nasiya ($)")
     debt_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=0,
-        validators=[MinValueValidator(0), MaxValueValidator(500)],
+        validators=[MinValueValidator(0), MaxValueValidator(1100)],
         verbose_name="Qarz (max 500$)"
     )
 

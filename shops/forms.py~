@@ -58,18 +58,17 @@ class CustomerForm(forms.ModelForm):
     def clean_phone_number(self):
         phone = self.cleaned_data.get('phone_number')
         if phone:
-            # faqat raqamlarni ajratib olish
+            # Faqat raqamlarni olib tashlash
             cleaned_phone = ''.join(filter(str.isdigit, phone))
 
-            # agar foydalanuvchi +998 bilan kiritsa, cleaned_phone 998... bo'ladi
-            # Uzbekiston raqamlari: 998 + 9 ta raqam = 12 ta raqam
+            # Formatni tekshirish
             if not cleaned_phone.startswith('998') or len(cleaned_phone) != 12:
                 raise forms.ValidationError(
-                    "Telefon raqami 998 bilan boshlanishi va jami 12 raqamdan iborat bo'lishi kerak! "
+                    "Telefon raqami 998 bilan boshlanishi va 12 raqamdan iborat bo'lishi kerak! "
                     "Masalan: 998901234567"
                 )
 
-            # + qo'shib qaytarish
+            # Formatlash (bo'sh joysiz)
             return f"+{cleaned_phone}"
         return phone
 

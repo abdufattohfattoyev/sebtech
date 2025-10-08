@@ -604,12 +604,12 @@ class PhoneExchange(models.Model):
                 memory_size=self.old_phone_memory,
                 imei=self.old_phone_imei,
                 condition_percentage=self.old_phone_condition_percentage,
-                status='exchanged_in',
+                status='shop',  # ✅ exchanged_in o'rniga shop
                 purchase_price=self.old_phone_accepted_price,
                 imei_cost=self.old_phone_imei_cost or 0,
                 repair_cost=self.old_phone_repair_cost or 0,
                 image=self.old_phone_image,
-                created_at=timezone.now().date(),  # ✅ Shu satrni qo‘shing
+                created_at=timezone.now().date(),
                 created_by=self.salesman,
                 source_type='exchange',
                 original_owner_name=self.customer_name,

@@ -1,382 +1,214 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}
-{% if is_create %}{{ form_title|default:"Yangi Ma'lumot" }}{% elif is_delete %}O'chirish{% elif is_my_profile %}Mening Profilim{% else %}Tahrirlash{% endif %}
+    {% if is_create %}
+        {{ form_title|default:"Yangi Qo'shish" }}
+    {% elif is_delete %}
+        {{ form_title|default:"O'chirish" }}
+    {% elif is_my_profile %}
+        Mening Profilim
+    {% else %}
+        {{ form_title|default:"Tahrirlash" }}
+    {% endif %}
 {% endblock %}
 
 {% block page_title %}
-{% if is_create %}{{ form_title|default:"Yangi Ma'lumot Qo'shish" }}{% elif is_delete %}O'chirish{% elif is_my_profile %}Mening Profilim{% else %}Tahrirlash{% endif %}
-{% endblock %}
-
-{% block extra_css %}
-<style>
-.main-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 20px;
-    padding: 2rem;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-    border: none;
-}
-
-.form-card {
-    background: white;
-    border-radius: 15px;
-    padding: 2rem;
-    box-shadow: 0 5px 25px rgba(0,0,0,0.08);
-    border: none;
-}
-
-.section-title {
-    color: #2d3748;
-    font-weight: 600;
-    font-size: 1.1rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid #e2e8f0;
-}
-
-.form-label {
-    color: #4a5568;
-    font-weight: 500;
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-}
-
-.form-control, .form-select {
-    border: 2px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
-    background: #f8fafc;
-}
-
-.form-control:focus, .form-select:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    background: white;
-}
-
-.btn {
-    border-radius: 10px;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    border: none;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-}
-
-.btn-secondary {
-    background: #e2e8f0;
-    color: #4a5568;
-}
-
-.btn-secondary:hover {
-    background: #cbd5e0;
-    transform: translateY(-1px);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
-    color: white;
-    box-shadow: 0 4px 15px rgba(245, 101, 101, 0.3);
-}
-
-.btn-danger:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(245, 101, 101, 0.4);
-}
-
-.delete-info {
-    background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
-    border-radius: 15px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    border-left: 4px solid #f56565;
-}
-
-.password-toggle {
-    background: transparent;
-    border: 2px dashed #cbd5e0;
-    color: #667eea;
-    border-radius: 10px;
-    padding: 0.75rem 1rem;
-    transition: all 0.3s ease;
-}
-
-.password-toggle:hover {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
-}
-
-.invalid-feedback {
-    color: #e53e3e;
-    font-size: 0.8rem;
-    margin-top: 0.25rem;
-}
-
-.required {
-    color: #e53e3e;
-}
-
-.action-buttons {
-    gap: 1rem;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #e2e8f0;
-}
-
-@media (max-width: 768px) {
-    .main-card {
-        padding: 1rem;
-    }
-
-    .form-card {
-        padding: 1.5rem;
-    }
-
-    .action-buttons {
-        flex-direction: column;
-    }
-
-    .btn {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-}
-</style>
+    {% if is_create %}
+        {{ form_title|default:"Yangi Qo'shish" }}
+    {% elif is_delete %}
+        {{ form_title|default:"O'chirish" }}
+    {% elif is_my_profile %}
+        Mening Profilim
+    {% else %}
+        {{ form_title|default:"Tahrirlash" }}
+    {% endif %}
 {% endblock %}
 
 {% block content %}
 <div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10 col-12">
-            <div class="main-card">
-                <div class="form-card">
-                    {% if is_delete %}
-                    <!-- O'chirish shakli -->
-                    <div class="text-center mb-4">
-                        <i class="fas fa-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
-                        <h2 class="h4 mt-3 mb-0">{{ form_title }}</h2>
-                        <p class="text-muted mt-2">Bu amal qaytarib bo'lmaydi!</p>
-                    </div>
-
-                    <div class="delete-info">
-                        {% if object.user %}
-                            <h6 class="fw-bold mb-3">Foydalanuvchi ma'lumotlari:</h6>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <p><strong>Nomi:</strong> {{ object.user.username }}</p>
-                                    <p><strong>Email:</strong> {{ object.user.email|default:"Yo'q" }}</p>
-                                    <p><strong>Telefon:</strong> {{ object.phone_number|default:"Yo'q" }}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <p><strong>Rol:</strong> {{ object.get_role_display }}</p>
-                                    <p><strong>Holati:</strong> {{ object.user.is_active|yesno:"Faol,Nofaol" }}</p>
-                                    <p><strong>Ro'yxatdan o'tgan:</strong> {{ object.user.date_joined|date:"d.m.Y" }}</p>
-                                </div>
-                            </div>
-                        {% elif object.phone_number %}
-                            <h6 class="fw-bold mb-3">Mijoz ma'lumotlari:</h6>
-                            <p><strong>Ism:</strong> {{ object.name }}</p>
-                            <p><strong>Telefon:</strong> {{ object.phone_number }}</p>
-                            <p><strong>Qo'shilgan:</strong> {{ object.created_at|date:"d.m.Y" }}</p>
+        <div class="col-lg-8 col-md-10">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0">
+                        {% if is_create %}
+                            <i class="fas fa-plus-circle text-success me-2"></i>
+                        {% elif is_delete %}
+                            <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                        {% elif is_my_profile %}
+                            <i class="fas fa-user-circle text-primary me-2"></i>
                         {% else %}
-                            <h6 class="fw-bold mb-3">Do'kon ma'lumotlari:</h6>
-                            <p><strong>Nomi:</strong> {{ object.name }}</p>
-                            <p><strong>Egasi:</strong> {{ object.owner.get_full_name|default:object.owner.username }}</p>
-                            <p><strong>Yaratilgan:</strong> {{ object.created_at|date:"d.m.Y" }}</p>
+                            <i class="fas fa-edit text-warning me-2"></i>
                         {% endif %}
-                    </div>
+                        {{ form_title }}
+                    </h5>
+                </div>
 
-                    <form method="POST">
-                        {% csrf_token %}
-                        <div class="action-buttons d-flex justify-content-center">
-                            <a href="{% url 'shop:dashboard' %}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Bekor qilish
-                            </a>
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-trash me-2"></i>Ha, O'chirish
-                            </button>
-                        </div>
-                    </form>
+                <div class="card-body p-4">
+                    {% if is_delete %}
+                        <!-- O'chirish shakli -->
+                        <div class="text-center mb-4">
+                            <div class="alert alert-warning border-0">
+                                <i class="fas fa-exclamation-circle fa-2x mb-3"></i>
+                                <h6 class="alert-heading">Diqqat! Bu amalni qaytarib bo'lmaydi</h6>
+                            </div>
 
-                    {% else %}
-                    <!-- Yaratish yoki tahrirlash shakli -->
-                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
-                        {% csrf_token %}
-
-                        {% if user_form or profile_form %}
-                        <!-- Foydalanuvchi formasi -->
-                        <div class="mb-4">
-                            <h5 class="section-title">
-                                <i class="fas fa-user text-primary me-2"></i>Foydalanuvchi Ma'lumotlari
-                            </h5>
-                            {% for field in user_form %}
-                                {% if field.name != 'password' and field.name != 'password_confirm' %}
-                                    <div class="mb-3">
-                                        <label for="{{ field.id_for_label }}" class="form-label">
-                                            {{ field.label }}
-                                            {% if field.field.required %}<span class="required">*</span>{% endif %}
-                                        </label>
-                                        {{ field }}
-                                        {% if field.errors %}
-                                            <div class="invalid-feedback d-block">{{ field.errors.0 }}</div>
-                                        {% endif %}
+                            <div class="bg-light rounded p-3 mb-4">
+                                {% if object.user %}
+                                    <!-- Foydalanuvchi o'chirish -->
+                                    <div class="row text-start">
+                                        <div class="col-md-6">
+                                            <p><strong>Foydalanuvchi nomi:</strong> {{ object.user.username }}</p>
+                                            <p><strong>Email:</strong> {{ object.user.email|default:"Yo'q" }}</p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p><strong>Rol:</strong> {{ object.get_role_display }}</p>
+                                            <p><strong>Holati:</strong>
+                                                <span class="badge {% if object.user.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                                    {{ object.user.is_active|yesno:"Faol,Nofaol" }}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                {% elif object.phone_number %}
+                                    <!-- Mijoz o'chirish -->
+                                    <div class="text-center">
+                                        <p><strong>Mijoz:</strong> {{ object.name }}</p>
+                                        <p><strong>Telefon:</strong> {{ object.phone_number }}</p>
+                                        <p><strong>Qo'shilgan sana:</strong> {{ object.created_at|date:"d.m.Y" }}</p>
+                                    </div>
+                                {% else %}
+                                    <!-- Do'kon o'chirish -->
+                                    <div class="text-center">
+                                        <p><strong>Do'kon nomi:</strong> {{ object.name }}</p>
+                                        <p><strong>Egasi:</strong> {{ object.owner.get_full_name|default:object.owner.username }}</p>
                                     </div>
                                 {% endif %}
-                            {% endfor %}
+                            </div>
+
+                            <form method="POST">
+                                {% csrf_token %}
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <a href="{% if object.user %}{% url 'shop:dashboard' %}{% elif object.phone_number %}{% url 'shop:customer_list' %}{% else %}{% url 'shop:dashboard' %}{% endif %}"
+                                       class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left me-1"></i> Bekor qilish
+                                    </a>
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="fas fa-trash me-1"></i> O'chirish
+                                    </button>
+                                </div>
+                            </form>
                         </div>
 
-                        <div class="mb-4">
-                            <h5 class="section-title">
-                                <i class="fas fa-id-card text-info me-2"></i>Profil Ma'lumotlari
-                            </h5>
-                            {% for field in profile_form %}
-                                <div class="mb-3">
-                                    <label for="{{ field.id_for_label }}" class="form-label">
-                                        {{ field.label }}
-                                        {% if field.field.required %}<span class="required">*</span>{% endif %}
-                                    </label>
-                                    {{ field }}
-                                    {% if field.errors %}
-                                        <div class="invalid-feedback d-block">{{ field.errors.0 }}</div>
-                                    {% endif %}
-                                </div>
-                            {% endfor %}
-                        </div>
+                    {% else %}
+                        <!-- Yaratish/Tahrirlash shakli -->
+                        <form method="POST" enctype="multipart/form-data" novalidate>
+                            {% csrf_token %}
 
-                        <div class="mb-4">
-                            <h5 class="section-title">
-                                <i class="fas fa-lock text-warning me-2"></i>Xavfsizlik
-                            </h5>
-                            {% if is_edit or is_my_profile %}
-                                <button type="button" class="btn password-toggle mb-3" id="togglePassword">
-                                    <i class="fas fa-key me-2"></i>Parolni o'zgartirmoqchimisiz?
-                                </button>
-                                <div class="password-section" id="passwordSection" style="display: none;">
-                                    <div class="mb-3">
-                                        <label for="id_new_password" class="form-label">Yangi Parol</label>
-                                        <input type="password" name="new_password" id="id_new_password" class="form-control">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="id_confirm_password" class="form-label">Parolni Tasdiqlash</label>
-                                        <input type="password" name="confirm_password" id="id_confirm_password" class="form-control">
-                                    </div>
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.non_field_errors %}
+                                        {{ error }}
+                                    {% endfor %}
                                 </div>
-                            {% else %}
-                                {% for field in user_form %}
-                                    {% if field.name == 'password' or field.name == 'password_confirm' %}
-                                        <div class="mb-3">
-                                            <label for="{{ field.id_for_label }}" class="form-label">
-                                                {{ field.label }}
-                                                {% if field.field.required %}<span class="required">*</span>{% endif %}
-                                            </label>
-                                            {{ field }}
-                                            {% if field.errors %}
-                                                <div class="invalid-feedback d-block">{{ field.errors.0 }}</div>
-                                            {% endif %}
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
                             {% endif %}
-                        </div>
 
-                        {% else %}
-                        <!-- Do'kon yoki Mijoz formasi -->
-                        <div class="mb-4">
-                            <h5 class="section-title">
-                                <i class="fas fa-info-circle text-primary me-2"></i>{{ form_title|default:"Ma'lumotlar" }}
-                            </h5>
+                            <!-- Asosiy form maydonlari -->
                             {% for field in form %}
                                 <div class="mb-3">
                                     <label for="{{ field.id_for_label }}" class="form-label">
                                         {{ field.label }}
-                                        {% if field.field.required %}<span class="required">*</span>{% endif %}
+                                        {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
                                     </label>
-                                    {{ field }}
+
+                                    {% if field.field.widget.input_type == 'select' %}
+                                        <select name="{{ field.name }}" id="{{ field.id_for_label }}"
+                                                class="form-select {% if field.errors %}is-invalid{% endif %}">
+                                            {% for choice in field.field.choices %}
+                                                <option value="{{ choice.0 }}"
+                                                    {% if field.value|stringformat:"s" == choice.0|stringformat:"s" %}selected{% endif %}>
+                                                    {{ choice.1 }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    {% else %}
+                                        <input type="{{ field.field.widget.input_type }}"
+                                               name="{{ field.name }}"
+                                               id="{{ field.id_for_label }}"
+                                               value="{{ field.value|default:'' }}"
+                                               class="form-control {% if field.errors %}is-invalid{% endif %}"
+                                               {% if field.field.required %}required{% endif %}>
+                                    {% endif %}
+
+                                    {% if field.help_text %}
+                                        <div class="form-text">{{ field.help_text }}</div>
+                                    {% endif %}
+
                                     {% if field.errors %}
-                                        <div class="invalid-feedback d-block">{{ field.errors.0 }}</div>
+                                        <div class="invalid-feedback">
+                                            {% for error in field.errors %}
+                                                {{ error }}
+                                            {% endfor %}
+                                        </div>
                                     {% endif %}
                                 </div>
                             {% endfor %}
-                        </div>
-                        {% endif %}
 
-                        <div class="action-buttons d-flex justify-content-center">
-                            <a href="{% url 'shop:dashboard' %}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Orqaga
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>
-                                {% if is_edit or is_my_profile %}Yangilash{% else %}Saqlash{% endif %}
-                            </button>
-                        </div>
-                    </form>
+                            <!-- Parol maydoni (faqat yangi foydalanuvchi yaratishda) -->
+                            {% if is_create and 'User' in form_title %}
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Parol</label>
+                                    <input type="password" name="password" id="password" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="password_confirm" class="form-label">Parolni tasdiqlash</label>
+                                    <input type="password" name="password_confirm" id="password_confirm" class="form-control" required>
+                                </div>
+                            {% endif %}
+
+                            <!-- Harakat tugmalari -->
+                            <div class="d-flex gap-2 justify-content-end pt-3 border-top">
+                                <a href="{% if is_create %}{% url 'shop:dashboard' %}{% else %}{% if object.phone_number %}{% url 'shop:customer_list' %}{% else %}{% url 'shop:dashboard' %}{% endif %}{% endif %}"
+                                   class="btn btn-secondary">
+                                    <i class="fas fa-times me-1"></i> Bekor qilish
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>
+                                    {% if is_create %}Saqlash{% else %}Yangilash{% endif %}
+                                </button>
+                            </div>
+                        </form>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Form validation
-    const forms = document.querySelectorAll('.needs-validation');
-    forms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            if (!form.checkValidity()) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-            form.classList.add('was-validated');
-        });
-    });
-
-    // Password toggle
-    const togglePassword = document.getElementById('togglePassword');
-    const passwordSection = document.getElementById('passwordSection');
-
-    if (togglePassword && passwordSection) {
-        togglePassword.addEventListener('click', function() {
-            if (passwordSection.style.display === 'none') {
-                passwordSection.style.display = 'block';
-                this.innerHTML = '<i class="fas fa-times me-2"></i>Parol o\'zgartirishni bekor qilish';
-                this.classList.remove('password-toggle');
-                this.classList.add('btn-outline-danger');
-            } else {
-                passwordSection.style.display = 'none';
-                this.innerHTML = '<i class="fas fa-key me-2"></i>Parolni o\'zgartirmoqchimisiz?';
-                this.classList.remove('btn-outline-danger');
-                this.classList.add('password-toggle');
-            }
-        });
-    }
-
-    // Input animations
-    const inputs = document.querySelectorAll('.form-control, .form-select');
-    inputs.forEach(input => {
-        input.addEventListener('focus', function() {
-            this.style.transform = 'scale(1.02)';
-        });
-
-        input.addEventListener('blur', function() {
-            this.style.transform = 'scale(1)';
-        });
-    });
-});
-</script>
+<style>
+.card {
+    border-radius: 10px;
+}
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+}
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    padding: 0.75rem;
+}
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+.btn {
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+}
+.alert {
+    border-radius: 8px;
+}
+</style>
 {% endblock %}

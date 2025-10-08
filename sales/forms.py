@@ -317,7 +317,7 @@ class PhoneSaleForm(forms.ModelForm):
                 'class': 'form-control',
                 'step': '0.01',
                 'min': '0',
-                'max': '500',
+                'max': '1100',
                 'value': 0,
                 'id': 'id_debt_amount'
             }),
@@ -799,7 +799,7 @@ class PhoneExchangeForm(forms.ModelForm):
                 'class': 'form-control',
                 'step': '0.01',
                 'min': '0',
-                'max': '500',
+                'max': '1100',
                 'value': 0,
                 'placeholder': 'Qarz (max 500$)'
             }),
@@ -1223,7 +1223,7 @@ class DebtForm(forms.ModelForm):
                     raise ValidationError({'creditor': "Boshliqni tanlang!"})
 
         if debt_amount:
-            if currency == 'USD' and debt_amount > 500:
+            if currency == 'USD' and debt_amount > 1100:
                 raise ValidationError({'debt_amount': "Dollar qarz maksimal 500$!"})
             elif currency == 'UZS' and debt_amount > 10000000:
                 raise ValidationError({'debt_amount': "So'm qarz maksimal 10,000,000!"})

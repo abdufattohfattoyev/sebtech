@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}{{ supplier.name }} - Taminotchi{% endblock %}
 
@@ -17,6 +18,9 @@
                             </h4>
                             <small class="opacity-75">
                                 <i class="fas fa-phone me-1"></i>{{ supplier.phone_number }}
+                                {% if supplier.notes %}
+                                • <i class="fas fa-sticky-note me-1"></i>{{ supplier.notes }}
+                                {% endif %}
                             </small>
                         </div>
                         <div class="d-flex gap-2">
@@ -40,16 +44,16 @@
     <!-- Qarz Statistikasi -->
     <div class="row mb-4">
         <!-- Boshlang'ich Qarz -->
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-1">Boshlang'ich Qarz</h6>
                             <h3 class="mb-0 text-secondary">
-                                ${{ supplier.initial_debt|floatformat:2 }}
+                                ${{ supplier.initial_debt|floatformat:2|intcomma }}
                             </h3>
-                            <small class="text-muted">Oldingi qarz</small>
+                            <small class="text-muted">Tizimga kiritishdan oldingi qarz</small>
                         </div>
                         <div class="bg-secondary bg-opacity-10 rounded-circle p-3">
                             <i class="fas fa-history fa-2x text-secondary"></i>
@@ -60,16 +64,16 @@
         </div>
 
         <!-- Telefonlar Qarzi -->
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-1">Telefonlar Qarzi</h6>
                             <h3 class="mb-0 text-warning">
-                                ${{ supplier.total_debt|floatformat:2 }}
+                                ${{ supplier.total_debt|floatformat:2|intcomma }}
                             </h3>
-                            <small class="text-muted">Telefon olishlar</small>
+                            <small class="text-muted">Telefon olishlardan kelib chiqqan qarz</small>
                         </div>
                         <div class="bg-warning bg-opacity-10 rounded-circle p-3">
                             <i class="fas fa-mobile-alt fa-2x text-warning"></i>
@@ -79,18 +83,38 @@
             </div>
         </div>
 
+        <!-- To'langan -->
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">To'langan</h6>
+                            <h3 class="mb-0 text-success">
+                                ${{ supplier.total_paid|floatformat:2|intcomma }}
+                            </h3>
+                            <small class="text-muted">Umumiy to'langan summa</small>
+                        </div>
+                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-money-bill-wave fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Jami Qarz -->
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm border-danger">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm border-danger h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-1">JAMI QARZ</h6>
                             <h3 class="mb-0 text-danger">
-                                ${{ balance|floatformat:2 }}
+                                ${{ balance|floatformat:2|intcomma }}
                             </h3>
                             <small class="text-muted">
-                                ${{ supplier.initial_debt|floatformat:2 }} + ${{ supplier.total_debt|floatformat:2 }}
+                                Boshlang'ich + Telefonlar - To'langan
                             </small>
                         </div>
                         <div class="bg-danger bg-opacity-10 rounded-circle p-3">
@@ -100,21 +124,23 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Jami Telefonlar -->
-        <div class="col-md-3">
+    <!-- Jami Telefonlar -->
+    <div class="row mb-4">
+        <div class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
                             <h6 class="text-muted mb-1">Jami Telefonlar</h6>
-                            <h3 class="mb-0 text-info">
-                                {{ total_phones }}
-                            </h3>
-                            <small class="text-muted">Barcha telefonlar</small>
+                            <h2 class="mb-0 text-info">{{ total_phones }}</h2>
+                            <small class="text-muted">Taminotchidan olingan barcha telefonlar</small>
                         </div>
-                        <div class="bg-info bg-opacity-10 rounded-circle p-3">
-                            <i class="fas fa-mobile-alt fa-2x text-info"></i>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex p-3">
+                                <i class="fas fa-mobile-alt fa-3x text-info"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -129,18 +155,32 @@
             <div class="alert alert-warning border-0 shadow-sm d-flex justify-content-between align-items-center">
                 <div>
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Qarz mavjud:</strong> Bu taminotchida ${{ balance|floatformat:2 }} qarz bor
-                    {% if supplier.initial_debt > 0 %}
+                    <strong>Qarz mavjud:</strong> Bu taminotchida ${{ balance|floatformat:2|intcomma }} qarz bor
                     <br>
                     <small class="text-muted ms-4">
-                        (Boshlang'ich: ${{ supplier.initial_debt|floatformat:2 }}, Telefonlar: ${{ supplier.total_debt|floatformat:2 }})
+                        Boshlang'ich: ${{ supplier.initial_debt|floatformat:2|intcomma }} +
+                        Telefonlar: ${{ supplier.total_debt|floatformat:2|intcomma }} -
+                        To'langan: ${{ supplier.total_paid|floatformat:2|intcomma }}
                     </small>
-                    {% endif %}
                 </div>
                 <a href="{% url 'inventory:supplier_payment_create' supplier.id %}"
-                   class="btn btn-success">
+                   class="btn btn-success btn-lg">
                     <i class="fas fa-money-bill-wave me-1"></i>To'lov Qilish
                 </a>
+            </div>
+        </div>
+    </div>
+    {% elif balance <= 0 and can_edit %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-success border-0 shadow-sm d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Qarz yo'q:</strong> Bu taminotchida barcha qarzlar to'langan
+                </div>
+                <span class="badge bg-success fs-6">
+                    <i class="fas fa-smile me-1"></i>To'landi
+                </span>
             </div>
         </div>
     </div>
@@ -148,14 +188,14 @@
 
     <div class="row">
         <!-- Qarzda turgan telefonlar -->
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold">
-                        <i class="fas fa-mobile-alt me-2"></i>
+                        <i class="fas fa-clock me-2"></i>
                         Qarzda Turgan Telefonlar
-                        <span class="badge bg-dark ms-2">{{ debt_phones.count }}</span>
                     </h5>
+                    <span class="badge bg-dark fs-6">{{ debt_phones.count }} ta</span>
                 </div>
                 <div class="card-body p-0">
                     {% if debt_phones %}
@@ -163,44 +203,51 @@
                         <table class="table table-hover table-sm mb-0">
                             <thead class="sticky-top bg-light">
                                 <tr>
-                                    <th width="50">#</th>
+                                    <th width="40">#</th>
                                     <th>Model</th>
                                     <th>IMEI</th>
-                                    <th>Tan Narx</th>
-                                    <th>To'langan</th>
-                                    <th>Qarz</th>
-                                    <th>Sana</th>
+                                    <th class="text-end">Narx</th>
+                                    <th class="text-end">To'langan</th>
+                                    <th class="text-end">Qarz</th>
+                                    <th width="80">Sana</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for phone in debt_phones %}
-                                <tr>
-                                    <td>{{ forloop.counter }}</td>
+                                <tr class="{% if forloop.counter|divisibleby:2 %}table-light{% endif %}">
+                                    <td class="text-muted">{{ forloop.counter }}</td>
                                     <td>
-                                        <strong>{{ phone.phone_model }}</strong><br>
-                                        <small class="text-muted">{{ phone.memory_size }}</small>
-                                    </td>
-                                    <td>
-                                        <small class="font-monospace">{{ phone.imei }}</small>
-                                    </td>
-                                    <td>${{ phone.cost_price|floatformat:2 }}</td>
-                                    <td class="text-success">
-                                        ${{ phone.paid_amount|floatformat:2 }}
-                                    </td>
-                                    <td class="text-danger">
-                                        <strong>${{ phone.debt_balance|floatformat:2 }}</strong>
+                                        <div>
+                                            <strong class="text-dark">{{ phone.phone_model }}</strong>
+                                            {% if phone.memory_size %}
+                                            <br>
+                                            <small class="text-muted">{{ phone.memory_size }} GB</small>
+                                            {% endif %}
+                                        </div>
                                     </td>
                                     <td>
-                                        <small>{{ phone.created_at|date:"d.m.Y" }}</small>
+                                        <small class="font-monospace text-muted">{{ phone.imei }}</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="fw-bold">${{ phone.cost_price|floatformat:2|intcomma }}</span>
+                                    </td>
+                                    <td class="text-end text-success">
+                                        ${{ phone.paid_amount|floatformat:2|intcomma }}
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="text-danger">${{ phone.debt_balance|floatformat:2|intcomma }}</strong>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ phone.created_at|date:"d.m.Y" }}</small>
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
-                            <tfoot class="table-light">
+                            <tfoot class="table-warning">
                                 <tr>
-                                    <th colspan="5" class="text-end">Telefonlar Qarzi:</th>
-                                    <th class="text-warning">
-                                        ${{ supplier.total_debt|floatformat:2 }}
+                                    <th colspan="5" class="text-end">Jami Telefonlar Qarzi:</th>
+                                    <th class="text-end text-warning fw-bold">
+                                        ${{ supplier.total_debt|floatformat:2|intcomma }}
                                     </th>
                                     <th></th>
                                 </tr>
@@ -219,14 +266,14 @@
         </div>
 
         <!-- To'langan telefonlar -->
-        <div class="col-md-6 mb-4" id="paid-phones">
-            <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">
+        <div class="col-lg-6 mb-4" id="paid-phones">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold">
                         <i class="fas fa-check-circle me-2"></i>
                         To'langan Telefonlar
-                        <span class="badge bg-light text-dark ms-2">{{ paid_phones_total }}</span>
                     </h5>
+                    <span class="badge bg-light text-dark fs-6">{{ paid_phones_total }} ta</span>
                 </div>
                 <div class="card-body p-0">
                     {% if paid_phones %}
@@ -234,33 +281,97 @@
                         <table class="table table-hover table-sm mb-0">
                             <thead class="sticky-top bg-light">
                                 <tr>
-                                    <th width="50">#</th>
+                                    <th width="40">#</th>
                                     <th>Model</th>
                                     <th>IMEI</th>
-                                    <th>Tan Narx</th>
-                                    <th>Sana</th>
+                                    <th class="text-end">Narx</th>
+                                    <th width="80">Sana</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for phone in paid_phones %}
-                                <tr>
-                                    <td>{{ forloop.counter|add:paid_phones.start_index|add:"-1" }}</td>
-                                    <td>
-                                        <strong>{{ phone.phone_model }}</strong><br>
-                                        <small class="text-muted">{{ phone.memory_size }}</small>
+                                <tr class="{% if forloop.counter|divisibleby:2 %}table-light{% endif %}">
+                                    <td class="text-muted">
+                                        {{ forloop.counter0|add:paid_phones.start_index }}
                                     </td>
                                     <td>
-                                        <small class="font-monospace">{{ phone.imei }}</small>
+                                        <div>
+                                            <strong class="text-dark">{{ phone.phone_model }}</strong>
+                                            {% if phone.memory_size %}
+                                            <br>
+                                            <small class="text-muted">{{ phone.memory_size }} GB</small>
+                                            {% endif %}
+                                        </div>
                                     </td>
-                                    <td>${{ phone.cost_price|floatformat:2 }}</td>
                                     <td>
-                                        <small>{{ phone.created_at|date:"d.m.Y" }}</small>
+                                        <small class="font-monospace text-muted">{{ phone.imei }}</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="fw-bold text-success">${{ phone.cost_price|floatformat:2|intcomma }}</span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ phone.created_at|date:"d.m.Y" }}</small>
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Pagination Footer -->
+                    {% if paid_phones.has_other_pages %}
+                    <div class="card-footer bg-white border-top">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-muted">
+                                    {{ paid_phones.start_index }}-{{ paid_phones.end_index }} / {{ paid_phones_total }} ta
+                                </small>
+                            </div>
+                            <nav aria-label="To'langan telefonlar sahifalari">
+                                <ul class="pagination pagination-sm mb-0">
+                                    {% if paid_phones.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1#paid-phones" title="Birinchi sahifa">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ paid_phones.previous_page_number }}#paid-phones" title="Oldingi sahifa">
+                                            <i class="fas fa-angle-left"></i>
+                                        </a>
+                                    </li>
+                                    {% endif %}
+
+                                    {% for num in paid_phones.paginator.page_range %}
+                                        {% if paid_phones.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                        {% elif num > paid_phones.number|add:'-3' and num < paid_phones.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}#paid-phones">{{ num }}</a>
+                                        </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if paid_phones.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ paid_phones.next_page_number }}#paid-phones" title="Keyingi sahifa">
+                                            <i class="fas fa-angle-right"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ paid_phones.paginator.num_pages }}#paid-phones" title="Oxirgi sahifa">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     {% else %}
                     <div class="text-center py-5">
                         <i class="fas fa-mobile-alt fa-4x text-muted mb-3 opacity-50"></i>
@@ -269,73 +380,20 @@
                     </div>
                     {% endif %}
                 </div>
-
-                <!-- Pagination Footer -->
-                {% if paid_phones.has_other_pages %}
-                <div class="card-footer bg-white border-top">
-                    <nav aria-label="To'langan telefonlar sahifalari">
-                        <ul class="pagination pagination-sm justify-content-center mb-2">
-                            {% if paid_phones.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page=1#paid-phones">
-                                    <i class="fas fa-angle-double-left"></i>
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ paid_phones.previous_page_number }}#paid-phones">
-                                    <i class="fas fa-angle-left"></i>
-                                </a>
-                            </li>
-                            {% endif %}
-
-                            {% for num in paid_phones.paginator.page_range %}
-                                {% if paid_phones.number == num %}
-                                <li class="page-item active">
-                                    <span class="page-link">{{ num }}</span>
-                                </li>
-                                {% elif num > paid_phones.number|add:'-3' and num < paid_phones.number|add:'3' %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ num }}#paid-phones">{{ num }}</a>
-                                </li>
-                                {% endif %}
-                            {% endfor %}
-
-                            {% if paid_phones.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ paid_phones.next_page_number }}#paid-phones">
-                                    <i class="fas fa-angle-right"></i>
-                                </a>
-                            </li>
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ paid_phones.paginator.num_pages }}#paid-phones">
-                                    <i class="fas fa-angle-double-right"></i>
-                                </a>
-                            </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
-                    <div class="text-center">
-                        <small class="text-muted">
-                            Sahifa {{ paid_phones.number }} / {{ paid_phones.paginator.num_pages }}
-                            (Jami: {{ paid_phones_total }} ta)
-                        </small>
-                    </div>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
 
     <!-- To'lovlar Tarixi -->
-    <div class="row">
+    <div class="row mt-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header bg-white border-bottom">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold">
                         <i class="fas fa-history me-2 text-primary"></i>
                         To'lovlar Tarixi
-                        <span class="badge bg-primary rounded-pill ms-2">{{ payments.count }}</span>
                     </h5>
+                    <span class="badge bg-primary rounded-pill fs-6">{{ payments.count }} ta</span>
                 </div>
                 <div class="card-body p-0">
                     {% if payments %}
@@ -350,20 +408,20 @@
                                     <th>Telefonlar</th>
                                     <th>Amalga Oshirgan</th>
                                     <th>Izoh</th>
-                                    <th width="80" class="text-center">Harakat</th>
+                                    <th width="100" class="text-center">Harakat</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for payment in payments %}
                                 <tr>
-                                    <td>{{ forloop.counter }}</td>
+                                    <td class="text-muted">{{ forloop.counter }}</td>
                                     <td>
                                         <strong>{{ payment.payment_date|date:"d.m.Y" }}</strong><br>
                                         <small class="text-muted">{{ payment.created_at|date:"H:i" }}</small>
                                     </td>
                                     <td>
                                         <span class="badge bg-success fs-6">
-                                            ${{ payment.amount|floatformat:2 }}
+                                            ${{ payment.amount|floatformat:2|intcomma }}
                                         </span>
                                     </td>
                                     <td>
@@ -379,23 +437,41 @@
                                     <td>
                                         <small>
                                             <i class="fas fa-user me-1 text-muted"></i>
-                                            {{ payment.created_by.username }}
+                                            {{ payment.created_by.get_full_name|default:payment.created_by.username }}
                                         </small>
                                     </td>
                                     <td>
                                         {% if payment.notes %}
-                                            <small class="text-muted">{{ payment.notes|truncatewords:5 }}</small>
+                                            <small class="text-muted" title="{{ payment.notes }}">
+                                                {{ payment.notes|truncatewords:3 }}
+                                            </small>
                                         {% else %}
                                             <small class="text-muted">-</small>
                                         {% endif %}
                                     </td>
                                     <td class="text-center">
-                                        <a href="{% url 'inventory:supplier_payment_detail' payment.id %}"
-                                           class="btn btn-sm btn-outline-primary"
-                                           data-bs-toggle="tooltip"
-                                           title="Tafsilotlarni ko'rish">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'inventory:supplier_payment_detail' payment.id %}"
+                                               class="btn btn-outline-primary"
+                                               data-bs-toggle="tooltip"
+                                               title="Tafsilotlarni ko'rish">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if can_edit %}
+                                            <a href="{% url 'inventory:supplier_payment_update' payment.id %}"
+                                               class="btn btn-outline-warning"
+                                               data-bs-toggle="tooltip"
+                                               title="Tahrirlash">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'inventory:supplier_payment_delete' payment.id %}"
+                                               class="btn btn-outline-danger"
+                                               data-bs-toggle="tooltip"
+                                               title="O'chirish">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -439,6 +515,7 @@
     font-weight: 600;
     font-size: 0.875rem;
     border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
 }
 
 .table tbody tr {
@@ -447,6 +524,7 @@
 
 .table tbody tr:hover {
     background-color: rgba(0, 123, 255, 0.05);
+    transform: translateY(-1px);
 }
 
 /* Font Monospace */
@@ -459,6 +537,7 @@
 .pagination .page-link {
     border-radius: 0.25rem;
     margin: 0 2px;
+    border: 1px solid #dee2e6;
 }
 
 .pagination .page-item.active .page-link {
@@ -469,6 +548,7 @@
 /* Badge Improvements */
 .badge {
     font-weight: 500;
+    letter-spacing: 0.5px;
 }
 
 /* Card Border Danger */
@@ -485,6 +565,29 @@
     .table tbody td {
         font-size: 0.875rem;
     }
+
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+    }
+
+    .card-header h5 {
+        font-size: 1rem;
+    }
+}
+
+/* Hover effects */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Text alignment */
+.text-end {
+    text-align: right !important;
 }
 </style>
 
@@ -495,6 +598,15 @@ document.addEventListener('DOMContentLoaded', function() {
     tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+
+    // Auto-hide alerts after 5 seconds
+    setTimeout(function() {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
 });
 </script>
 {% endblock %}

@@ -1,3 +1,4 @@
+from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -22,15 +23,15 @@ class Shop(models.Model):
     def __str__(self):
         return self.name
 
-
 class Customer(models.Model):
     name = models.CharField(max_length=100, verbose_name="Mijoz ismi")
     phone_number = models.CharField(
         max_length=15,
         unique=True,
-        verbose_name="Telefon raqami"
+        verbose_name="Telefon raqami",
     )
     image = models.ImageField(upload_to='customers/', blank=True, null=True, verbose_name="Mijoz rasmi")
+    birth_date = models.DateField(null=True, blank=True, verbose_name="Tug'ilgan kuni")
     notes = models.TextField(null=True, blank=True, verbose_name="Izohlar")
     created_at = models.DateField(default=timezone.now, verbose_name="Qo'shilgan sana")
     created_by = models.ForeignKey(
@@ -44,9 +45,20 @@ class Customer(models.Model):
     class Meta:
         verbose_name = "Mijoz"
         verbose_name_plural = "Mijozlar"
+        ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.name} - {self.phone_number}"
+
+    @property
+    def age(self):
+        """Mijozning yoshini hisoblash"""
+        if self.birth_date:
+            today = timezone.now().date()
+            return today.year - self.birth_date.year - (
+                    (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
+            )
+        return None
 
     @property
     def total_debt_usd(self):
@@ -115,6 +127,94 @@ class Customer(models.Model):
         return Debt.objects.filter(customer=self, currency='UZS').aggregate(total=Sum('paid_amount'))[
             'total'] or Decimal('0')
 
+    def get_detailed_phone_sales(self):
+        """Mijozning barcha telefon sotib olishlari va to'liq ma'lumotlari"""
+        from sales.models import PhoneSale
+        detailed_sales = []
+
+        for sale in self.phone_sales.select_related(
+                'phone__phone_model',
+                'phone__memory_size',
+                'phone__supplier',
+                'phone__external_seller',
+                'phone__daily_seller',
+                'phone__created_by',
+                'salesman'
+        ).order_by('-sale_date'):
+            phone = sale.phone
+            detailed_sales.append({
+                'sale': sale,
+                'phone_model': phone.phone_model,
+                'memory_size': phone.memory_size,
+                'imei': phone.imei,
+                'condition': phone.condition_percentage,
+                'purchase_price': phone.purchase_price,
+                'cost_price': phone.cost_price,
+                'sale_price': sale.sale_price,
+                'profit': sale.sale_price - phone.cost_price,
+                'sale_date': sale.sale_date,
+                'salesman': sale.salesman.get_full_name() or sale.salesman.username,
+                'supplier': phone.supplier.name if phone.supplier else "Noma'lum",
+                'external_seller': phone.external_seller.name if phone.external_seller else None,
+                'daily_seller': phone.daily_seller.name if phone.daily_seller else None,
+                'source_type': phone.get_source_type_display(),
+                'created_by': phone.created_by.get_full_name() if phone.created_by else "Noma'lum",
+                'phone_created_at': phone.created_at,
+                'payment_methods': {
+                    'cash': sale.cash_amount,
+                    'card': sale.card_amount,
+                    'credit': sale.credit_amount,
+                    'debt': sale.debt_amount
+                },
+                'notes': sale.notes
+            })
+
+        return detailed_sales
+
+    def get_detailed_phone_exchanges(self):
+        """Mijozning barcha telefon almashtirishlari va to'liq ma'lumotlari"""
+        from sales.models import PhoneExchange
+        detailed_exchanges = []
+
+        for exchange in self.phone_exchanges.select_related(
+                'new_phone__phone_model',
+                'new_phone__memory_size',
+                'new_phone__supplier',
+                'new_phone__external_seller',
+                'new_phone__daily_seller',
+                'new_phone__created_by',
+                'old_phone_model',
+                'old_phone_memory',
+                'salesman',
+                'created_old_phone'
+        ).order_by('-exchange_date'):
+            detailed_exchanges.append({
+                'exchange': exchange,
+                'new_phone': exchange.new_phone,
+                'new_phone_model': exchange.new_phone.phone_model,
+                'new_phone_memory': exchange.new_phone.memory_size,
+                'new_phone_imei': exchange.new_phone.imei,
+                'new_phone_price': exchange.new_phone_price,
+                'old_phone_model': exchange.old_phone_model,
+                'old_phone_memory': exchange.old_phone_memory,
+                'old_phone_imei': exchange.old_phone_imei,
+                'old_phone_accepted_price': exchange.old_phone_accepted_price,
+                'exchange_type': exchange.get_exchange_type_display(),
+                'price_difference': exchange.price_difference,
+                'exchange_date': exchange.exchange_date,
+                'salesman': exchange.salesman.get_full_name() or exchange.salesman.username,
+                'created_old_phone': exchange.created_old_phone,
+                'payment_methods': {
+                    'cash': exchange.cash_amount,
+                    'card': exchange.card_amount,
+                    'credit': exchange.credit_amount,
+                    'debt': exchange.debt_amount
+                },
+                'notes': exchange.notes
+            })
+
+        return detailed_exchanges
+
     def get_purchase_history(self):
         """Xarid tarixi - valyuta bilan"""
         from sales.models import PhoneSale, AccessorySale, PhoneExchange
@@ -164,3 +264,4 @@ class Customer(models.Model):
         """Qarz tarixi - valyuta bilan"""
         from sales.models import Debt
         return self.debts.select_related('creditor').order_by('-created_at')
+

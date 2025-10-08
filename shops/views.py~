@@ -176,9 +176,6 @@ def customer_list(request):
     return render(request, 'shop/customer_list.html', context)
 
 
-from django.utils import timezone
-
-
 @login_required
 def customer_detail(request, pk):
     """Mijoz tafsilotlari - to'liq ma'lumotlar bilan"""
@@ -265,9 +262,6 @@ def customer_detail(request, pk):
         'total_spent_uzs': total_spent_uzs,
         'total_debt_usd': total_debt_usd,
         'total_debt_uzs': total_debt_uzs,
-
-        # Qo'shimcha
-        'today': timezone.now().date(),
     }
     return render(request, 'shop/customer_detail.html', context)
 
