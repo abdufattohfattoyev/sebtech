@@ -913,7 +913,12 @@ class ReportCalculator:
                 'cash': phone_with_exchange['cash_usd'] + totals['accessory']['cash'],
                 'card': phone_with_exchange['card_usd'] + totals['accessory']['card'],
                 'debt': phone_with_exchange['debt_usd'] + totals['accessory']['debt'],
-                'phone_total_usd': phone_with_exchange['total_usd'],
+                # YANGI: Alohida telefon va almashtirish summalari
+                'phone_only_total_usd': totals['phone']['total'],
+                'phone_only_cash_usd': totals['phone']['cash'],
+                'exchange_total_usd': totals['exchange']['total'],
+                'exchange_cash_usd': totals['exchange']['cash'],
+                'phone_total_usd': phone_with_exchange['total_usd'],  # Eski birlashtirilgan saqlanadi
                 'phone_cash_usd': phone_with_exchange['cash_usd'],
                 'accessory_total_uzs': totals['accessory']['total'],
                 'accessory_cash_uzs': totals['accessory']['cash'],

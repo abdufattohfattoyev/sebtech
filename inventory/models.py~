@@ -55,7 +55,8 @@ class Supplier(models.Model):
 
     @property
     def balance(self):
-        return (self.initial_debt + self.total_debt) - self.total_paid
+        """Qoldiq qarz = Boshlang'ich qarz + Telefonlar qarzi"""
+        return self.initial_debt + self.total_debt
 
     def update_total_debt(self):
         """Taminotchining telefonlar qarzini hisoblash"""
@@ -63,7 +64,7 @@ class Supplier(models.Model):
             source_type='supplier',
             payment_status__in=['debt', 'partial']
         ).aggregate(
-            total=Sum(F('cost_price') - F('paid_amount'), output_field=DecimalField(max_digits=15, decimal_places=2))
+            total=Sum('debt_balance', output_field=DecimalField(max_digits=15, decimal_places=2))
         )['total'] or Decimal('0.00')
 
         self.total_debt = total
@@ -77,7 +78,7 @@ class Supplier(models.Model):
             source_type='supplier',
             payment_status__in=['debt', 'partial']
         ).aggregate(
-            total=Sum(F('cost_price') - F('paid_amount'), output_field=DecimalField(max_digits=15, decimal_places=2))
+            total=Sum('debt_balance', output_field=DecimalField(max_digits=15, decimal_places=2))
         )['total'] or Decimal('0.00')
 
         # To'langan
@@ -100,15 +101,10 @@ class Supplier(models.Model):
 
     def get_debt_phones(self):
         """Qarzda turgan telefonlar"""
-        phones = self.phone_set.filter(
+        return self.phone_set.filter(
             source_type='supplier',
             payment_status__in=['debt', 'partial']
         ).order_by('created_at')
-
-        for phone in phones:
-            phone.debt_balance = phone.cost_price - phone.paid_amount
-
-        return phones
 
     def get_paid_phones(self):
         """To'langan telefonlar"""

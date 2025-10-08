@@ -116,32 +116,8 @@ def dashboard(request):
         # ✅ Har bir do'konda FAQAT telefon qarzi ko'rsatiladi
         shop_supplier_debt = phone_debt
 
-        # âœ… BIZNING PULIMIZ = Faqat to'langan telefonlar + Qisman to'langan qismlar
-        # To'langan telefonlar qiymati
-        paid_phones_value = phones.filter(
-            source_type='supplier',
-            payment_status='paid'
-        ).aggregate(
-            total=Sum('cost_price', output_field=DecimalField(max_digits=15, decimal_places=2))
-        )['total'] or Decimal('0.00')
-
-        # Qisman to'langan telefonlarda to'langan qism
-        partial_paid_value = phones.filter(
-            source_type='supplier',
-            payment_status='partial'
-        ).aggregate(
-            total=Sum('paid_amount', output_field=DecimalField(max_digits=15, decimal_places=2))
-        )['total'] or Decimal('0.00')
-
-        # Boshqa manbalardan olingan telefonlar (external, daily, exchange) - bular bizniki
-        other_sources_value = phones.exclude(
-            source_type='supplier'
-        ).aggregate(
-            total=Sum('cost_price', output_field=DecimalField(max_digits=15, decimal_places=2))
-        )['total'] or Decimal('0.00')
-
-        # JAMI BIZNING PULIMIZ
-        our_money = paid_phones_value + partial_paid_value + other_sources_value
+        # Hisob pulimiz = Telefonlar qiymati - Telefon qarzi
+        our_money = phone_cost_sum - shop_supplier_debt
 
         total_phone_count += phone_count
         total_accessory_count += accessory_count

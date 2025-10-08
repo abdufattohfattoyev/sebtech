@@ -124,7 +124,7 @@ def dashboard(request):
         total_phone_value += phone_cost_sum
         total_accessory_value += accessory_cost_sum
         total_phone_debt += phone_debt  # Faqat telefonlar qarzi
-        total_our_money += our_money
+        total_our_money += our_money  # Har do'kon uchun hisoblanadi
 
         shop_stats.append({
             'shop': shop,
@@ -139,6 +139,9 @@ def dashboard(request):
 
     # ✅ UMUMIY QARZ = Barcha telefonlar qarzi + Boshlang'ich qarz (faqat 1 marta)
     total_supplier_debt = total_phone_debt + all_suppliers_initial_debt
+
+    # ✅ UMUMIY HISOB PULIMIZ = Jami telefon qiymati - Umumiy qarz
+    total_our_money = total_phone_value - total_supplier_debt
 
     all_phones = Phone.objects.filter(shop__in=shops)
     phones_in_shop = all_phones.filter(status='shop').count()
