@@ -341,61 +341,45 @@ class ReportCalculator:
         }
 
     def _get_daily_cashflow(self, target_date):
-        """
-        Kunlik cash flow - 3 HOLAT UCHUN TO'LIQ TUZATILGAN
-
-        ASOSIY PRINTSIP:
-        - KIRIMLAR: Telefon savdosi, aksessuar savdosi, mijoz to'lovi, ESKI TELEFON QIYMATI
-        - CHIQIMLAR: Kunlik sotuvchi, do'kon to'lovi, qaytarish, xarajatlar
-        """
+        """Kunlik cash flow - TO'LIQ TO'G'RILANGAN"""
         transactions = CashFlowTransaction.objects.filter(
             shop=self.shop,
             transaction_date=target_date
         )
 
-        # ✅ 1️⃣ USD KIRIMLAR
-        usd_income_types = [
-            'phone_sale',  # Telefon sotish
-            'exchange_income',  # Mijoz qo'shimcha to'lovi
-            'exchange_old_phone_value'  # ✅ YANGI: Eski telefon qabul qiymati
-        ]
-
         usd_income = transactions.filter(
-            transaction_type__in=usd_income_types,
             amount_usd__gt=0
         ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
 
-        # ❌ 2️⃣ USD CHIQIMLAR
-        usd_expense_types = [
-            'daily_seller_payment',  # Kunlik sotuvchi
-            'exchange_expense',  # Do'kon qo'shimcha to'lovi
-            'phone_return'  # Telefon qaytarish
-        ]
-
-        usd_expense = abs(
+        old_phone_value = abs(
             transactions.filter(
-                transaction_type__in=usd_expense_types,
-                amount_usd__lt=0
+                transaction_type='exchange_old_phone_value'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        # ✅ 3️⃣ UZS KIRIMLAR
+        total_usd_income = usd_income + old_phone_value
+
+        usd_expense_without_old_phone = abs(
+            transactions.filter(
+                amount_usd__lt=0
+            ).exclude(
+                transaction_type='exchange_old_phone_value'
+            ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
+        )
+
+        total_usd_expense = usd_expense_without_old_phone + old_phone_value
+
         uzs_income = transactions.filter(
-            transaction_type='accessory_sale',
             amount_uzs__gt=0
         ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
 
-        # ❌ 4️⃣ UZS CHIQIMLAR
         uzs_expense = abs(
             transactions.filter(
-                transaction_type='daily_expense',
                 amount_uzs__lt=0
             ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
         )
 
-        # 📊 TAFSILOTLAR
         details = {
-            # KIRIMLAR
             'phone_sales': transactions.filter(
                 transaction_type='phone_sale'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0'),
@@ -404,26 +388,23 @@ class ReportCalculator:
                 transaction_type='accessory_sale'
             ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0'),
 
-            'exchange_customer_pays': transactions.filter(
+            'exchange_income': transactions.filter(
                 transaction_type='exchange_income'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0'),
 
-            'exchange_old_phone_value': transactions.filter(
-                transaction_type='exchange_old_phone_value'
-            ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0'),
+            'exchange_old_phone_value': old_phone_value,
 
-            'exchange_equal_count': transactions.filter(
+            'exchange_equal': transactions.filter(
                 transaction_type='exchange_equal'
             ).count(),
 
-            # CHIQIMLAR
             'daily_seller_payments': abs(
                 transactions.filter(
                     transaction_type='daily_seller_payment'
                 ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
             ),
 
-            'exchange_shop_pays': abs(
+            'exchange_expenses': abs(
                 transactions.filter(
                     transaction_type='exchange_expense'
                 ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
@@ -444,9 +425,9 @@ class ReportCalculator:
 
         return {
             'usd': {
-                'income': usd_income,
-                'expense': usd_expense,
-                'net': usd_income - usd_expense
+                'income': total_usd_income,
+                'expense': total_usd_expense,
+                'net': total_usd_income - total_usd_expense
             },
             'uzs': {
                 'income': uzs_income,

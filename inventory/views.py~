@@ -116,8 +116,32 @@ def dashboard(request):
         # ✅ Har bir do'konda FAQAT telefon qarzi ko'rsatiladi
         shop_supplier_debt = phone_debt
 
-        # Hisob pulimiz = Telefonlar qiymati - Telefon qarzi
-        our_money = phone_cost_sum - shop_supplier_debt
+        # âœ… BIZNING PULIMIZ = Faqat to'langan telefonlar + Qisman to'langan qismlar
+        # To'langan telefonlar qiymati
+        paid_phones_value = phones.filter(
+            source_type='supplier',
+            payment_status='paid'
+        ).aggregate(
+            total=Sum('cost_price', output_field=DecimalField(max_digits=15, decimal_places=2))
+        )['total'] or Decimal('0.00')
+
+        # Qisman to'langan telefonlarda to'langan qism
+        partial_paid_value = phones.filter(
+            source_type='supplier',
+            payment_status='partial'
+        ).aggregate(
+            total=Sum('paid_amount', output_field=DecimalField(max_digits=15, decimal_places=2))
+        )['total'] or Decimal('0.00')
+
+        # Boshqa manbalardan olingan telefonlar (external, daily, exchange) - bular bizniki
+        other_sources_value = phones.exclude(
+            source_type='supplier'
+        ).aggregate(
+            total=Sum('cost_price', output_field=DecimalField(max_digits=15, decimal_places=2))
+        )['total'] or Decimal('0.00')
+
+        # JAMI BIZNING PULIMIZ
+        our_money = paid_phones_value + partial_paid_value + other_sources_value
 
         total_phone_count += phone_count
         total_accessory_count += accessory_count
@@ -1017,6 +1041,7 @@ def supplier_payment_create(request, supplier_id):
     """Taminotchiga to'lov qilish"""
     supplier = get_object_or_404(Supplier, pk=supplier_id)
 
+    # Taminotchining balansini tekshirish
     if supplier.balance <= 0:
         messages.warning(request, "Bu taminotchida qarz yo'q!")
         return redirect('inventory:supplier_detail', pk=supplier_id)
@@ -1048,10 +1073,12 @@ def supplier_payment_create(request, supplier_id):
                         if amount_remaining <= 0:
                             break
 
-                        remaining_debt = phone.cost_price - phone.paid_amount
+                        # Telefonning qolgan qarzini hisoblash
+                        remaining_debt = phone.debt_balance
                         if remaining_debt <= 0:
                             continue
 
+                        # To'lanadigan summani aniqlash
                         payment_for_phone = min(amount_remaining, remaining_debt)
 
                         # Telefonning to'langan summasini yangilash
@@ -1066,7 +1093,7 @@ def supplier_payment_create(request, supplier_id):
                             phone=phone,
                             amount=payment_for_phone,
                             previous_balance=remaining_debt,
-                            new_balance=remaining_debt - payment_for_phone
+                            new_balance=phone.debt_balance
                         )
 
                         amount_remaining -= payment_for_phone
@@ -1078,11 +1105,11 @@ def supplier_payment_create(request, supplier_id):
                         supplier.initial_debt -= initial_payment_made
                         amount_remaining -= initial_payment_made
 
-                    # 5. Taminotchini yangilash
+                    # 5. Taminotchining umumiy to'langan summasini yangilash
                     supplier.total_paid += (payment.amount - amount_remaining)
                     supplier.save(update_fields=['total_paid', 'initial_debt'])
 
-                    # 6. Telefonlar qarzini yangilash
+                    # 6. Taminotchining umumiy qarzini yangilash
                     supplier.update_total_debt()
                     supplier.refresh_from_db()
 
