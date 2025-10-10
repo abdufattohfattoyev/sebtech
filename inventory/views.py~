@@ -181,7 +181,7 @@ def phone_list(request):
     shop_id = request.GET.get('shop_id', '').strip()
     page_number = request.GET.get('page', 1)
 
-    phones = Phone.objects.all().select_related('shop', 'phone_model', 'memory_size')
+    phones = Phone.objects.all().select_related('shop', 'phone_model', 'memory_size').order_by('-id')
 
     if imei_query:
         phones = phones.filter(imei__icontains=imei_query)
@@ -203,6 +203,7 @@ def phone_list(request):
     }
 
     phone_models = PhoneModel.objects.all().order_by('model_name')
+
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if is_ajax:
@@ -570,6 +571,7 @@ def accessory_detail(request, pk):
     accessory = get_object_or_404(Accessory, pk=pk, shop__owner=request.user)
     return render(request, 'inventory/accessory_detail.html', {'accessory': accessory})
 
+
 @login_required
 def shop_detail(request, shop_id):
     """Do'kon tafsilotlari"""
@@ -759,40 +761,93 @@ def phone_details_api(request, phone_id):
 @login_required
 @boss_or_finance_required
 def phone_detail(request, pk):
-    """Telefon tafsilotlari"""
+    """Telefon tafsilotlari - TO'LIQ YANGILANGAN"""
     phone = get_object_or_404(Phone, pk=pk)
 
+    # ========== INIT ==========
     phone_sale = None
     phone_return = None
     phone_exchange_new = None
     phone_exchange_old = None
     customer_debts = []
+    actual_sale_info = None  # ✅ ASOSIY SOTISH MA'LUMOTLARI
 
     try:
         from sales.models import PhoneSale, PhoneReturn, PhoneExchange, Debt
 
-        phone_sale = PhoneSale.objects.select_related('customer', 'salesman').filter(phone=phone).first()
+        # ========== 1️⃣ TELEFON SOTISH ORQALI ==========
+        phone_sale = PhoneSale.objects.select_related(
+            'customer', 'salesman'
+        ).filter(phone=phone).first()
 
         if phone_sale:
-            phone_return = PhoneReturn.objects.select_related('created_by').filter(phone_sale=phone_sale).first()
+            actual_sale_info = {
+                'type': 'phone_sale',
+                'sale_price': phone_sale.sale_price,
+                'salesman': phone_sale.salesman,
+                'customer': phone_sale.customer,
+                'sale_date': phone_sale.sale_date,
+                'cash_amount': phone_sale.cash_amount,
+                'card_amount': phone_sale.card_amount,
+                'credit_amount': phone_sale.credit_amount,
+                'debt_amount': phone_sale.debt_amount,
+                'is_returned': phone_sale.is_returned,
+            }
 
+            # Qaytarish
+            phone_return = PhoneReturn.objects.select_related(
+                'created_by'
+            ).filter(phone_sale=phone_sale).first()
+
+            # Qarzlar
             if phone_sale.debt_amount > 0:
                 customer_debts = Debt.objects.filter(
                     customer=phone_sale.customer,
                     status='active'
-                ).select_related('creditor')
+                ).select_related('creditor').prefetch_related('payments')
 
+        # ========== 2️⃣ ALMASHTIRISH ORQALI (Yangi telefon sifatida) ==========
         phone_exchange_new = PhoneExchange.objects.select_related(
             'old_phone_model', 'old_phone_memory', 'salesman', 'customer'
         ).filter(new_phone=phone).first()
 
+        if phone_exchange_new:
+            # ✅ Agar telefon ALMASHTIRISH orqali sotilgan bo'lsa
+            actual_sale_info = {
+                'type': 'phone_exchange',
+                'sale_price': phone_exchange_new.new_phone_price,
+                'salesman': phone_exchange_new.salesman,
+                'customer': phone_exchange_new.customer,
+                'customer_name': phone_exchange_new.customer_name,
+                'customer_phone': phone_exchange_new.customer_phone_number,
+                'sale_date': phone_exchange_new.exchange_date,
+                'cash_amount': phone_exchange_new.cash_amount,
+                'card_amount': phone_exchange_new.card_amount,
+                'credit_amount': phone_exchange_new.credit_amount,
+                'debt_amount': phone_exchange_new.debt_amount,
+                'exchange_type': phone_exchange_new.exchange_type,
+                'old_phone_model': f"{phone_exchange_new.old_phone_model} {phone_exchange_new.old_phone_memory}",
+                'old_phone_accepted_price': phone_exchange_new.old_phone_accepted_price,
+                'price_difference': phone_exchange_new.price_difference,
+            }
+
+            # Qarzlar (almashtirish orqali)
+            if phone_exchange_new.customer and phone_exchange_new.debt_amount > 0:
+                customer_debts = Debt.objects.filter(
+                    customer=phone_exchange_new.customer,
+                    status='active'
+                ).select_related('creditor').prefetch_related('payments')
+
+        # ========== 3️⃣ ALMASHTIRISH ORQALI (Eski telefon sifatida qabul qilingan) ==========
         phone_exchange_old = PhoneExchange.objects.select_related(
-            'new_phone', 'salesman', 'customer'
+            'new_phone__phone_model', 'new_phone__memory_size',
+            'salesman', 'customer'
         ).filter(created_old_phone=phone).first()
 
     except ImportError:
         pass
 
+    # ========== TIMELINE ==========
     timeline = [{
         'date': phone.created_at,
         'event': 'Telefon qo\'shildi',
@@ -801,41 +856,73 @@ def phone_detail(request, pk):
         'type': 'created'
     }]
 
+    # Timeline: Oddiy sotish
     if phone_sale:
         timeline.append({
             'date': phone_sale.sale_date,
             'event': 'Sotildi',
-            'description': f'{phone_sale.customer.name} ga {phone_sale.sale_price}$ ga sotildi',
-            'user': getattr(phone_sale, 'salesman', phone_sale.customer),
+            'description': f'{phone_sale.customer.name} ga ${phone_sale.sale_price} ga sotildi',
+            'user': phone_sale.salesman,
             'type': 'sold'
         })
 
+    # Timeline: Almashtirish (yangi telefon)
+    if phone_exchange_new:
+        timeline.append({
+            'date': phone_exchange_new.exchange_date,
+            'event': 'Almashtirish orqali sotildi',
+            'description': f'{phone_exchange_new.customer_name} ga ${phone_exchange_new.new_phone_price} ga sotildi. Eski telefon: {phone_exchange_new.old_phone_model} {phone_exchange_new.old_phone_memory}',
+            'user': phone_exchange_new.salesman,
+            'type': 'exchanged_new'
+        })
+
+    # Timeline: Almashtirish (eski telefon)
+    if phone_exchange_old:
+        timeline.append({
+            'date': phone_exchange_old.exchange_date,
+            'event': 'Almashtirish orqali qabul qilindi',
+            'description': f'{phone_exchange_old.customer_name} dan ${phone_exchange_old.old_phone_accepted_price} ga qabul qilindi. Yangi telefon: {phone_exchange_old.new_phone}',
+            'user': phone_exchange_old.salesman,
+            'type': 'exchanged_old'
+        })
+
+    # Timeline: Qaytarish
     if phone_return:
         timeline.append({
-            'date': getattr(phone_return, 'return_date', None),
+            'date': phone_return.return_date,
             'event': 'Qaytarildi',
-            'description': f'{phone_return.return_amount}$ qaytarildi',
+            'description': f'${phone_return.return_amount} qaytarildi. Sabab: {phone_return.reason[:50]}',
             'user': phone_return.created_by,
             'type': 'returned'
         })
 
+    # Timeline sortlash
     timeline.sort(key=lambda x: x['date'] if x['date'] else phone.created_at)
 
+    # ========== MOLIYAVIY XULOSA ==========
     financial_summary = {
         'total_cost': phone.cost_price,
         'purchase_price': phone.purchase_price,
         'imei_cost': phone.imei_cost,
         'repair_cost': phone.repair_cost,
-        'sale_price': getattr(phone_sale, 'sale_price', phone.sale_price) if phone_sale else phone.sale_price,
+        'sale_price': Decimal('0.00'),
         'profit': Decimal('0.00'),
-        'return_amount': getattr(phone_return, 'return_amount', Decimal('0.00')) if phone_return else Decimal('0.00'),
+        'return_amount': Decimal('0.00'),
         'final_profit': Decimal('0.00')
     }
 
-    if financial_summary['sale_price']:
+    # ✅ Asosiy sotish narxini aniqlash
+    if actual_sale_info:
+        financial_summary['sale_price'] = actual_sale_info['sale_price']
         financial_summary['profit'] = financial_summary['sale_price'] - financial_summary['total_cost']
+
+        # Qaytarish summasi
+        if phone_return:
+            financial_summary['return_amount'] = phone_return.return_amount
+
         financial_summary['final_profit'] = financial_summary['profit'] - financial_summary['return_amount']
 
+    # ========== CONTEXT ==========
     context = {
         'phone': phone,
         'phone_sale': phone_sale,
@@ -845,6 +932,7 @@ def phone_detail(request, pk):
         'customer_debts': customer_debts,
         'timeline': timeline,
         'financial_summary': financial_summary,
+        'actual_sale_info': actual_sale_info,  # ✅ ASOSIY SOTISH MA'LUMOTLARI
         'can_edit': request.user == phone.shop.owner,
     }
 

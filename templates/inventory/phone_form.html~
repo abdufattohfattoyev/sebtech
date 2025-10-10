@@ -6,15 +6,15 @@
 {% block content %}
 <div class="container-fluid py-4">
     <!-- Messages -->
-<!--    {% if messages %}-->
-<!--        {% for message in messages %}-->
-<!--            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">-->
-<!--                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>-->
-<!--                {{ message }}-->
-<!--                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>-->
-<!--            </div>-->
-<!--        {% endfor %}-->
-<!--    {% endif %}-->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
 
     <!-- Header -->
     <div class="row mb-4">
@@ -30,6 +30,9 @@
                             <small class="text-muted">
                                 {% if is_edit %}
                                     IMEI: {{ form.instance.imei }}
+                                    {% if form.instance.created_by %}
+                                        | Qo'shgan: {{ form.instance.created_by.get_full_name|default:form.instance.created_by.username }}
+                                    {% endif %}
                                 {% else %}
                                     Barcha majburiy maydonlarni to'ldiring
                                 {% endif %}
@@ -133,12 +136,14 @@
                                 {% endif %}
                             </div>
 
-                            <!-- IMEI -->
+                            <!-- IMEI - ✅ YANGI CHECK FUNKSIYASI -->
                             <div class="col-md-6">
                                 <label for="{{ form.imei.id_for_label }}" class="form-label fw-bold">
                                     IMEI Raqami <span class="text-danger">*</span>
                                 </label>
                                 {{ form.imei }}
+                                <!-- ✅ IMEI Tekshirish natijasi -->
+                                <div id="imei_check_result" class="mt-2"></div>
                                 {% if form.imei.errors %}
                                     <div class="text-danger small mt-1">
                                         {% for error in form.imei.errors %}
@@ -501,7 +506,7 @@
 
             <!-- Right Column (4/12) -->
             <div class="col-lg-4">
-                <!-- Rasm -->
+                <!-- Rasm - ✅ YANGILANGAN -->
                 <div class="card mb-4">
                     <div class="card-header">
                         <h6 class="mb-0">
@@ -510,13 +515,17 @@
                         </h6>
                     </div>
                     <div class="card-body text-center">
-                        {% if form.instance.image %}
-                            <img src="{{ form.instance.image.url }}" class="img-fluid rounded mb-3" style="max-height: 300px;" alt="Telefon rasmi">
-                        {% else %}
-                            <div class="bg-light rounded d-flex align-items-center justify-content-center mb-3" style="height: 300px;">
-                                <i class="fas fa-mobile-alt fa-4x text-muted"></i>
-                            </div>
-                        {% endif %}
+                        <!-- ✅ Rasmni ko'rsatish -->
+                        <div id="image_preview_container">
+                            {% if form.instance.image %}
+                                <img src="{{ form.instance.image.url }}" id="image_preview" class="img-fluid rounded mb-3" style="max-height: 300px;" alt="Telefon rasmi">
+                            {% else %}
+                                <div id="image_placeholder" class="bg-light rounded d-flex align-items-center justify-content-center mb-3" style="height: 300px;">
+                                    <i class="fas fa-mobile-alt fa-4x text-muted"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+
                         {{ form.image }}
                         {% if form.image.errors %}
                             <div class="text-danger small mt-2">
@@ -558,6 +567,11 @@
                         <small class="text-muted d-block mb-2">Yaratilgan sana:</small>
                         <p class="mb-2">{{ form.instance.created_at|date:"d.m.Y" }}</p>
 
+                        {% if form.instance.created_by %}
+                        <small class="text-muted d-block mb-2">Qo'shgan:</small>
+                        <p class="mb-2">{{ form.instance.created_by.get_full_name|default:form.instance.created_by.username }}</p>
+                        {% endif %}
+
                         {% if form.instance.updated_at %}
                         <small class="text-muted d-block mb-2">Yangilangan:</small>
                         <p class="mb-0">{{ form.instance.updated_at|date:"d.m.Y" }}</p>
@@ -595,6 +609,35 @@
     margin-bottom: 0;
     font-size: 0.875rem;
 }
+
+/* ✅ IMEI Check Styles */
+#imei_check_result .alert {
+    margin-bottom: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+#imei_check_result .alert-danger {
+    background-color: #fee;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+#imei_check_result .alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+/* ✅ Image Preview Styles */
+#image_preview {
+    max-height: 300px;
+    object-fit: contain;
+}
+
+#image_placeholder {
+    transition: all 0.3s ease;
+}
 </style>
 
 <script>
@@ -615,149 +658,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const dailySellerPhone = document.getElementById('id_daily_seller_phone');
     const dailyPhoneCheck = document.getElementById('daily_phone_check');
 
-    function toggleFields() {
-        const value = sourceType.value;
-
-        // Hammasini yashirish
-        if (supplierField) supplierField.style.display = 'none';
-        if (externalSellerField) externalSellerField.style.display = 'none';
-        if (dailySellerField) dailySellerField.style.display = 'none';
-        if (exchangeField) exchangeField.style.display = 'none';
-        if (dailyPaymentInfo) dailyPaymentInfo.style.display = 'none';
-
-        // Tanlangan turini ko'rsatish
-        if (value === 'supplier' && supplierField) {
-            supplierField.style.display = 'block';
-        } else if (value === 'external_seller' && externalSellerField) {
-            externalSellerField.style.display = 'block';
-        } else if (value === 'daily_seller' && dailySellerField) {
-            dailySellerField.style.display = 'block';
-            if (dailyPaymentInfo) dailyPaymentInfo.style.display = 'block';
-        } else if (value === 'exchange' && exchangeField) {
-            exchangeField.style.display = 'block';
-        }
-    }
-
-    // Tashqi sotuvchi telefon tekshirish
-    let externalPhoneTimeout;
-    function checkExternalPhone() {
-        if (!externalSellerPhone) return;
-
-        const phone = externalSellerPhone.value.trim();
-
-        if (phone.length < 7) {
-            externalPhoneCheck.innerHTML = '';
-            return;
-        }
-
-        externalPhoneCheck.innerHTML = '<small class="text-muted"><i class="fas fa-spinner fa-spin"></i> Tekshirilmoqda...</small>';
-
-        fetch(`/inventory/check-seller-phone/?phone=${encodeURIComponent(phone)}`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.exists) {
-                    externalPhoneCheck.innerHTML = `
-                        <div class="alert alert-warning py-2 px-3 mt-1 mb-0">
-                            <small><strong>Mavjud:</strong> ${data.seller.name}</small>
-                            <button type="button" class="btn btn-sm btn-primary ms-2"
-                                    onclick="selectExternalSeller(${data.seller.id}, '${data.seller.name}')">
-                                <i class="fas fa-check"></i> Tanlash
-                            </button>
-                        </div>
-                    `;
-                } else {
-                    externalPhoneCheck.innerHTML = '<small class="text-success"><i class="fas fa-plus-circle"></i> Yangi sotuvchi yaratiladi</small>';
-                }
-            })
-            .catch(() => {
-                externalPhoneCheck.innerHTML = '<small class="text-danger"><i class="fas fa-exclamation-triangle"></i> Xatolik</small>';
-            });
-    }
-
-    // Kunlik sotuvchi telefon tekshirish
-    let dailyPhoneTimeout;
-    function checkDailyPhone() {
-        if (!dailySellerPhone) return;
-
-        const phone = dailySellerPhone.value.trim();
-
-        if (phone.length < 7) {
-            dailyPhoneCheck.innerHTML = '';
-            return;
-        }
-
-        dailyPhoneCheck.innerHTML = '<small class="text-muted"><i class="fas fa-spinner fa-spin"></i> Tekshirilmoqda...</small>';
-
-        fetch(`/inventory/check-daily-seller-phone/?phone=${encodeURIComponent(phone)}`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.exists) {
-                    dailyPhoneCheck.innerHTML = `
-                        <div class="alert alert-success py-2 px-3 mt-1 mb-0">
-                            <small><i class="fas fa-check-circle"></i> <strong>Mavjud:</strong> ${data.seller.name}</small>
-                            <div class="mt-1"><small class="text-muted">Ism avtomatik yangilanadi</small></div>
-                        </div>
-                    `;
-                } else {
-                    dailyPhoneCheck.innerHTML = '<small class="text-info"><i class="fas fa-plus-circle"></i> Yangi sotuvchi yaratiladi</small>';
-                }
-            })
-            .catch(() => {
-                dailyPhoneCheck.innerHTML = '<small class="text-danger"><i class="fas fa-exclamation-triangle"></i> Xatolik</small>';
-            });
-    }
-
-    // Tashqi sotuvchini tanlash funksiyasi
-    window.selectExternalSeller = function(id, name) {
-        if (externalSellerSelect) externalSellerSelect.value = id;
-        if (externalSellerName) externalSellerName.value = '';
-        if (externalSellerPhone) externalSellerPhone.value = '';
-        if (externalPhoneCheck) externalPhoneCheck.innerHTML = `<small class="text-success"><i class="fas fa-check"></i> Tanlandi: ${name}</small>`;
-    };
-
-    // Tashqi sotuvchi tanlovini tozalash
-    function clearExternalSelection() {
-        if (externalSellerName && externalSellerPhone) {
-            if (externalSellerName.value || externalSellerPhone.value) {
-                if (externalSellerSelect) externalSellerSelect.value = '';
-            }
-        }
-    }
-
-    // Event listeners
-    if (sourceType) {
-        sourceType.addEventListener('change', toggleFields);
-        toggleFields(); // Boshlang'ich holat
-    }
-
-    if (externalSellerPhone) {
-        externalSellerPhone.addEventListener('input', function() {
-            clearExternalSelection();
-            clearTimeout(externalPhoneTimeout);
-            externalPhoneTimeout = setTimeout(checkExternalPhone, 800);
-        });
-    }
-
-    if (externalSellerName) {
-        externalSellerName.addEventListener('input', clearExternalSelection);
-    }
-
-    if (externalSellerSelect) {
-        externalSellerSelect.addEventListener('change', function() {
-            if (this.value) {
-                if (externalSellerName) externalSellerName.value = '';
-                if (externalSellerPhone) externalSellerPhone.value = '';
-                if (externalPhoneCheck) externalPhoneCheck.innerHTML = '';
-            }
-        });
-    }
-
-    if (dailySellerPhone) {
-        dailySellerPhone.addEventListener('input', function() {
-            clearTimeout(dailyPhoneTimeout);
-            dailyPhoneTimeout = setTimeout(checkDailyPhone, 800);
-        });
-    }
-});
-</script>
-{% endblock %}
+    // ✅ IMEI CHECK
+    const imeiInput = document.getElementById('id_imei');
+    const im

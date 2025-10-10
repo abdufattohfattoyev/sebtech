@@ -47,4 +47,5 @@ urlpatterns = [
     path('check-seller-phone/', views.check_external_seller_phone_api, name='check_seller_phone_api'),
     path('phone/<int:phone_id>/details/', views.phone_details_api, name='phone_details_api'),
     path('check-daily-seller-phone/', views.check_daily_seller_phone_api, name='check_daily_seller_phone_api'),
+    path('check-imei/', views.check_imei_api, name='check_imei_api'),
 ]

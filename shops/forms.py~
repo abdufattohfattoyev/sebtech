@@ -1,6 +1,4 @@
 from django import forms
-from django.contrib.auth.models import User
-
 from .models import Shop, Customer
 from users.models import UserProfile
 
@@ -20,13 +18,7 @@ class ShopForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # User obyektlarini olish, lekin UserProfile orqali filterlash
-        boss_user_ids = UserProfile.objects.filter(role='boss').values_list('user_id', flat=True)
-        self.fields['owner'].queryset = User.objects.filter(id__in=boss_user_ids)
-
-        # Dropdown'da ko'rinishi uchun label_from_instance ishlatish (ixtiyoriy)
-        self.fields['owner'].label_from_instance = lambda \
-            obj: f"{obj.username} ({obj.userprofile.get_role_display() if hasattr(obj, 'userprofile') else ''})"
+        self.fields['owner'].queryset = UserProfile.objects.filter(role='boss').select_related('user')
 
 
 class CustomerForm(forms.ModelForm):
