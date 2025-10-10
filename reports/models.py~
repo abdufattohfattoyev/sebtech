@@ -351,20 +351,7 @@ class ReportCalculator:
         }
 
     def _get_daily_cashflow(self, target_date):
-        """
-        Kunlik cash flow - TO'G'RI FORMULA
-
-        KIRIM (USD) = Jami Savdo - (Karta + Qarz + Nasiya)
-
-        CHIQIM (USD) =
-            1. Kunlik sotuvchi to'lovlari
-            2. Olingan telefon qiymati (almashtirish)
-            3. Almashtirish chiqimlari
-            4. Telefon qaytarish
-            5. Taminotchiga kassa to'lovlari ← YANGI
-
-        SOF BALANS = KIRIM - CHIQIM
-        """
+        """Kunlik cash flow - TO'G'RI FORMULA"""
         from sales.models import PhoneSale, PhoneExchange
 
         transactions = CashFlowTransaction.objects.filter(
@@ -409,62 +396,47 @@ class ReportCalculator:
         jami_nasiya = phone_credit + exchange_credit
         jami_naqd_emas = jami_karta + jami_qarz + jami_nasiya
 
-        # JAMI NAQD (savdodan kelib tushgan)
+        # JAMI NAQD
         jami_naqd = phone_cash + exchange_cash
 
         # TO'G'RI KIRIM USD (Naqd pul) - BU ASOSIY FORMULA
         kirim_usd = jami_savdo_usd - jami_naqd_emas
 
-        # ====== CHIQIM USD - TO'LIQ YANGILANGAN ======
-
-        # 1️⃣ Kunlik sotuvchi to'lovlari
+        # ====== CHIQIM USD - TO'G'RILANGAN ======
+        # Kunlik sotuvchi to'lovlari
         daily_seller_payments = abs(
             transactions.filter(
                 transaction_type='daily_seller_payment'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        # 2️⃣ Olingan telefon qiymati (exchange_old_phone_value)
+        # Olingan telefon qiymati (exchange_old_phone_value)
         old_phone_value = abs(
             transactions.filter(
                 transaction_type='exchange_old_phone_value'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        # 3️⃣ Almashtirish chiqimlari (mijozga pul berish)
+        # Boshqa chiqimlar
         exchange_expenses = abs(
             transactions.filter(
                 transaction_type='exchange_expense'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        # 4️⃣ Telefon qaytarish (mijozga pul qaytarish)
         phone_returns = abs(
             transactions.filter(
                 transaction_type='phone_return'
             ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
         )
 
-        # 5️⃣ ✅ YANGI - Taminotchiga KASSA to'lovlari
-        supplier_payments_cash = abs(
-            transactions.filter(
-                transaction_type='supplier_payment_cash'
-            ).aggregate(total=Sum('amount_usd'))['total'] or Decimal('0')
-        )
-
-        # 📊 JAMI CHIQIM USD - Barcha chiqimlarni qo'shamiz
-        chiqim_usd = (
-                daily_seller_payments +  # Kunlik sotuvchi
-                old_phone_value +  # Olingan telefon
-                exchange_expenses +  # Almashtirish chiqim
-                phone_returns +  # Qaytarish
-                supplier_payments_cash  # ✅ Taminotchiga kassa to'lov
-        )
+        # JAMI CHIQIM USD - Barcha chiqimlarni qo'shamiz
+        chiqim_usd = daily_seller_payments + old_phone_value + exchange_expenses + phone_returns
 
         # ====== SOF BALANS ======
         sof_balans_usd = kirim_usd - chiqim_usd
 
-        # ====== UZS (SO'M) ======
+        # ====== UZS ======
         uzs_income = transactions.filter(
             amount_uzs__gt=0
         ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
@@ -475,33 +447,35 @@ class ReportCalculator:
             ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0')
         )
 
-        # ====== DETAILS (TAFSILOTLAR - TO'LIQ) ======
+        # ====== DETAILS (TO'LIQ YANGILANGAN) ======
         details = {
-            # KIRIM TAFSILOTLARI
-            'total_sales': jami_savdo_usd,  # Jami savdo
-            'card_total': jami_karta,  # Karta
-            'debt_total': jami_qarz,  # Qarz
-            'credit_total': jami_nasiya,  # Nasiya
-            'cash_total': jami_naqd,  # Naqd (savdodan)
-            'karta_nasiya_qarz': jami_naqd_emas,  # Naqd bo'lmagan
+            # YANGI FORMULA TAFSILOTLARI
+            'total_sales': jami_savdo_usd,
+            'card_total': jami_karta,
+            'debt_total': jami_qarz,
+            'credit_total': jami_nasiya,
+            'cash_total': jami_naqd,
+            'karta_nasiya_qarz': jami_naqd_emas,
 
-            # CHIQIM TAFSILOTLARI (USD)
-            'daily_seller_payments': daily_seller_payments,  # 1. Kunlik sotuvchi
-            'exchange_old_phone_value': old_phone_value,  # 2. Olingan telefon
-            'exchange_expenses': exchange_expenses,  # 3. Almashtirish chiqim
-            'phone_returns': phone_returns,  # 4. Qaytarish
-            'supplier_payments_cash': supplier_payments_cash,  # 5. ✅ Taminotchiga kassa
-            'total_expense': chiqim_usd,  # JAMI CHIQIM
+            # CHIQIM TAFSILOTLARI
+            'daily_seller_payments': daily_seller_payments,
+            'exchange_old_phone_value': old_phone_value,
+            'exchange_expenses': exchange_expenses,
+            'phone_returns': phone_returns,
+            'total_expense': chiqim_usd,
 
-            # Boshqa ma'lumotlar
+            # Eski detallar
             'phone_sales': total_phone_usd,
             'exchange_income': total_exchange_usd,
+
             'accessory_sales': transactions.filter(
                 transaction_type='accessory_sale'
             ).aggregate(total=Sum('amount_uzs'))['total'] or Decimal('0'),
+
             'exchange_equal': transactions.filter(
                 transaction_type='exchange_equal'
             ).count(),
+
             'daily_expenses': abs(
                 transactions.filter(
                     transaction_type='daily_expense'
@@ -511,9 +485,9 @@ class ReportCalculator:
 
         return {
             'usd': {
-                'income': kirim_usd,  # Kirim
-                'expense': chiqim_usd,  # Chiqim
-                'net': sof_balans_usd,  # Sof balans
+                'income': kirim_usd,  # TO'G'RI: $2000 bo'lishi kerak
+                'expense': chiqim_usd,  # TO'G'RI: $1200 + $1130 = $2330 bo'lishi kerak
+                'net': sof_balans_usd,  # TO'G'RI: $2000 - $2330 = -$330
             },
             'uzs': {
                 'income': uzs_income,

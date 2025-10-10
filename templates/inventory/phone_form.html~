@@ -6,15 +6,15 @@
 {% block content %}
 <div class="container-fluid py-4">
     <!-- Messages -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
+<!--    {% if messages %}-->
+<!--        {% for message in messages %}-->
+<!--            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">-->
+<!--                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>-->
+<!--                {{ message }}-->
+<!--                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>-->
+<!--            </div>-->
+<!--        {% endfor %}-->
+<!--    {% endif %}-->
 
     <!-- Header -->
     <div class="row mb-4">
@@ -556,11 +556,11 @@
                     </div>
                     <div class="card-body">
                         <small class="text-muted d-block mb-2">Yaratilgan sana:</small>
-                        <p class="mb-2">{{ form.instance.created_at|date:"d.m.Y H:i" }}</p>
+                        <p class="mb-2">{{ form.instance.created_at|date:"d.m.Y" }}</p>
 
                         {% if form.instance.updated_at %}
                         <small class="text-muted d-block mb-2">Yangilangan:</small>
-                        <p class="mb-0">{{ form.instance.updated_at|date:"d.m.Y H:i" }}</p>
+                        <p class="mb-0">{{ form.instance.updated_at|date:"d.m.Y" }}</p>
                         {% endif %}
                     </div>
                 </div>

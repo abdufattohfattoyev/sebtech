@@ -145,12 +145,16 @@
 
 /* Badges */
 .imei-code {
-    background: #f1f5f9;
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
+    background: #0f172a;
+    color: #ffffff;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
     font-family: 'Courier New', monospace;
-    font-weight: 600;
-    font-size: 0.85rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.3);
 }
 
 .seller-badge {
@@ -270,15 +274,15 @@
         </div>
         <div class="stat-box">
             <div class="stat-label">Jami summa</div>
-            <div class="stat-value text-success">${{ total_sum|floatformat:2 }}</div>
+            <div class="stat-value text-success">${{ total_sum|floatformat:0 }}</div>
         </div>
         <div class="stat-box">
             <div class="stat-label">Naqd</div>
-            <div class="stat-value text-success">${{ total_cash|floatformat:2 }}</div>
+            <div class="stat-value text-success">${{ total_cash|floatformat:0 }}</div>
         </div>
         <div class="stat-box">
             <div class="stat-label">Qarzlar</div>
-            <div class="stat-value text-danger">${{ total_debt|floatformat:2 }}</div>
+            <div class="stat-value text-danger">${{ total_debt|floatformat:0 }}</div>
         </div>
     </div>
     {% endif %}
@@ -377,22 +381,22 @@
                         </td>
 
                         <td class="text-end">
-                            <div class="price-big">${{ sale.sale_price }}</div>
+                            <div class="price-big">${{ sale.sale_price|floatformat:0 }}</div>
                         </td>
 
                         <td>
                             <div class="pay-box">
                                 {% if sale.cash_amount > 0 %}
-                                <span class="pay-badge pay-cash"><i class="fas fa-money-bill-wave"></i> ${{ sale.cash_amount }}</span>
+                                <span class="pay-badge pay-cash"><i class="fas fa-money-bill-wave"></i> ${{ sale.cash_amount|floatformat:0 }}</span>
                                 {% endif %}
                                 {% if sale.card_amount > 0 %}
-                                <span class="pay-badge pay-card"><i class="fas fa-credit-card"></i> ${{ sale.card_amount }}</span>
+                                <span class="pay-badge pay-card"><i class="fas fa-credit-card"></i> ${{ sale.card_amount|floatformat:0 }}</span>
                                 {% endif %}
                                 {% if sale.credit_amount > 0 %}
-                                <span class="pay-badge pay-credit"><i class="fas fa-calendar-alt"></i> ${{ sale.credit_amount }}</span>
+                                <span class="pay-badge pay-credit"><i class="fas fa-calendar-alt"></i> ${{ sale.credit_amount|floatformat:0 }}</span>
                                 {% endif %}
                                 {% if sale.debt_amount > 0 %}
-                                <span class="pay-badge pay-debt"><i class="fas fa-exclamation-triangle"></i> ${{ sale.debt_amount }}</span>
+                                <span class="pay-badge pay-debt"><i class="fas fa-exclamation-triangle"></i> ${{ sale.debt_amount|floatformat:0 }}</span>
                                 {% endif %}
                             </div>
                         </td>

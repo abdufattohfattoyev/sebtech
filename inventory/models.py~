@@ -608,12 +608,6 @@ class SupplierPayment(models.Model):
         ('specific', 'Tanlangan telefonlar'),
     ]
 
-    # ✅ YANGI - TO'LOV MANBASI
-    PAYMENT_SOURCE_CHOICES = [
-        ('cash', 'Kassa'),
-        ('safe', 'Seyf'),
-    ]
-
     supplier = models.ForeignKey(
         Supplier,
         on_delete=models.CASCADE,
@@ -632,16 +626,6 @@ class SupplierPayment(models.Model):
         default='general',
         verbose_name="To'lov turi"
     )
-
-    # ✅ YANGI MAYDON - TO'LOV MANBASI
-    payment_source = models.CharField(
-        max_length=10,
-        choices=PAYMENT_SOURCE_CHOICES,
-        default='safe',
-        verbose_name="To'lov manbasi",
-        help_text="Kassa - kunlik chiqim, Seyf - kunlik chiqim emas"
-    )
-
     payment_date = models.DateField(
         default=get_current_date,
         verbose_name="To'lov sanasi"
@@ -669,16 +653,7 @@ class SupplierPayment(models.Model):
         ordering = ['-payment_date', '-created_at']
 
     def __str__(self):
-        source_icon = "💵" if self.payment_source == 'cash' else "🔒"
-        source_name = "Kassa" if self.payment_source == 'cash' else "Seyf"
-        return f"{self.supplier.name} - ${self.amount} ({source_icon} {source_name}) [{self.payment_date}]"
-
-    def get_payment_source_display_with_icon(self):
-        """To'lov manbasi nomini belgisi bilan qaytarish"""
-        if self.payment_source == 'cash':
-            return "💵 Kassa"
-        else:
-            return "🔒 Seyf"
+        return f"{self.supplier.name} - ${self.amount} ({self.payment_date})"
 
 
 class SupplierPaymentDetail(models.Model):

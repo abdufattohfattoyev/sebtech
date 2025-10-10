@@ -440,39 +440,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </form>
   </div>
 
-  <!-- UMUMIY STATISTIKA -->
-  <div class="stats-grid">
-    <div class="stat-card phone">
-      <div class="stat-label">Sotilgan</div>
-      <div class="stat-value green">{{ monthly_stats.counts.phone|default:0 }}</div>
-      <div class="stat-subtitle">dona</div>
-    </div>
-    <div class="stat-card exchange">
-      <div class="stat-label">Almashtirish</div>
-      <div class="stat-value green">{{ monthly_stats.counts.exchange|default:0 }}</div>
-      <div class="stat-subtitle">dona</div>
-    </div>
-    <div class="stat-card exchange">
-      <div class="stat-label">Qaytarildi</div>
-      <div class="stat-value red">{{ monthly_stats.counts.returns|default:0 }}</div>
-      <div class="stat-subtitle">dona</div>
-    </div>
-    <div class="stat-card phone">
-      <div class="stat-label">Sof Telefon</div>
-      <div class="stat-value green">{{ monthly_stats.counts.net_phone|default:0 }}</div>
-      <div class="stat-subtitle">tel+alm</div>
-    </div>
-    <div class="stat-card accessory">
-      <div class="stat-label">Aksessuar</div>
-      <div class="stat-value blue">{{ monthly_stats.counts.accessory|default:0 }}</div>
-      <div class="stat-subtitle">sotildi</div>
-    </div>
-    <div class="stat-card profit">
-      <div class="stat-label">Tel+Alm Foyda</div>
-      <div class="stat-value purple">${{ monthly_stats.profits.total_phone_exchange_profit|floatformat:0|default:"0" }}</div>
-      <div class="stat-subtitle">USD</div>
-    </div>
-  </div>
+
 
   <!-- TELEFON VA AKSESSUAR TAFSILOTI -->
   <div class="detailed-stats">
@@ -570,7 +538,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="chart-controls">
       <button class="chart-btn active" onclick="changeChartType('bar')">Ustunli Diagramma</button>
       <button class="chart-btn" onclick="changeChartType('line')">Chiziqli Diagramma</button>
-      <button class="chart-btn" onclick="changeChartType('horizontal')">Gorizontal Diagramma</button>
     </div>
     <div class="chart-container">
       <canvas id="dailyChart"></canvas>
@@ -681,7 +648,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         </tbody>
       </table>
     </div>
-  </div</div>
+  </div>
 </div>
 <script>
 let dailyChartInstance = null;
@@ -781,36 +748,7 @@ function createDailyChart(type = 'bar') {
     animation: { duration: 800, easing: 'easeOutQuart' }
   };
 
-  if (type === 'horizontal') {
-    dailyChartInstance = new Chart(ctx, {
-      type: 'bar',
-      data: dailyData,
-      options: {
-        ...commonOptions,
-        indexAxis: 'y',
-        scales: {
-          y: {
-            ...commonOptions.scales.x,
-            title: {
-              display: true,
-              text: 'Sana',
-              font: { size: 13, weight: '600', family: 'system-ui' },
-              color: '#6b7280'
-            }
-          },
-          x: {
-            ...commonOptions.scales.y,
-            title: {
-              display: true,
-              text: 'Soni (dona)',
-              font: { size: 13, weight: '600', family: 'system-ui' },
-              color: '#6b7280'
-            }
-          }
-        }
-      }
-    });
-  } else if (type === 'line') {
+  if (type === 'line') {
     dailyChartInstance = new Chart(ctx, {
       type: 'line',
       data: dailyData,
@@ -850,13 +788,13 @@ function changeChartType(type) {
 const sellersData = {
   labels: [
     {% for seller in seller_monthly_stats %}
-    '{{ seller.seller.get_full_name|default:seller.seller.username }}'.substring(0, 15),
+    '{{ seller.seller.get_full_name|default:seller.seller.username }}'.substring(0, 15){% if not forloop.last %},{% endif %}
     {% endfor %}
   ],
   datasets: [
     {
       label: 'Sof Telefonlar (Tel+Alm)',
-      data: [{% for seller in seller_monthly_stats %}{{ seller.net_phones_sold|default:0 }},{% endfor %}],
+      data: [{% for seller in seller_monthly_stats %}{{ seller.net_phones_sold|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
       backgroundColor: '#10b981',
       borderColor: '#059669',
       borderWidth: 2,
@@ -865,7 +803,7 @@ const sellersData = {
     },
     {
       label: 'Aksessuarlar',
-      data: [{% for seller in seller_monthly_stats %}{{ seller.accessory_count|default:0 }},{% endfor %}],
+      data: [{% for seller in seller_monthly_stats %}{{ seller.accessory_count|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
       backgroundColor: '#3b82f6',
       borderColor: '#2563eb',
       borderWidth: 2,

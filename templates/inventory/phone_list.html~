@@ -805,4 +805,133 @@ const updateResults = (phones) => {
                 </div>
                 ${canEdit ? `
                     <div class="phone-actions">
-                        <a href="/inventory/phones/${phone.id}/" class="action-btn primary" title="Ko
+                        <a href="/inventory/phones/${phone.id}/" class="action-btn primary" title="Ko'rish">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="/inventory/phones/${phone.id}/edit/" class="action-btn warning" title="Tahrirlash">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="/inventory/phones/${phone.id}/delete/" class="action-btn danger" title="O'chirish">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
+                ` : `
+                    <div class="phone-actions">
+                        <span class="action-btn primary disabled" title="Ruxsat yo'q">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <span class="action-btn warning disabled" title="Ruxsat yo'q">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <span class="action-btn danger disabled" title="Ruxsat yo'q">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                    </div>
+                `}
+            </div>
+        </div>
+        `;
+    }).join('');
+};
+
+const updatePagination = (data) => {
+    const container = document.getElementById('pagination-container');
+    const pagination = document.getElementById('pagination');
+
+    if (!data.total_pages || data.total_pages <= 1) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+
+    let html = '';
+
+    // Previous button
+    if (data.has_previous) {
+        html += `<li class="page-item">
+            <a class="page-link" href="javascript:void(0)" data-page="${data.current_page - 1}">&laquo;</a>
+        </li>`;
+    }
+
+    // Page numbers
+    const startPage = Math.max(1, data.current_page - 2);
+    const endPage = Math.min(data.total_pages, data.current_page + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<li class="page-item ${i === data.current_page ? 'active' : ''}">
+            <a class="page-link" href="javascript:void(0)" data-page="${i}">${i}</a>
+        </li>`;
+    }
+
+    // Next button
+    if (data.has_next) {
+        html += `<li class="page-item">
+            <a class="page-link" href="javascript:void(0)" data-page="${data.current_page + 1}">&raquo;</a>
+        </li>`;
+    }
+
+    pagination.innerHTML = html;
+
+    // Add event listeners to new pagination links
+    pagination.querySelectorAll('[data-page]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = parseInt(this.getAttribute('data-page'));
+            if (page) {
+                performSearch(page);
+            }
+        });
+    });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    // IMEI field - clean and search on input
+    const imeiField = document.getElementById('imei');
+    if (imeiField) {
+        imeiField.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '').substring(0, 15);
+            performSearch(1);
+        });
+    }
+
+    // Other filter fields - search on change
+    ['model', 'status', 'shop_id'].forEach(id => {
+        const field = document.getElementById(id);
+        if (field) {
+            field.addEventListener('change', () => performSearch(1));
+        }
+    });
+
+    // Clear filters button
+    const clearBtn = document.getElementById('clear-filters');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            document.getElementById('search-form').reset();
+            window.history.pushState({}, '', window.location.pathname);
+            performSearch(1);
+        });
+    }
+
+    // Form submit
+    const searchForm = document.getElementById('search-form');
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            performSearch(1);
+        });
+    }
+
+    // Initial pagination event listeners
+    document.querySelectorAll('#pagination [data-page]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = parseInt(this.getAttribute('data-page'));
+            if (page) {
+                performSearch(page);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

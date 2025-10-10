@@ -6,7 +6,7 @@
 {% block content %}
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
+        <div class="col-lg-9">
             <!-- Header -->
             <div class="card mb-4 shadow-sm">
                 <div class="card-header bg-gradient-primary text-white">
@@ -88,7 +88,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="{{ form.amount.id_for_label }}" class="form-label fw-bold">
-                                        To'lov Summasi ($) *
+                                        <i class="fas fa-dollar-sign me-1"></i>To'lov Summasi ($) *
                                     </label>
                                     {{ form.amount }}
                                     {% if form.amount.errors %}
@@ -108,7 +108,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="{{ form.payment_date.id_for_label }}" class="form-label fw-bold">
-                                        To'lov Sanasi *
+                                        <i class="fas fa-calendar me-1"></i>To'lov Sanasi *
                                     </label>
                                     {{ form.payment_date }}
                                     {% if form.payment_date.errors %}
@@ -122,16 +122,100 @@
                             </div>
                         </div>
 
+                        <!-- ✅ TO'LOV MANBASI - YANGI -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold d-block">
+                                <i class="fas fa-wallet me-1"></i>To'lov Manbasi *
+                            </label>
+                            <div class="payment-source-container p-3 border rounded bg-light">
+                                <div class="row g-3">
+                                    <!-- SEYF -->
+                                    <div class="col-md-6">
+                                        <input type="radio"
+                                               class="btn-check"
+                                               name="payment_source"
+                                               id="payment_source_safe"
+                                               value="safe"
+                                               {% if not form.instance.pk or form.instance.payment_source == 'safe' %}checked{% endif %}>
+                                        <label class="btn btn-outline-secondary w-100 py-3 text-start"
+                                               for="payment_source_safe">
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-3">
+                                                    <i class="fas fa-lock fa-2x text-secondary"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">🔒 Seyf</h6>
+                                                    <small class="text-muted">
+                                                        Seyfdan to'lov (kunlik chiqim emas)
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    <!-- KASSA -->
+                                    <div class="col-md-6">
+                                        <input type="radio"
+                                               class="btn-check"
+                                               name="payment_source"
+                                               id="payment_source_cash"
+                                               value="cash"
+                                               {% if form.instance.pk and form.instance.payment_source == 'cash' %}checked{% endif %}>
+                                        <label class="btn btn-outline-danger w-100 py-3 text-start"
+                                               for="payment_source_cash">
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-3">
+                                                    <i class="fas fa-money-bill-wave fa-2x text-danger"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">💵 Kassa</h6>
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-exclamation-triangle"></i>
+                                                        Kassadan to'lov (kunlik chiqim)
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Ogohlantirish -->
+                                <div class="alert alert-warning border-0 mt-3 mb-0" id="cashWarning" style="display: none;">
+                                    <div class="d-flex">
+                                        <div class="me-3">
+                                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="alert-heading mb-1">Diqqat: Kassa To'lovi</h6>
+                                            <p class="mb-0 small">
+                                                Kassadan to'lov kunlik hisobotda <strong>CHIQIM</strong> sifatida ko'rsatiladi.
+                                                Agar bu to'lov seyfdan bo'lsa, yuqoridagi <strong>Seyf</strong> ni tanlang.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if form.payment_source.errors %}
+                                <div class="text-danger small mt-2">
+                                    {% for error in form.payment_source.errors %}
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
                         <!-- To'lov Turi -->
                         <div class="mb-4">
-                            <label class="form-label d-block fw-bold">To'lov Turi *</label>
+                            <label class="form-label d-block fw-bold">
+                                <i class="fas fa-list me-1"></i>To'lov Turi *
+                            </label>
                             <div class="btn-group w-100" role="group">
                                 {% for radio in form.payment_type %}
                                 <div class="flex-fill">
                                     {{ radio.tag }}
                                     <label class="btn btn-outline-primary w-100" for="{{ radio.id_for_label }}">
                                         {% if radio.choice_value == 'general' %}
-                                            <i class="fas fa-list me-2"></i>Umumiy (FIFO)
+                                            <i class="fas fa-sort-amount-down me-2"></i>Umumiy (FIFO)
                                         {% else %}
                                             <i class="fas fa-check-square me-2"></i>Maxsus Telefonlar
                                         {% endif %}
@@ -148,8 +232,8 @@
                             {% endif %}
                             <div class="alert alert-info border-0 mt-2 mb-0">
                                 <small>
-                                    <strong>Umumiy:</strong> Eng eski qarzli telefonlardan boshlab to'lanadi<br>
-                                    <strong>Maxsus:</strong> Siz tanlagan telefonlar uchun to'lov
+                                    <strong><i class="fas fa-info-circle me-1"></i>Umumiy:</strong> Eng eski qarzli telefonlardan boshlab to'lanadi (FIFO)<br>
+                                    <strong><i class="fas fa-hand-pointer me-1"></i>Maxsus:</strong> Siz tanlagan telefonlar uchun to'lov
                                 </small>
                             </div>
                         </div>
@@ -219,12 +303,12 @@
                                     <div class="alert alert-info mt-3 mb-0">
                                         <div class="row">
                                             <div class="col-md-6">
-                                                <strong>Tanlangan:</strong>
-                                                <span id="selectedCount">0</span> ta
+                                                <strong><i class="fas fa-check-circle me-1"></i>Tanlangan:</strong>
+                                                <span id="selectedCount" class="badge bg-primary">0</span> ta
                                             </div>
                                             <div class="col-md-6">
-                                                <strong>Tanlangan qarz:</strong>
-                                                $<span id="selectedDebt">0.00</span>
+                                                <strong><i class="fas fa-dollar-sign me-1"></i>Tanlangan qarz:</strong>
+                                                <span class="badge bg-danger">$<span id="selectedDebt">0.00</span></span>
                                             </div>
                                         </div>
                                     </div>
@@ -249,7 +333,8 @@
                         <!-- Izoh -->
                         <div class="mb-4">
                             <label for="{{ form.notes.id_for_label }}" class="form-label fw-bold">
-                                Izoh <span class="text-muted">(ixtiyoriy)</span>
+                                <i class="fas fa-comment me-1"></i>Izoh
+                                <span class="text-muted fw-normal">(ixtiyoriy)</span>
                             </label>
                             {{ form.notes }}
                             {% if form.notes.errors %}
@@ -264,12 +349,12 @@
                         <hr>
 
                         <!-- Tugmalar -->
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center">
                             <a href="{% url 'inventory:supplier_detail' supplier.id %}" class="btn btn-secondary">
                                 <i class="fas fa-times me-1"></i>Bekor qilish
                             </a>
-                            <button type="submit" class="btn btn-success btn-lg">
-                                <i class="fas fa-{% if is_edit %}save{% else %}check-circle{% endif %} me-1"></i>
+                            <button type="submit" class="btn btn-success btn-lg px-5">
+                                <i class="fas fa-{% if is_edit %}save{% else %}check-circle{% endif %} me-2"></i>
                                 {% if is_edit %}Yangilash{% else %}To'lovni Amalga Oshirish{% endif %}
                             </button>
                         </div>
@@ -289,8 +374,34 @@
     position: sticky;
     top: 0;
     z-index: 10;
+    background-color: #f8f9fa;
 }
 
+/* Payment Source Styles */
+.payment-source-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.btn-check:checked + .btn-outline-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+.btn-check:checked + .btn-outline-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+/* Payment Type Button Group */
 .btn-group input[type="radio"] {
     display: none;
 }
@@ -300,12 +411,52 @@
     color: white;
 }
 
-.phone-checkbox, #selectAll {
-    cursor: pointer;
+.btn-group label {
+    transition: all 0.3s ease;
 }
 
+.btn-group label:hover {
+    transform: translateY(-2px);
+}
+
+/* Phone Checkboxes */
+.phone-checkbox, #selectAll {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Font Monospace */
 .font-monospace {
     font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+/* Alert Animations */
+#cashWarning {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .payment-source-container .col-md-6 {
+        margin-bottom: 1rem;
+    }
 }
 </style>
 
@@ -317,6 +468,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('selectAll');
     const selectedCountSpan = document.getElementById('selectedCount');
     const selectedDebtSpan = document.getElementById('selectedDebt');
+
+    // ✅ YANGI - Payment Source ogohlantirish
+    const paymentSourceRadios = document.querySelectorAll('input[name="payment_source"]');
+    const cashWarning = document.getElementById('cashWarning');
+
+    // Payment Source o'zgarganda ogohlantirish ko'rsatish
+    paymentSourceRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'cash') {
+                cashWarning.style.display = 'block';
+            } else {
+                cashWarning.style.display = 'none';
+            }
+        });
+    });
+
+    // Sahifa yuklanganda kassa tanlangan bo'lsa ogohlantirish ko'rsatish
+    const selectedSource = document.querySelector('input[name="payment_source"]:checked');
+    if (selectedSource && selectedSource.value === 'cash') {
+        cashWarning.style.display = 'block';
+    }
 
     // To'lov turi o'zgarganda
     paymentTypeRadios.forEach(radio => {
@@ -371,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function() {
         phoneCheckboxes.forEach(cb => {
             if (cb.checked) {
                 count++;
-                totalDebt += parseFloat(cb.dataset.debt);
+                totalDebt += parseFloat(cb.dataset.debt) || 0;
             }
         });
 

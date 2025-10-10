@@ -148,7 +148,6 @@ class CashFlowHelper:
             'daily_seller_payment': 'Kunlik sotuvchiga to\'lov',
             'phone_return': 'Telefon qaytarish',
             'daily_expense': 'Kunlik harajat',
-            'supplier_payment_cash': '💵 Taminotchiga to\'lov (Kassa)',  # ✅ YANGI
         }
         return types.get(transaction_type, transaction_type)
 
@@ -156,14 +155,8 @@ class CashFlowHelper:
     def get_transaction_category(transaction_type):
         """Tranzaksiya kategoriyasi"""
         income_types = ['phone_sale', 'accessory_sale', 'exchange_income']
-        expense_types = [
-            'daily_seller_payment',
-            'exchange_expense',
-            'phone_return',
-            'daily_expense',
-            'exchange_old_phone_value',
-            'supplier_payment_cash'  # ✅ YANGI
-        ]
+        expense_types = ['daily_seller_payment', 'exchange_expense', 'phone_return', 'daily_expense',
+                         'exchange_old_phone_value']
         neutral_types = ['exchange_equal']
 
         if transaction_type in income_types:
@@ -199,7 +192,6 @@ class CashFlowHelper:
             'daily_seller_payment': 'danger',
             'phone_return': 'warning',
             'daily_expense': 'danger',
-            'supplier_payment_cash': 'danger',  # ✅ YANGI - qizil (chiqim)
         }
         return colors.get(transaction_type, 'secondary')
 

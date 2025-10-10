@@ -199,12 +199,21 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
 
-                                <!-- To'lov - faol qarzlar uchun -->
+                                <!-- To'lov - Permission asosida -->
                                 {% if debt.status == 'active' and debt.remaining_amount > 0 %}
-                                    <a href="{% url 'sales:debt_payment_create' debt.pk %}"
-                                       class="btn btn-outline-success" title="To'lov">
-                                        <i class="fas fa-plus"></i>
-                                    </a>
+                                    {% if user_role == 'boss' or user_role == 'finance' %}
+                                        <!-- Boss va Finance - hamma qarzga to'lov -->
+                                        <a href="{% url 'sales:debt_payment_create' debt.pk %}"
+                                           class="btn btn-outline-success" title="To'lov">
+                                            <i class="fas fa-plus"></i>
+                                        </a>
+                                    {% elif user_role == 'seller' and debt.debt_type == 'customer_to_seller' and debt.creditor.pk == request.user.pk %}
+                                        <!-- Sotuvchi - faqat mijoz qarzlariga to'lov -->
+                                        <a href="{% url 'sales:debt_payment_create' debt.pk %}"
+                                           class="btn btn-outline-success" title="To'lov">
+                                            <i class="fas fa-plus"></i>
+                                        </a>
+                                    {% endif %}
                                 {% endif %}
 
                                 <!-- O'chirish - Permission asosida -->
@@ -217,7 +226,7 @@
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     {% elif user_role == 'seller' and debt.debt_type == 'customer_to_seller' and debt.creditor.pk == request.user.pk %}
-                                        <!-- Sotuvchi - faqat o'z mijoz qarzlarini -->
+                                        <!-- Sotuvchi - faqat mijoz qarzlarini -->
                                         <button type="button" class="btn btn-outline-danger"
                                                 onclick="confirmDelete({{ debt.pk }}, '{{ debt.debtor_display_name|escapejs }}')"
                                                 title="O'chirish">

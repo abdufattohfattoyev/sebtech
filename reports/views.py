@@ -861,6 +861,7 @@ def cashflow_api(request):
                 'exchange_expenses': float(cashflow.get('details', {}).get('exchange_expenses', 0)),
                 'phone_returns': float(cashflow.get('details', {}).get('phone_returns', 0)),
                 'daily_expenses': float(cashflow.get('details', {}).get('daily_expenses', 0)),
+                'supplier_payments_cash': float(cashflow.get('details', {}).get('supplier_payments_cash', 0)),
             }
         }
     })

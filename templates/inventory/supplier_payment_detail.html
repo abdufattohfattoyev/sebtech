@@ -1,4 +1,3 @@
-<!-- templates/inventory/supplier_payment_detail.html -->
 {% extends 'base.html' %}
 {% load static %}
 
@@ -58,7 +57,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card border-info">
                         <div class="card-body text-center">
                             <h6 class="text-muted mb-2">To'lov Turi</h6>
@@ -70,10 +69,33 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <!-- ✅ YANGI - TO'LOV MANBASI -->
+                <div class="col-md-2">
+                    <div class="card border-{% if payment.payment_source == 'cash' %}danger{% else %}secondary{% endif %}">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-2">Manba</h6>
+                            <h5 class="mb-0">
+                                {% if payment.payment_source == 'cash' %}
+                                    <span class="badge bg-danger">
+                                        💵 Kassa
+                                    </span>
+                                    <br>
+                                    <small class="text-danger mt-1 d-block">
+                                        Kunlik chiqim
+                                    </small>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        🔒 Seyf
+                                    </span>
+                                {% endif %}
+                            </h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
                     <div class="card border-primary">
                         <div class="card-body text-center">
-                            <h6 class="text-muted mb-2">Telefonlar Soni</h6>
+                            <h6 class="text-muted mb-2">Telefonlar</h6>
                             <h3 class="mb-0 text-primary">
                                 {{ payment.details.count }}
                             </h3>
@@ -83,7 +105,7 @@
                 <div class="col-md-3">
                     <div class="card border-secondary">
                         <div class="card-body text-center">
-                            <h6 class="text-muted mb-2">To'lov Sanasi</h6>
+                            <h6 class="text-muted mb-2">Sana</h6>
                             <h5 class="mb-0">
                                 {{ payment.payment_date|date:"d.m.Y" }}
                             </h5>
@@ -120,11 +142,25 @@
                         </div>
                         <div class="col-md-4">
                             <p class="mb-2">
-                                <strong>Yaratilgan vaqt:</strong><br>
+                                <strong>Yaratilgan:</strong><br>
                                 {{ payment.created_at|date:"d.m.Y H:i" }}
                             </p>
                         </div>
                     </div>
+
+                    <!-- ✅ KASSA OGOHLANTIRISH -->
+                    {% if payment.payment_source == 'cash' %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-danger border-0 mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Kassadan To'lov:</strong> Bu to'lov kassadan amalga oshirilgan va
+                                kunlik hisobotda chiqim sifatida ko'rsatiladi.
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     {% if payment.notes %}
                     <div class="row mt-3">
                         <div class="col-12">
@@ -228,7 +264,7 @@
                 </div>
             </div>
 
-            <!-- To'lov Tarixi Havolasi -->
+            <!-- Havolalar -->
             <div class="card mt-4">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -261,11 +297,27 @@
                         </div>
                         <div class="modal-body">
                             <p>Ushbu to'lovni o'chirmoqchimisiz?</p>
-                            <p class="mb-0"><strong>Summa:</strong> <span class="text-danger">${{ payment.amount|floatformat:2 }}</span></p>
+                            <p class="mb-0">
+                                <strong>Summa:</strong>
+                                <span class="text-danger">${{ payment.amount|floatformat:2 }}</span>
+                            </p>
+                            {% if payment.payment_source == 'cash' %}
+                            <p class="text-danger mb-0">
+                                <small>
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Bu kassa to'lovi bo'lib, o'chirilsa kunlik chiqimdan ham o'chiriladi.
+                                </small>
+                            </p>
+                            {% endif %}
                         </div>
                         <div class="modal-footer border-0">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor Qilish</button>
-                            <a href="{% url 'inventory:supplier_payment_delete' payment.id %}" class="btn btn-danger">O'chirish</a>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                Bekor Qilish
+                            </button>
+                            <a href="{% url 'inventory:supplier_payment_delete' payment.id %}"
+                               class="btn btn-danger">
+                                O'chirish
+                            </a>
                         </div>
                     </div>
                 </div>

@@ -1,80 +1,162 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block page_title %}{{ phone.phone_model }} {{ phone.memory_size }}{% endblock %}
 
 {% block extra_css %}
 <style>
-/* Mobile-first minimal design */
-.phone-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 15px;
-    color: white;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    text-align: center;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-.phone-title {
-    font-size: 1.5rem;
+body {
+    background: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.detail-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Header */
+.phone-header {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-left h1 {
+    font-size: 2rem;
     font-weight: 700;
+    color: #1e293b;
     margin-bottom: 0.5rem;
 }
 
-.phone-imei {
-    font-size: 0.9rem;
-    opacity: 0.9;
+.header-imei {
+    font-size: 1rem;
+    color: #64748b;
+    font-family: 'Courier New', monospace;
     margin-bottom: 1rem;
 }
 
 .status-badge {
-    padding: 0.4rem 0.8rem;
-    border-radius: 20px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    margin-bottom: 1rem;
-}
-
-.action-btn {
-    background: rgba(255,255,255,0.2);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: white;
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    margin: 0.2rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-
-.section-card {
-    background: white;
+    display: inline-block;
+    padding: 0.5rem 1.25rem;
     border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-    margin-bottom: 1rem;
-    overflow: hidden;
-}
-
-.section-header {
-    background: #f8fafc;
-    padding: 1rem;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.section-title {
-    font-size: 1rem;
     font-weight: 600;
-    color: #2d3748;
+    font-size: 0.875rem;
+}
+
+.status-shop { background: #dcfce7; color: #166534; }
+.status-sold { background: #dbeafe; color: #1e40af; }
+.status-master { background: #fef3c7; color: #92400e; }
+.status-returned { background: #f3f4f6; color: #374151; }
+.status-exchanged_in { background: #e0e7ff; color: #3730a3; }
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-action {
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    text-decoration: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-back {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.btn-back:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.btn-edit {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #2563eb;
+}
+
+/* Main Grid */
+.main-grid {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 2rem;
+}
+
+/* Card */
+.card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 2rem;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.card-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
     margin: 0;
 }
 
+/* Info Rows */
 .info-grid {
-    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
 .info-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 0;
+    padding: 1rem 0;
     border-bottom: 1px solid #f1f5f9;
 }
 
@@ -83,119 +165,168 @@
 }
 
 .info-label {
+    font-size: 1rem;
+    color: #64748b;
     font-weight: 500;
-    color: #4a5568;
-    font-size: 0.9rem;
 }
 
 .info-value {
-    color: #2d3748;
-    font-size: 0.9rem;
+    font-size: 1rem;
+    color: #1e293b;
+    font-weight: 600;
     text-align: right;
 }
 
-.price-positive { color: #22c55e; font-weight: 600; }
-.price-negative { color: #ef4444; font-weight: 600; }
-.price-neutral { color: #6b7280; }
+/* Colors */
+.text-success { color: #16a34a; }
+.text-danger { color: #dc2626; }
+.text-warning { color: #ea580c; }
+.text-muted { color: #64748b; }
 
-.financial-empty {
-    text-align: center;
-    padding: 2rem;
-    color: #9ca3af;
+/* Divider */
+.divider {
+    height: 2px;
+    background: linear-gradient(90deg, #e2e8f0 0%, transparent 100%);
+    margin: 1.5rem 0;
 }
 
-.financial-empty i {
-    font-size: 2rem;
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    color: #cbd5e1;
+    margin-bottom: 1rem;
+}
+
+.empty-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #64748b;
     margin-bottom: 0.5rem;
-    opacity: 0.5;
+}
+
+.empty-text {
+    font-size: 0.9375rem;
+    color: #94a3b8;
+}
+
+/* Timeline */
+.timeline {
+    position: relative;
 }
 
 .timeline-item {
-    padding: 1rem;
-    border-left: 3px solid #e2e8f0;
-    margin-left: 1rem;
     position: relative;
+    padding-left: 3rem;
+    padding-bottom: 2rem;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
 }
 
 .timeline-item::before {
     content: '';
     position: absolute;
-    left: -6px;
-    top: 1.2rem;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #6b7280;
+    left: 1rem;
+    top: 2rem;
+    bottom: 0;
+    width: 2px;
+    background: #e2e8f0;
 }
 
-.timeline-item.created::before { background: #22c55e; }
-.timeline-item.sold::before { background: #3b82f6; }
-.timeline-item.returned::before { background: #f59e0b; }
-.timeline-item.exchanged_new::before { background: #06b6d4; }
-.timeline-item.exchanged_old::before { background: #8b5cf6; }
+.timeline-item:last-child::before {
+    display: none;
+}
 
-.timeline-event {
+.timeline-dot {
+    position: absolute;
+    left: 0.5rem;
+    top: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.875rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.dot-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.dot-primary { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+.dot-warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+
+.timeline-content {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 12px;
+}
+
+.timeline-title {
+    font-size: 1rem;
     font-weight: 600;
-    font-size: 0.9rem;
-    color: #2d3748;
-    margin-bottom: 0.3rem;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
 }
 
 .timeline-desc {
-    font-size: 0.8rem;
-    color: #6b7280;
-    line-height: 1.4;
-    margin-bottom: 0.3rem;
+    font-size: 0.9375rem;
+    color: #64748b;
+    margin-bottom: 0.5rem;
 }
 
 .timeline-meta {
-    font-size: 0.75rem;
-    color: #9ca3af;
     display: flex;
     justify-content: space-between;
+    font-size: 0.875rem;
+    color: #94a3b8;
 }
 
-.phone-image {
-    width: 100%;
-    max-width: 200px;
-    height: auto;
-    border-radius: 10px;
-    margin: 1rem auto;
-    display: block;
-}
-
-.debt-item {
-    background: #fef2f2;
-    border-left: 3px solid #ef4444;
-    padding: 1rem;
-    margin-bottom: 0.5rem;
-    border-radius: 0 8px 8px 0;
+/* Debt Card */
+.debt-card {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border-left: 4px solid #dc2626;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .debt-header {
     display: flex;
-    justify-content: between;
+    justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
 }
 
 .debt-amount {
-    font-weight: 600;
+    font-size: 1.5rem;
+    font-weight: 700;
     color: #dc2626;
 }
 
-.debt-payments {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
+.debt-label {
+    font-size: 0.875rem;
+    color: #991b1b;
+    font-weight: 500;
+}
+
+.payment-list {
     border-top: 1px solid #fecaca;
+    padding-top: 1rem;
+    margin-top: 1rem;
 }
 
 .payment-item {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 0.3rem 0;
-    font-size: 0.8rem;
+    padding: 0.5rem 0;
+    font-size: 0.9375rem;
 }
 
 .payment-amount {
@@ -204,70 +335,78 @@
 }
 
 .payment-date {
-    color: #6b7280;
+    color: #64748b;
 }
 
-/* Hide unnecessary elements on mobile */
-@media (max-width: 768px) {
-    .d-md-none { display: none !important; }
+/* Image */
+.phone-image-card {
+    text-align: center;
+}
 
-    .container {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
+.phone-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-container {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .header-actions {
+        width: 100%;
+    }
+
+    .btn-action {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .phone-header h1 {
+        font-size: 1.5rem;
     }
 
     .info-value {
-        max-width: 60%;
+        max-width: 50%;
         word-break: break-word;
-    }
-}
-
-/* Desktop adjustments */
-@media (min-width: 769px) {
-    .phone-header {
-        text-align: left;
-        padding: 2rem;
-    }
-
-    .phone-title {
-        font-size: 2rem;
-    }
-
-    .phone-imei {
-        font-size: 1rem;
-    }
-
-    .action-buttons {
-        text-align: right;
     }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container py-3">
-    <!-- Phone Header -->
+<div class="detail-container">
+    <!-- Header -->
     <div class="phone-header">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <h1 class="phone-title">{{ phone.phone_model }} {{ phone.memory_size }}</h1>
-                <div class="phone-imei">IMEI: {{ phone.imei|default:"N/A" }}</div>
-                <span class="badge status-badge
-                    {% if phone.status == 'shop' %}bg-success
-                    {% elif phone.status == 'sold' %}bg-primary
-                    {% elif phone.status == 'master' %}bg-warning text-dark
-                    {% elif phone.status == 'returned' %}bg-secondary
-                    {% elif phone.status == 'exchanged_in' %}bg-info
-                    {% endif %}">
+        <div class="header-content">
+            <div class="header-left">
+                <h1>{{ phone.phone_model }} {{ phone.memory_size }}</h1>
+                <div class="header-imei">IMEI: {{ phone.imei|default:"Yo'q" }}</div>
+                <span class="status-badge status-{{ phone.status }}">
                     {{ phone.get_status_display }}
                 </span>
             </div>
-            <div class="col-md-4 action-buttons">
-                <a href="{% url 'inventory:phone_list' %}" class="btn action-btn">
+            <div class="header-actions">
+                <a href="{% url 'inventory:phone_list' %}" class="btn-action btn-back">
                     <i class="fas fa-arrow-left"></i> Orqaga
                 </a>
                 {% if can_edit %}
-                <a href="{% url 'inventory:phone_update' phone.pk %}" class="btn action-btn">
+                <a href="{% url 'inventory:phone_update' phone.pk %}" class="btn-action btn-edit">
                     <i class="fas fa-edit"></i> Tahrirlash
                 </a>
                 {% endif %}
@@ -275,21 +414,17 @@
         </div>
     </div>
 
-    <!-- Phone Image (Mobile first) -->
-    {% if phone.image %}
-    <div class="section-card text-center d-md-none">
-        <img src="{{ phone.image.url }}" alt="{{ phone }}" class="phone-image">
-    </div>
-    {% endif %}
-
-    <div class="row">
-        <div class="col-lg-8">
+    <!-- Main Grid -->
+    <div class="main-grid">
+        <!-- Left Column -->
+        <div class="left-column">
             <!-- Basic Info -->
-            <div class="section-card">
-                <div class="section-header">
-                    <div class="section-title">
-                        <i class="fas fa-info-circle text-primary me-2"></i>Asosiy Ma'lumotlar
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-info-circle"></i>
                     </div>
+                    <h3 class="card-title">Asosiy Ma'lumotlar</h3>
                 </div>
                 <div class="info-grid">
                     <div class="info-row">
@@ -301,6 +436,10 @@
                         <span class="info-value">{{ phone.memory_size }}</span>
                     </div>
                     <div class="info-row">
+                        <span class="info-label">IMEI</span>
+                        <span class="info-value">{{ phone.imei|default:"Yo'q" }}</span>
+                    </div>
+                    <div class="info-row">
                         <span class="info-label">Holat</span>
                         <span class="info-value">{{ phone.condition_percentage }}%</span>
                     </div>
@@ -309,49 +448,58 @@
                         <span class="info-value">{{ phone.shop.name }}</span>
                     </div>
                     <div class="info-row">
+                        <span class="info-label">Manba</span>
+                        <span class="info-value">{{ phone.get_source_type_display }}</span>
+                    </div>
+                    <div class="info-row">
                         <span class="info-label">Qo'shilgan</span>
                         <span class="info-value">{{ phone.created_at|date:"d.m.Y" }}</span>
                     </div>
+                    {% if phone.note %}
+                    <div class="info-row">
+                        <span class="info-label">Izoh</span>
+                        <span class="info-value">{{ phone.note }}</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
             <!-- Financial Info -->
-            <div class="section-card">
-                <div class="section-header">
-                    <div class="section-title">
-                        <i class="fas fa-calculator text-success me-2"></i>Moliyaviy
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-dollar-sign"></i>
                     </div>
+                    <h3 class="card-title">Moliyaviy Ma'lumotlar</h3>
                 </div>
                 <div class="info-grid">
-                    {% if phone.status == 'shop' %}
                     <div class="info-row">
-                        <span class="info-label">Tan narx</span>
-                        <span class="info-value price-negative">${{ phone.cost_price }}</span>
-                    </div>
-                    {% if phone.sale_price %}
-                    <div class="info-row">
-                        <span class="info-label">Belgilangan narx</span>
-                        <span class="info-value price-neutral">${{ phone.sale_price }}</span>
-                    </div>
-                    {% endif %}
-                    <div class="financial-empty">
-                        <i class="fas fa-store"></i>
-                        <div><strong>Hali sotilmagan</strong></div>
-                        <small>Foyda hisobi sotilgandan keyin</small>
-                    </div>
-                    {% else %}
-                    <div class="info-row">
-                        <span class="info-label">Tan narx</span>
-                        <span class="info-value price-negative">${{ phone.cost_price }}</span>
+                        <span class="info-label">Sotib olingan narx</span>
+                        <span class="info-value text-danger">${{ financial_summary.purchase_price }}</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Sotish narxi</span>
-                        <span class="info-value price-positive">${{ financial_summary.sale_price }}</span>
+                        <span class="info-label">IMEI xarajati</span>
+                        <span class="info-value text-danger">${{ financial_summary.imei_cost }}</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Foyda</span>
-                        <span class="info-value {% if financial_summary.profit >= 0 %}price-positive{% else %}price-negative{% endif %}">
-                            ${{ financial_summary.profit }}
+                        <span class="info-label">Ta'mirlash</span>
+                        <span class="info-value text-danger">${{ financial_summary.repair_cost }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label"><strong>Jami tan narx</strong></span>
+                        <span class="info-value text-danger"><strong>${{ financial_summary.total_cost }}</strong></span>
+                    </div>
+
+                    {% if financial_summary.sale_price %}
+                    <div class="divider"></div>
+                    <div class="info-row">
+                        <span class="info-label"><strong>Sotish narxi</strong></span>
+                        <span class="info-value text-success"><strong>${{ financial_summary.sale_price }}</strong></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label"><strong>Foyda</strong></span>
+                        <span class="info-value {% if financial_summary.profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            <strong>${{ financial_summary.profit }}</strong>
                         </span>
                     </div>
                     {% if financial_summary.return_amount > 0 %}
@@ -360,23 +508,32 @@
                         <span class="info-value text-warning">${{ financial_summary.return_amount }}</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Yakuniy foyda</span>
-                        <span class="info-value {% if financial_summary.final_profit >= 0 %}price-positive{% else %}price-negative{% endif %}">
-                            ${{ financial_summary.final_profit }}
+                        <span class="info-label"><strong>Yakuniy foyda</strong></span>
+                        <span class="info-value {% if financial_summary.final_profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            <strong>${{ financial_summary.final_profit }}</strong>
                         </span>
                     </div>
                     {% endif %}
+                    {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-shopping-bag"></i>
+                        </div>
+                        <div class="empty-title">Hali sotilmagan</div>
+                        <div class="empty-text">Sotilgandan keyin foyda hisoblanadi</div>
+                    </div>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Sale Info -->
+            <!-- Sale Details -->
             {% if phone_sale %}
-            <div class="section-card">
-                <div class="section-header">
-                    <div class="section-title">
-                        <i class="fas fa-shopping-cart text-success me-2"></i>Sotish
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-shopping-cart"></i>
                     </div>
+                    <h3 class="card-title">Sotish Tafsilotlari</h3>
                 </div>
                 <div class="info-grid">
                     <div class="info-row">
@@ -388,12 +545,27 @@
                         <span class="info-value">{{ phone_sale.customer.phone_number }}</span>
                     </div>
                     <div class="info-row">
+                        <span class="info-label">Sotuvchi</span>
+                        <span class="info-value">
+                            {% if phone_sale.salesman %}
+                                {% if phone_sale.salesman.get_full_name %}
+                                    {{ phone_sale.salesman.get_full_name }}
+                                {% else %}
+                                    {{ phone_sale.salesman.username }}
+                                {% endif %}
+                            {% else %}
+                                Noma'lum
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="info-row">
                         <span class="info-label">Sana</span>
                         <span class="info-value">{{ phone_sale.sale_date|date:"d.m.Y" }}</span>
                     </div>
+                    <div class="divider"></div>
                     <div class="info-row">
-                        <span class="info-label">Narx</span>
-                        <span class="info-value price-positive">${{ phone_sale.sale_price }}</span>
+                        <span class="info-label"><strong>Sotish narxi</strong></span>
+                        <span class="info-value text-success"><strong>${{ phone_sale.sale_price }}</strong></span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Naqd</span>
@@ -403,10 +575,16 @@
                         <span class="info-label">Karta</span>
                         <span class="info-value">${{ phone_sale.card_amount }}</span>
                     </div>
+                    {% if phone_sale.credit_amount > 0 %}
+                    <div class="info-row">
+                        <span class="info-label">Nasiya</span>
+                        <span class="info-value">${{ phone_sale.credit_amount }}</span>
+                    </div>
+                    {% endif %}
                     {% if phone_sale.debt_amount > 0 %}
                     <div class="info-row">
                         <span class="info-label">Qarz</span>
-                        <span class="info-value price-negative">${{ phone_sale.debt_amount }}</span>
+                        <span class="info-value text-danger">${{ phone_sale.debt_amount }}</span>
                     </div>
                     {% endif %}
                 </div>
@@ -415,11 +593,12 @@
 
             <!-- Return Info -->
             {% if phone_return %}
-            <div class="section-card">
-                <div class="section-header">
-                    <div class="section-title">
-                        <i class="fas fa-undo text-warning me-2"></i>Qaytarilgan
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-undo"></i>
                     </div>
+                    <h3 class="card-title">Qaytarish</h3>
                 </div>
                 <div class="info-grid">
                     <div class="info-row">
@@ -432,104 +611,94 @@
                     </div>
                     <div class="info-row">
                         <span class="info-label">Sabab</span>
-                        <span class="info-value">{{ phone_return.reason|truncatechars:30 }}</span>
+                        <span class="info-value">{{ phone_return.reason }}</span>
                     </div>
                 </div>
             </div>
             {% endif %}
 
-            <!-- Active Debts with Payments -->
+            <!-- Debts -->
             {% if customer_debts %}
-            <div class="section-card">
-                <div class="section-header">
-                    <div class="section-title">
-                        <i class="fas fa-credit-card text-danger me-2"></i>Qarzlar
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
                     </div>
+                    <h3 class="card-title">Faol Qarzlar</h3>
                 </div>
-                <div style="padding: 1rem;">
-                    {% for debt in customer_debts %}
-                    <div class="debt-item">
-                        <div class="debt-header">
-                            <div>
-                                <div class="debt-amount">${{ debt.debt_amount }}</div>
-                                <small class="text-muted">{{ debt.created_at|date:"d.m.Y" }}</small>
-                            </div>
-                            <div class="text-end">
-                                <div class="debt-amount">Qoldiq: ${{ debt.remaining_amount }}</div>
-                            </div>
+                {% for debt in customer_debts %}
+                <div class="debt-card">
+                    <div class="debt-header">
+                        <div>
+                            <div class="debt-amount">${{ debt.debt_amount }}</div>
+                            <div class="debt-label">{{ debt.created_at|date:"d.m.Y" }}</div>
                         </div>
-
-                        {% if debt.payments.exists %}
-                        <div class="debt-payments">
-                            <small class="text-muted d-block mb-2">To'lovlar:</small>
-                            {% for payment in debt.payments.all|slice:":3" %}
-                            <div class="payment-item">
-                                <span class="payment-amount">${{ payment.payment_amount }}</span>
-                                <span class="payment-date">{{ payment.payment_date|date:"d.m.Y" }}</span>
-                            </div>
-                            {% endfor %}
-                            {% if debt.payments.count > 3 %}
-                            <small class="text-muted">va yana {{ debt.payments.count|add:"-3" }} ta to'lov...</small>
-                            {% endif %}
+                        <div style="text-align: right;">
+                            <div class="debt-label">Qoldiq</div>
+                            <div class="debt-amount">${{ debt.remaining_amount }}</div>
                         </div>
-                        {% endif %}
                     </div>
-                    {% endfor %}
+                    {% if debt.payments.exists %}
+                    <div class="payment-list">
+                        {% for payment in debt.payments.all|slice:":3" %}
+                        <div class="payment-item">
+                            <span class="payment-amount">${{ payment.payment_amount }}</span>
+                            <span class="payment-date">{{ payment.payment_date|date:"d.m.Y" }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
+                {% endfor %}
             </div>
             {% endif %}
         </div>
 
-        <!-- Sidebar for Desktop -->
-        <div class="col-lg-4 d-none d-lg-block">
-            <!-- Phone Image -->
+        <!-- Right Column -->
+        <div class="right-column">
+            <!-- Image -->
             {% if phone.image %}
-            <div class="section-card text-center">
-                <img src="{{ phone.image.url }}" alt="{{ phone }}" class="phone-image" style="max-width: 250px;">
+            <div class="card phone-image-card">
+                <img src="{{ phone.image.url }}" alt="{{ phone }}" class="phone-image">
             </div>
             {% endif %}
 
             <!-- Timeline -->
-            <div class="section-card">
-                <div class="section-header">
-                    <div class="section-title">
-                        <i class="fas fa-history text-info me-2"></i>Tarix
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-clock"></i>
                     </div>
+                    <h3 class="card-title">Tarix</h3>
                 </div>
-                <div>
+                <div class="timeline">
                     {% for event in timeline %}
-                    <div class="timeline-item {{ event.type }}">
-                        <div class="timeline-event">{{ event.event }}</div>
-                        <div class="timeline-desc">{{ event.description }}</div>
-                        <div class="timeline-meta">
-                            <span>{{ event.user.username|default:"" }}</span>
-                            <span>{{ event.date|date:"d.m.Y" }}</span>
+                    <div class="timeline-item">
+                        <div class="timeline-dot dot-{{ event.color }}">
+                            <i class="fas fa-{{ event.icon }}"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">{{ event.title }}</div>
+                            <div class="timeline-desc">{{ event.description }}</div>
+                            <div class="timeline-meta">
+                                <span>
+                                    {% if event.user %}
+                                        {% if event.user.get_full_name %}
+                                            {{ event.user.get_full_name }}
+                                        {% else %}
+                                            {{ event.user.username }}
+                                        {% endif %}
+                                    {% else %}
+                                        Tizim
+                                    {% endif %}
+                                </span>
+                                <span>{{ event.date|date:"d.m.Y" }}</span>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Mobile Timeline -->
-    <div class="section-card d-lg-none">
-        <div class="section-header">
-            <div class="section-title">
-                <i class="fas fa-history text-info me-2"></i>Tarix
-            </div>
-        </div>
-        <div>
-            {% for event in timeline %}
-            <div class="timeline-item {{ event.type }}">
-                <div class="timeline-event">{{ event.event }}</div>
-                <div class="timeline-desc">{{ event.description }}</div>
-                <div class="timeline-meta">
-                    <span>{{ event.user.username|default:"" }}</span>
-                    <span>{{ event.date|date:"d.m.Y" }}</span>
-                </div>
-            </div>
-            {% endfor %}
         </div>
     </div>
 </div>

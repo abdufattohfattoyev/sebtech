@@ -81,7 +81,7 @@ class SupplierPaymentForm(forms.ModelForm):
 
     class Meta:
         model = SupplierPayment
-        fields = ['supplier', 'amount', 'payment_type', 'payment_source', 'payment_date', 'notes']
+        fields = ['supplier', 'amount', 'payment_type', 'payment_date', 'notes']
         widgets = {
             'supplier': forms.Select(attrs={
                 'class': 'form-control',
@@ -96,10 +96,6 @@ class SupplierPaymentForm(forms.ModelForm):
             'payment_type': forms.RadioSelect(attrs={
                 'class': 'payment-type-radio'
             }),
-            # ✅ YANGI - PAYMENT SOURCE WIDGET
-            'payment_source': forms.RadioSelect(attrs={
-                'class': 'payment-source-radio'
-            }),
             'payment_date': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
@@ -109,9 +105,6 @@ class SupplierPaymentForm(forms.ModelForm):
                 'rows': 3,
                 'placeholder': 'Izoh (ixtiyoriy)...'
             }),
-        }
-        labels = {
-            'payment_source': 'To\'lov manbasi',
         }
 
     def __init__(self, *args, **kwargs):
@@ -137,7 +130,6 @@ class SupplierPaymentForm(forms.ModelForm):
         selected_phones = cleaned_data.get('selected_phones')
         amount = cleaned_data.get('amount')
         supplier = cleaned_data.get('supplier')
-        payment_source = cleaned_data.get('payment_source')
 
         # Agar tahrirlash bo'lsa, instance (eski to'lov) mavjud
         old_amount = Decimal('0.00')

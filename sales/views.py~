@@ -792,6 +792,7 @@ def debt_edit(request, pk):
 
 
 @login_required
+@boss_or_finance_required
 def debt_delete(request, pk):
     """Qarzni o'chirish"""
     debt = get_object_or_404(Debt, pk=pk)

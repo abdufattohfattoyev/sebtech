@@ -181,7 +181,7 @@ def phone_list(request):
     shop_id = request.GET.get('shop_id', '').strip()
     page_number = request.GET.get('page', 1)
 
-    phones = Phone.objects.all().select_related('shop', 'phone_model', 'memory_size').order_by('-id')
+    phones = Phone.objects.all().select_related('shop', 'phone_model', 'memory_size')
 
     if imei_query:
         phones = phones.filter(imei__icontains=imei_query)
@@ -203,7 +203,6 @@ def phone_list(request):
     }
 
     phone_models = PhoneModel.objects.all().order_by('model_name')
-
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if is_ajax:

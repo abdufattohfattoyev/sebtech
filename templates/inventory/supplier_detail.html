@@ -384,7 +384,7 @@
         </div>
     </div>
 
-    <!-- To'lovlar Tarixi -->
+    <!-- ✅ TO'LOVLAR TARIXI - YANGILANGAN (PAYMENT SOURCE BILAN) -->
     <div class="row mt-4">
         <div class="col-12">
             <div class="card shadow-sm">
@@ -405,6 +405,7 @@
                                     <th>Sana</th>
                                     <th>Summa</th>
                                     <th>Turi</th>
+                                    <th>💵 Manba</th> <!-- ✅ YANGI -->
                                     <th>Telefonlar</th>
                                     <th>Amalga Oshirgan</th>
                                     <th>Izoh</th>
@@ -428,6 +429,22 @@
                                         <span class="badge bg-{% if payment.payment_type == 'general' %}info{% else %}warning text-dark{% endif %}">
                                             {{ payment.get_payment_type_display }}
                                         </span>
+                                    </td>
+                                    <!-- ✅ YANGI - TO'LOV MANBASI -->
+                                    <td>
+                                        {% if payment.payment_source == 'cash' %}
+                                            <span class="badge bg-danger">
+                                                💵 Kassa
+                                            </span>
+                                            <br>
+                                            <small class="text-danger">
+                                                <i class="fas fa-exclamation-triangle"></i> Kunlik chiqim
+                                            </small>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                🔒 Seyf
+                                            </span>
+                                        {% endif %}
                                     </td>
                                     <td>
                                         <span class="badge bg-secondary rounded-pill">
