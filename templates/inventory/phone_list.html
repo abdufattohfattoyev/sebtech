@@ -226,7 +226,7 @@
     pointer-events: none;
 }
 
-/* Image Modal - YANGILANDI */
+/* Image Modal */
 .image-modal {
     display: none;
     position: fixed;
@@ -402,6 +402,39 @@
     pointer-events: none;
 }
 
+/* Excel Export Buttons */
+.export-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.btn-export {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-export.success {
+    background: #10b981;
+    color: white;
+}
+.btn-export.success:hover {
+    background: #059669;
+}
+.btn-export.primary {
+    background: #2563eb;
+    color: white;
+}
+.btn-export.primary:hover {
+    background: #1d4ed8;
+}
+
 /* Loading - minimal */
 .loading {
     text-align: center;
@@ -469,6 +502,14 @@
     .nav-controls {
         padding: 0 10px;
     }
+    .export-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+    .btn-export {
+        width: 100%;
+        justify-content: center;
+    }
 }
 </style>
 {% endblock %}
@@ -476,14 +517,34 @@
 {% block content %}
 <div class="fade-in">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-start mb-3">
         <div>
             <h1 class="mb-0 h3">Telefonlar</h1>
             <small class="text-muted">Telefon ma'lumotlari</small>
         </div>
-        <a href="{% url 'inventory:phone_create' %}" class="btn-add">
-            <i class="fas fa-plus"></i>Qo'shish
-        </a>
+        <div class="export-buttons">
+            <!-- Oddiy Excel Export -->
+            <a href="{% url 'inventory:export_phones_simple' %}?{% if status_filter %}status={{ status_filter }}&{% endif %}{% if selected_shop %}shop_id={{ selected_shop.id }}&{% endif %}{% if model_query %}model={{ model_query }}&{% endif %}{% if imei_query %}imei={{ imei_query }}{% endif %}"
+               class="btn-export success"
+               title="Model va IMEI ni Excel ga yuklash">
+                <i class="fas fa-file-excel"></i>
+                <span class="d-none d-sm-inline">Oddiy</span>
+            </a>
+
+            <!-- To'liq Excel Export -->
+            <a href="{% url 'inventory:export_phones_excel' %}?{% if status_filter %}status={{ status_filter }}&{% endif %}{% if selected_shop %}shop_id={{ selected_shop.id }}&{% endif %}{% if model_query %}model={{ model_query }}&{% endif %}{% if imei_query %}imei={{ imei_query }}{% endif %}"
+               class="btn-export primary"
+               title="Barcha ma'lumotlarni Excel ga yuklash">
+                <i class="fas fa-file-excel"></i>
+                <span class="d-none d-sm-inline">To'liq</span>
+            </a>
+
+            <!-- Telefon qo'shish -->
+            <a href="{% url 'inventory:phone_create' %}" class="btn-add">
+                <i class="fas fa-plus"></i>
+                <span class="d-none d-sm-inline">Qo'shish</span>
+            </a>
+        </div>
     </div>
 
     <!-- Search Form -->
@@ -665,7 +726,7 @@
     </nav>
 </div>
 
-<!-- Image Modal - YANGILANDI -->
+<!-- Image Modal -->
 <div id="imageModal" class="image-modal">
     <span class="modal-close" onclick="closeImageModal()">&times;</span>
 
@@ -987,7 +1048,7 @@ function updateNavigationButtons() {
     }
 }
 
-// Search functionality (existing code)
+// Search functionality
 const performSearch = (page = 1) => {
     clearTimeout(searchTimeout);
 
@@ -1100,12 +1161,12 @@ const updateResults = (phones) => {
                     <div class="detail-row">
                         <span class="detail-label">Narx:</span>
                         <span class="detail-value">
-                            ${canEdit ? '$' + Math.round(phone.cost_price) : '<i class="fas fa-lock"></i>'}
+                            ${canEdit ? ' + Math.round(phone.cost_price) : '<i class="fas fa-lock"></i>'}
                         </span>
                     </div>
                 </div>
                 <div class="phone-footer">
-                    <div class="phone-price">$${phone.sale_price ? Math.round(phone.sale_price) : '—'}</div>
+                    <div class="phone-price">${phone.sale_price ? Math.round(phone.sale_price) : '—'}</div>
                     <span class="phone-status ${phone.status}">${phone.status_display}</span>
                 </div>
                 ${canEdit ? `
@@ -1137,6 +1198,9 @@ const updateResults = (phones) => {
         </div>
         `;
     }).join('');
+
+    // Reinitialize image navigation after updating results
+    initializeImageNavigation();
 };
 
 const updatePagination = (data) => {

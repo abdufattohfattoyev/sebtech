@@ -15,6 +15,12 @@ from .models import Phone, Accessory, AccessoryPurchaseHistory, ExternalSeller, 
     SupplierPaymentDetail, SupplierPayment
 from shops.models import Shop
 
+from django.http import HttpResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from django.contrib.auth.decorators import login_required
+
 
 def can_edit_inventory(user):
     """Faqat boss va finance tahrirlash huquqiga ega"""
@@ -1551,3 +1557,307 @@ def check_imei_api(request):
         })
 
     return JsonResponse({'exists': False})
+
+
+# views.py ga qo'shish kerak bo'lgan funksiyalar
+
+
+
+
+@login_required
+def export_phones_to_excel(request):
+    """Telefonlarni to'liq ma'lumotlar bilan Excel ga eksport qilish"""
+
+    # Filtrlar
+    status_filter = request.GET.get('status', '').strip()
+    shop_id = request.GET.get('shop_id', '').strip()
+    model_query = request.GET.get('model', '').strip()
+    imei_query = request.GET.get('imei', '').strip()
+
+    # Telefonlarni olish
+    phones = Phone.objects.select_related(
+        'phone_model', 'memory_size', 'shop', 'supplier',
+        'external_seller', 'daily_seller', 'created_by'
+    ).order_by('-created_at')
+
+    # Filtrlarni qo'llash
+    if status_filter:
+        phones = phones.filter(status=status_filter)
+    if shop_id:
+        phones = phones.filter(shop_id=shop_id)
+    if model_query:
+        phones = phones.filter(phone_model__id=model_query)
+    if imei_query:
+        phones = phones.filter(imei__icontains=imei_query)
+
+    # Excel fayl yaratish
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Telefonlar"
+
+    # Sarlavha stillari
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    # Chegaralar
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    # Sarlavhalar
+    headers = [
+        '№',
+        'Do\'kon',
+        'Telefon Modeli',
+        'Xotira',
+        'IMEI',
+        'Holati (%)',
+        'Status',
+        'Sotib olingan ($)',
+        'IMEI xarajat ($)',
+        'Ta\'mirlash ($)',
+        'Tan narx ($)',
+        'Sotish narxi ($)',
+        'Manba',
+        'Taminotchi/Sotuvchi',
+        'To\'lov holati',
+        'To\'langan ($)',
+        'Qarz ($)',
+        'Qo\'shilgan sana',
+        'Qo\'shgan',
+        'Izoh'
+    ]
+
+    # Sarlavhalarni yozish
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.value = header
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+        cell.border = thin_border
+
+    # Ma'lumotlarni yozish
+    row_num = 2
+    for idx, phone in enumerate(phones, 1):
+        # Manba aniqlash
+        if phone.source_type == 'supplier':
+            source_name = phone.supplier.name if phone.supplier else 'N/A'
+        elif phone.source_type == 'external_seller':
+            source_name = phone.external_seller.name if phone.external_seller else 'N/A'
+        elif phone.source_type == 'daily_seller':
+            source_name = phone.daily_seller.name if phone.daily_seller else 'N/A'
+        elif phone.source_type == 'exchange':
+            source_name = phone.original_owner_name or 'N/A'
+        else:
+            source_name = 'N/A'
+
+        # Qatorni to'ldirish
+        row_data = [
+            idx,
+            phone.shop.name,
+            phone.phone_model.model_name,
+            str(phone.memory_size),
+            phone.imei or 'N/A',
+            phone.condition_percentage,
+            phone.get_status_display(),
+            float(phone.purchase_price),
+            float(phone.imei_cost),
+            float(phone.repair_cost),
+            float(phone.cost_price),
+            float(phone.sale_price) if phone.sale_price else '',
+            phone.get_source_type_display(),
+            source_name,
+            phone.get_payment_status_display() if phone.source_type == 'supplier' else 'To\'langan',
+            float(phone.paid_amount) if phone.source_type == 'supplier' else float(phone.cost_price),
+            float(phone.debt_balance) if phone.source_type == 'supplier' else 0,
+            phone.created_at.strftime('%d.%m.%Y') if phone.created_at else '',
+            phone.created_by.username if phone.created_by else '',
+            phone.note or ''
+        ]
+
+        for col_num, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_num, column=col_num)
+            cell.value = value
+            cell.border = thin_border
+            cell.alignment = Alignment(vertical="center", wrap_text=True)
+
+            # Raqamlar uchun format
+            if col_num in [8, 9, 10, 11, 12, 16, 17]:  # Dollar ustunlari
+                if value and value != '':
+                    cell.number_format = '$#,##0.00'
+
+        row_num += 1
+
+    # Ustun kengliklarini sozlash
+    column_widths = {
+        'A': 5,  # №
+        'B': 15,  # Do'kon
+        'C': 18,  # Model
+        'D': 10,  # Xotira
+        'E': 18,  # IMEI
+        'F': 10,  # Holat
+        'G': 15,  # Status
+        'H': 12,  # Sotib olingan
+        'I': 12,  # IMEI xarajat
+        'J': 12,  # Ta'mirlash
+        'K': 12,  # Tan narx
+        'L': 12,  # Sotish narxi
+        'M': 18,  # Manba
+        'N': 20,  # Taminotchi
+        'O': 15,  # To'lov holati
+        'P': 12,  # To'langan
+        'Q': 12,  # Qarz
+        'R': 15,  # Sana
+        'S': 15,  # Qo'shgan
+        'T': 30  # Izoh
+    }
+
+    for col, width in column_widths.items():
+        ws.column_dimensions[col].width = width
+
+    # Qatorlarning balandligini sozlash
+    ws.row_dimensions[1].height = 30
+
+    # Statistika qo'shish (pastga)
+    stats_row = row_num + 2
+
+    # Statistika sarlavhasi
+    ws.cell(row=stats_row, column=1).value = "STATISTIKA"
+    ws.cell(row=stats_row, column=1).font = Font(bold=True, size=12)
+    stats_row += 1
+
+    # Statistika ma'lumotlari
+    total_phones = phones.count()
+    total_cost = sum(float(p.cost_price) for p in phones)
+    total_debt = sum(float(p.debt_balance) for p in phones if p.source_type == 'supplier')
+    total_paid = sum(float(p.paid_amount) for p in phones if p.source_type == 'supplier')
+
+    stats_data = [
+        ('Jami telefonlar:', total_phones),
+        ('Jami tan narx:', f'${total_cost:,.2f}'),
+        ('Jami qarz:', f'${total_debt:,.2f}'),
+        ('Jami to\'langan:', f'${total_paid:,.2f}'),
+    ]
+
+    for label, value in stats_data:
+        ws.cell(row=stats_row, column=1).value = label
+        ws.cell(row=stats_row, column=1).font = Font(bold=True)
+        ws.cell(row=stats_row, column=2).value = value
+        stats_row += 1
+
+    # HTTP javob
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+    # Fayl nomi - filtrlar bilan
+    filename = 'telefonlar'
+    if status_filter:
+        filename += f'_{status_filter}'
+    if shop_id:
+        try:
+            shop = Shop.objects.get(id=shop_id)
+            filename += f'_{shop.name}'
+        except:
+            pass
+
+    response['Content-Disposition'] = f'attachment; filename={filename}.xlsx'
+
+    wb.save(response)
+    return response
+
+
+@login_required
+def export_phones_simple(request):
+    """Oddiy variantda faqat Model va IMEI"""
+
+    # Filtrlar
+    status_filter = request.GET.get('status', '').strip()
+    shop_id = request.GET.get('shop_id', '').strip()
+    model_query = request.GET.get('model', '').strip()
+    imei_query = request.GET.get('imei', '').strip()
+
+    phones = Phone.objects.select_related('phone_model', 'memory_size', 'shop').order_by('-created_at')
+
+    if status_filter:
+        phones = phones.filter(status=status_filter)
+    if shop_id:
+        phones = phones.filter(shop_id=shop_id)
+    if model_query:
+        phones = phones.filter(phone_model__id=model_query)
+    if imei_query:
+        phones = phones.filter(imei__icontains=imei_query)
+
+    # Excel yaratish
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Telefonlar"
+
+    # Sarlavhalar
+    headers = ['№', 'Telefon Modeli', 'Xotira', 'IMEI', 'Do\'kon', 'Status']
+
+    # Sarlavha stili
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=12)
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.value = header
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = thin_border
+
+    # Ma'lumotlar
+    for idx, phone in enumerate(phones, 1):
+        row_data = [
+            idx,
+            phone.phone_model.model_name,
+            str(phone.memory_size),
+            phone.imei or 'N/A',
+            phone.shop.name,
+            phone.get_status_display()
+        ]
+
+        for col_num, value in enumerate(row_data, 1):
+            cell = ws.cell(row=idx + 1, column=col_num)
+            cell.value = value
+            cell.border = thin_border
+            cell.alignment = Alignment(vertical="center")
+
+    # Ustun kengliklari
+    ws.column_dimensions['A'].width = 5
+    ws.column_dimensions['B'].width = 20
+    ws.column_dimensions['C'].width = 12
+    ws.column_dimensions['D'].width = 18
+    ws.column_dimensions['E'].width = 15
+    ws.column_dimensions['F'].width = 15
+
+    # Qator balandligi
+    ws.row_dimensions[1].height = 25
+
+    # HTTP javob
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+    # Fayl nomi
+    filename = 'telefonlar_oddiy'
+    if status_filter:
+        filename += f'_{status_filter}'
+
+    response['Content-Disposition'] = f'attachment; filename={filename}.xlsx'
+
+    wb.save(response)
+    return response

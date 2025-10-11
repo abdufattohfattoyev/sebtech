@@ -226,7 +226,7 @@
     pointer-events: none;
 }
 
-/* Image Modal */
+/* Image Modal - YANGILANDI */
 .image-modal {
     display: none;
     position: fixed;
@@ -245,18 +245,31 @@
 }
 .modal-content-wrapper {
     position: relative;
-    max-width: 90%;
-    max-height: 90%;
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    cursor: grab;
+}
+.modal-content-wrapper.grabbing {
+    cursor: grabbing;
+}
+.modal-image-container {
+    position: relative;
+    display: inline-block;
+    max-width: 90%;
+    max-height: 90%;
+    transition: transform 0.3s ease;
 }
 .modal-image {
     max-width: 100%;
     max-height: 90vh;
     object-fit: contain;
-    transform-origin: center;
-    transition: transform 0.3s ease;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 .modal-close {
     position: absolute;
@@ -275,9 +288,11 @@
     align-items: center;
     justify-content: center;
     line-height: 1;
+    transition: all 0.2s;
 }
 .modal-close:hover {
     background: rgba(0,0,0,0.8);
+    transform: scale(1.1);
 }
 .zoom-controls {
     position: absolute;
@@ -289,6 +304,7 @@
     background: rgba(0,0,0,0.7);
     padding: 10px;
     border-radius: 8px;
+    z-index: 10000;
 }
 .zoom-btn {
     background: rgba(255,255,255,0.2);
@@ -306,6 +322,10 @@
 }
 .zoom-btn:hover {
     background: rgba(255,255,255,0.3);
+    transform: scale(1.1);
+}
+.zoom-btn:active {
+    transform: scale(0.95);
 }
 .zoom-level {
     color: white;
@@ -313,6 +333,54 @@
     display: flex;
     align-items: center;
     font-size: 0.9rem;
+    min-width: 60px;
+    text-align: center;
+    justify-content: center;
+}
+
+/* Navigation controls */
+.nav-controls {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 10000;
+    pointer-events: none;
+}
+.nav-btn {
+    background: rgba(0,0,0,0.5);
+    border: none;
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    pointer-events: all;
+}
+.nav-btn:hover {
+    background: rgba(0,0,0,0.8);
+    transform: scale(1.1);
+}
+.nav-btn:active {
+    transform: scale(0.95);
+}
+
+/* Loading indicator */
+.modal-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 1.2rem;
+    z-index: 1000;
 }
 
 /* Header button styles */
@@ -386,6 +454,20 @@
     }
     .zoom-controls {
         bottom: 15px;
+        padding: 8px;
+    }
+    .zoom-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
+    }
+    .nav-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+    .nav-controls {
+        padding: 0 10px;
     }
 }
 </style>
@@ -393,8 +475,6 @@
 
 {% block content %}
 <div class="fade-in">
-
-
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
@@ -585,17 +665,43 @@
     </nav>
 </div>
 
-<!-- Image Modal -->
+<!-- Image Modal - YANGILANDI -->
 <div id="imageModal" class="image-modal">
     <span class="modal-close" onclick="closeImageModal()">&times;</span>
-    <div class="modal-content-wrapper">
-        <img class="modal-image" id="modalImage" src="" alt="">
-        <div class="zoom-controls">
-            <button class="zoom-btn" onclick="zoomOut()"><i class="fas fa-minus"></i></button>
-            <span class="zoom-level" id="zoomLevel">100%</span>
-            <button class="zoom-btn" onclick="zoomIn()"><i class="fas fa-plus"></i></button>
-            <button class="zoom-btn" onclick="resetZoom()"><i class="fas fa-compress"></i></button>
+
+    <div class="nav-controls">
+        <button class="nav-btn prev-btn" onclick="navigateImage(-1)">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <button class="nav-btn next-btn" onclick="navigateImage(1)">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+
+    <div class="modal-content-wrapper" id="modalWrapper">
+        <div class="modal-image-container" id="imageContainer">
+            <img class="modal-image" id="modalImage" src="" alt=""
+                 onload="imageLoaded()" onerror="imageError()">
         </div>
+        <div class="modal-loading d-none" id="modalLoading">
+            <i class="fas fa-spinner fa-spin"></i> Yuklanmoqda...
+        </div>
+    </div>
+
+    <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomOut()" title="Kichiklashtirish">
+            <i class="fas fa-minus"></i>
+        </button>
+        <span class="zoom-level" id="zoomLevel">100%</span>
+        <button class="zoom-btn" onclick="zoomIn()" title="Kattalashtirish">
+            <i class="fas fa-plus"></i>
+        </button>
+        <button class="zoom-btn" onclick="resetZoom()" title="Asl holat">
+            <i class="fas fa-compress"></i>
+        </button>
+        <button class="zoom-btn" onclick="rotateImage()" title="Aylantirish">
+            <i class="fas fa-redo"></i>
+        </button>
     </div>
 </div>
 
@@ -608,71 +714,280 @@ const userRole = '{{ request.user.userprofile.role }}';
 const canEdit = userRole === 'boss' || userRole === 'finance';
 
 let searchTimeout = null;
-let currentZoom = 1;
 
-// Image Modal Functions
+// Image Modal Variables
+let currentZoom = 1;
+let currentRotation = 0;
+let isDragging = false;
+let startX, startY;
+let translateX = 0, translateY = 0;
+let currentImageIndex = 0;
+let allPhoneImages = [];
+
+// Initialize all phone images for navigation
+function initializeImageNavigation() {
+    allPhoneImages = Array.from(document.querySelectorAll('.phone-image.clickable img'))
+        .map(img => ({
+            src: img.src,
+            alt: img.alt,
+            parent: img.closest('.phone-card')
+        }))
+        .filter(img => img.src);
+}
+
+// Enhanced Image Modal Functions
 function openImageModal(imageSrc, altText) {
     if (!imageSrc) return;
 
+    initializeImageNavigation();
+
+    // Find current image index
+    currentImageIndex = allPhoneImages.findIndex(img => img.src === imageSrc);
+    if (currentImageIndex === -1) currentImageIndex = 0;
+
     const modal = document.getElementById('imageModal');
     const modalImg = document.getElementById('modalImage');
+    const modalLoading = document.getElementById('modalLoading');
 
     modal.classList.add('active');
+    modalLoading.classList.remove('d-none');
+    modalImg.style.display = 'none';
+
+    // Reset transformations
+    currentZoom = 1;
+    currentRotation = 0;
+    translateX = 0;
+    translateY = 0;
+
     modalImg.src = imageSrc;
     modalImg.alt = altText;
-    currentZoom = 1;
-    updateZoom();
 
     document.body.style.overflow = 'hidden';
+    updateNavigationButtons();
+}
+
+function imageLoaded() {
+    const modalImg = document.getElementById('modalImage');
+    const modalLoading = document.getElementById('modalLoading');
+
+    modalLoading.classList.add('d-none');
+    modalImg.style.display = 'block';
+    resetTransform();
+}
+
+function imageError() {
+    const modalLoading = document.getElementById('modalLoading');
+    modalLoading.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Rasm yuklanmadi';
 }
 
 function closeImageModal() {
     const modal = document.getElementById('imageModal');
     modal.classList.remove('active');
     document.body.style.overflow = 'auto';
+
+    // Reset everything
     currentZoom = 1;
+    currentRotation = 0;
+    translateX = 0;
+    translateY = 0;
 }
 
+// Zoom functions
 function zoomIn() {
-    if (currentZoom < 3) {
-        currentZoom += 0.2;
-        updateZoom();
+    if (currentZoom < 5) {
+        currentZoom += 0.25;
+        updateTransform();
     }
 }
 
 function zoomOut() {
     if (currentZoom > 0.5) {
-        currentZoom -= 0.2;
-        updateZoom();
+        currentZoom -= 0.25;
+        updateTransform();
     }
 }
 
 function resetZoom() {
     currentZoom = 1;
-    updateZoom();
+    translateX = 0;
+    translateY = 0;
+    updateTransform();
 }
 
-function updateZoom() {
-    const modalImg = document.getElementById('modalImage');
+function rotateImage() {
+    currentRotation = (currentRotation + 90) % 360;
+    updateTransform();
+}
+
+function updateTransform() {
+    const imageContainer = document.getElementById('imageContainer');
     const zoomLevel = document.getElementById('zoomLevel');
-    modalImg.style.transform = `scale(${currentZoom})`;
+
+    imageContainer.style.transform = `
+        translate(${translateX}px, ${translateY}px)
+        scale(${currentZoom})
+        rotate(${currentRotation}deg)
+    `;
+
     zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
 }
 
-// Close modal on outside click
-document.getElementById('imageModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeImageModal();
-    }
+function resetTransform() {
+    currentZoom = 1;
+    currentRotation = 0;
+    translateX = 0;
+    translateY = 0;
+    updateTransform();
+}
+
+// Mouse/touch events for panning
+document.addEventListener('DOMContentLoaded', function() {
+    const modalWrapper = document.getElementById('modalWrapper');
+    const imageContainer = document.getElementById('imageContainer');
+
+    // Mouse events
+    modalWrapper.addEventListener('mousedown', startDragging);
+    modalWrapper.addEventListener('mousemove', drag);
+    modalWrapper.addEventListener('mouseup', stopDragging);
+    modalWrapper.addEventListener('mouseleave', stopDragging);
+
+    // Touch events for mobile
+    modalWrapper.addEventListener('touchstart', handleTouchStart);
+    modalWrapper.addEventListener('touchmove', handleTouchMove);
+    modalWrapper.addEventListener('touchend', stopDragging);
+
+    // Wheel event for zoom
+    modalWrapper.addEventListener('wheel', handleWheel, { passive: false });
+
+    // Keyboard events
+    document.addEventListener('keydown', handleKeyDown);
 });
 
-// Close modal on ESC key
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeImageModal();
-    }
-});
+function startDragging(e) {
+    if (currentZoom <= 1) return;
 
+    isDragging = true;
+    const modalWrapper = document.getElementById('modalWrapper');
+    modalWrapper.classList.add('grabbing');
+
+    startX = e.clientX - translateX;
+    startY = e.clientY - translateY;
+}
+
+function drag(e) {
+    if (!isDragging) return;
+
+    e.preventDefault();
+    translateX = e.clientX - startX;
+    translateY = e.clientY - startY;
+    updateTransform();
+}
+
+function stopDragging() {
+    isDragging = false;
+    const modalWrapper = document.getElementById('modalWrapper');
+    modalWrapper.classList.remove('grabbing');
+}
+
+// Touch events
+function handleTouchStart(e) {
+    if (currentZoom <= 1) return;
+
+    if (e.touches.length === 1) {
+        isDragging = true;
+        const modalWrapper = document.getElementById('modalWrapper');
+        modalWrapper.classList.add('grabbing');
+
+        startX = e.touches[0].clientX - translateX;
+        startY = e.touches[0].clientY - translateY;
+    }
+}
+
+function handleTouchMove(e) {
+    if (!isDragging || e.touches.length !== 1) return;
+
+    e.preventDefault();
+    translateX = e.touches[0].clientX - startX;
+    translateY = e.touches[0].clientY - startY;
+    updateTransform();
+}
+
+// Wheel zoom
+function handleWheel(e) {
+    e.preventDefault();
+
+    if (e.deltaY < 0) {
+        zoomIn();
+    } else {
+        zoomOut();
+    }
+}
+
+// Keyboard navigation
+function handleKeyDown(e) {
+    const modal = document.getElementById('imageModal');
+    if (!modal.classList.contains('active')) return;
+
+    switch(e.key) {
+        case 'Escape':
+            closeImageModal();
+            break;
+        case 'ArrowLeft':
+            navigateImage(-1);
+            break;
+        case 'ArrowRight':
+            navigateImage(1);
+            break;
+        case '+':
+        case '=':
+            zoomIn();
+            break;
+        case '-':
+            zoomOut();
+            break;
+        case '0':
+            resetZoom();
+            break;
+        case 'r':
+            rotateImage();
+            break;
+    }
+}
+
+// Image navigation
+function navigateImage(direction) {
+    if (allPhoneImages.length <= 1) return;
+
+    currentImageIndex = (currentImageIndex + direction + allPhoneImages.length) % allPhoneImages.length;
+    const nextImage = allPhoneImages[currentImageIndex];
+
+    const modalImg = document.getElementById('modalImage');
+    const modalLoading = document.getElementById('modalLoading');
+
+    modalLoading.classList.remove('d-none');
+    modalImg.style.display = 'none';
+
+    resetTransform();
+    modalImg.src = nextImage.src;
+    modalImg.alt = nextImage.alt;
+
+    updateNavigationButtons();
+}
+
+function updateNavigationButtons() {
+    const prevBtn = document.querySelector('.prev-btn');
+    const nextBtn = document.querySelector('.next-btn');
+
+    if (allPhoneImages.length <= 1) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+    } else {
+        prevBtn.style.display = 'flex';
+        nextBtn.style.display = 'flex';
+    }
+}
+
+// Search functionality (existing code)
 const performSearch = (page = 1) => {
     clearTimeout(searchTimeout);
 
@@ -753,7 +1068,7 @@ const updateResults = (phones) => {
         const hasImage = phone.image && phone.image !== '';
         const imageHtml = hasImage
             ? `<div class="phone-image clickable" onclick="openImageModal('${phone.image}', '${phone.phone_model}')">
-                   <img src="${phone.image}" alt="${phone.phone_model}">
+                   <img src="${phone.image}" alt="${phone.phone_model}" loading="lazy">
                    <span class="zoom-icon"><i class="fas fa-search-plus"></i></span>
                </div>`
             : `<div class="phone-image">
@@ -922,6 +1237,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // Initialize image navigation
+    initializeImageNavigation();
 });
 </script>
 {% endblock %}

@@ -14,6 +14,8 @@ urlpatterns = [
     path('phones/<int:pk>/edit/', views.phone_update, name='phone_update'),
     path('phones/<int:pk>/delete/', views.phone_delete, name='phone_delete'),
     path('phones/<int:pk>/', views.phone_detail, name='phone_detail'),
+    path('phones/export/excel/', views.export_phones_to_excel, name='export_phones_excel'),
+    path('phones/export/simple/', views.export_phones_simple, name='export_phones_simple'),
 
     # Accessory URLs
     path('accessories/', views.accessory_list, name='accessory_list'),

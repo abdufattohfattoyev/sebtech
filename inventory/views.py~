@@ -1516,3 +1516,39 @@ def supplier_payment_delete(request, payment_id):
     }
 
     return render(request, 'inventory/supplier_payment_confirm_delete.html', context)
+
+
+@login_required
+def check_imei_api(request):
+    """IMEI tekshirish API"""
+    imei = request.GET.get('imei', '').strip()
+    current_id = request.GET.get('current_id', '').strip()
+
+    if not imei or len(imei) != 15:
+        return JsonResponse({'exists': False})
+
+    # IMEI ni tekshirish
+    phones = Phone.objects.filter(imei=imei)
+
+    # Agar tahrirlash bo'lsa - o'sha telefonni chiqarib tashlash
+    if current_id and current_id.isdigit():
+        phones = phones.exclude(id=int(current_id))
+
+    if phones.exists():
+        phone = phones.select_related('phone_model', 'memory_size', 'shop').first()
+        return JsonResponse({
+            'exists': True,
+            'phone': {
+                'id': phone.id,
+                'phone_model': phone.phone_model.model_name,
+                'memory_size': str(phone.memory_size),
+                'imei': phone.imei,
+                'shop_name': phone.shop.name,
+                'status': phone.status,
+                'status_display': phone.get_status_display(),
+                'cost_price': str(phone.cost_price) if phone.cost_price else None,
+            }
+        })
+
+    return JsonResponse({'exists': False})
+

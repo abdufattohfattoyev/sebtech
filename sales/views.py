@@ -678,36 +678,221 @@ def phone_exchange_delete(request, pk):
 # ============ DEBTS ============
 @login_required
 def debt_list(request):
-    """Qarzlar ro'yxati"""
+    """Qarzlar ro'yxati - to'liq statistika va filterlar bilan"""
+    from django.db.models import Q, Sum, F, Case, When, DecimalField
+    from datetime import datetime
+
     user_role = get_user_role(request.user)
     debts = get_debts_for_user(request.user).select_related(
         'creditor', 'debtor', 'customer', 'master'
-    ).order_by('-created_at')
+    )
 
-    stats = {
-        'total_debts_count': debts.count(),
-        'active_debts_count': debts.filter(status='active').count(),
-        'paid_debts_count': debts.filter(status='paid').count(),
-        'cancelled_debts_count': debts.filter(status='cancelled').count(),
+    # ========== FILTERLAR ==========
+    # Sotuvchi filtri
+    selected_salesman = request.GET.get('salesman', '')
+    if selected_salesman:
+        debts = debts.filter(
+            Q(creditor_id=selected_salesman) | Q(debtor_id=selected_salesman)
+        )
+
+    # Qarz turi filtri
+    debt_type_filter = request.GET.get('debt_type', '')
+    if debt_type_filter:
+        debts = debts.filter(debt_type=debt_type_filter)
+
+    # Holat filtri
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        debts = debts.filter(status=status_filter)
+
+    # Valyuta filtri
+    currency_filter = request.GET.get('currency', '')
+    if currency_filter:
+        debts = debts.filter(currency=currency_filter)
+
+    # Sana oralig'i filtri
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    if date_from:
+        debts = debts.filter(created_at__gte=date_from)
+    if date_to:
+        debts = debts.filter(created_at__lte=date_to)
+
+    # Muddati o'tganlar filtri
+    overdue_filter = request.GET.get('overdue', '')
+    today = timezone.now().date()
+    if overdue_filter == 'yes':
+        debts = debts.filter(due_date__lt=today, status='active')
+
+    # ========== UMUMIY STATISTIKA ==========
+    all_debts = debts.order_by('-created_at')
+
+    # Jami qarzlar statistikasi
+    total_stats = all_debts.aggregate(
+        total_count=Count('id'),
+        active_count=Count('id', filter=Q(status='active')),
+        paid_count=Count('id', filter=Q(status='paid')),
+        cancelled_count=Count('id', filter=Q(status='cancelled')),
+
+        # USD qarzlar
+        total_debt_usd=Sum('debt_amount', filter=Q(currency='USD')),
+        paid_usd=Sum('paid_amount', filter=Q(currency='USD')),
+        remaining_usd=Sum(
+            F('debt_amount') - F('paid_amount'),
+            filter=Q(currency='USD', status='active'),
+            output_field=DecimalField()
+        ),
+
+        # UZS qarzlar
+        total_debt_uzs=Sum('debt_amount', filter=Q(currency='UZS')),
+        paid_uzs=Sum('paid_amount', filter=Q(currency='UZS')),
+        remaining_uzs=Sum(
+            F('debt_amount') - F('paid_amount'),
+            filter=Q(currency='UZS', status='active'),
+            output_field=DecimalField()
+        ),
+    )
+
+    # Kechiktirilgan qarzlar
+    overdue_debts = all_debts.filter(
+        status='active',
+        due_date__lt=today
+    )
+
+    overdue_stats = overdue_debts.aggregate(
+        count=Count('id'),
+        total_usd=Sum(
+            F('debt_amount') - F('paid_amount'),
+            filter=Q(currency='USD'),
+            output_field=DecimalField()
+        ),
+        total_uzs=Sum(
+            F('debt_amount') - F('paid_amount'),
+            filter=Q(currency='UZS'),
+            output_field=DecimalField()
+        ),
+    )
+
+    # ========== SOTUVCHILAR BO'YICHA STATISTIKA ==========
+    from django.contrib.auth.models import User
+    from django.db.models import Q
+
+    # Barcha sotuvchilar ro'yxati
+    salesmen = User.objects.filter(
+        Q(given_debts__isnull=False) | Q(received_debts__isnull=False)
+    ).distinct().order_by('first_name', 'username')
+
+    # Har bir sotuvchi uchun statistika
+    salesmen_stats = []
+    for salesman in salesmen:
+        salesman_debts = debts.filter(
+            Q(creditor=salesman) | Q(debtor=salesman)
+        )
+
+        if salesman_debts.exists():
+            stats = salesman_debts.aggregate(
+                total_count=Count('id'),
+                active_count=Count('id', filter=Q(status='active')),
+
+                # Bergan qarzlar (creditor)
+                given_usd=Sum(
+                    F('debt_amount') - F('paid_amount'),
+                    filter=Q(creditor=salesman, currency='USD', status='active'),
+                    output_field=DecimalField()
+                ),
+                given_uzs=Sum(
+                    F('debt_amount') - F('paid_amount'),
+                    filter=Q(creditor=salesman, currency='UZS', status='active'),
+                    output_field=DecimalField()
+                ),
+
+                # Olgan qarzlar (debtor)
+                received_usd=Sum(
+                    F('debt_amount') - F('paid_amount'),
+                    filter=Q(debtor=salesman, currency='USD', status='active'),
+                    output_field=DecimalField()
+                ),
+                received_uzs=Sum(
+                    F('debt_amount') - F('paid_amount'),
+                    filter=Q(debtor=salesman, currency='UZS', status='active'),
+                    output_field=DecimalField()
+                ),
+            )
+
+            salesmen_stats.append({
+                'salesman': salesman,
+                'total_count': stats['total_count'] or 0,
+                'active_count': stats['active_count'] or 0,
+                'given_usd': stats['given_usd'] or Decimal('0'),
+                'given_uzs': stats['given_uzs'] or Decimal('0'),
+                'received_usd': stats['received_usd'] or Decimal('0'),
+                'received_uzs': stats['received_uzs'] or Decimal('0'),
+            })
+
+    # Har bir qarz uchun qo'shimcha ma'lumotlar
+    for debt in all_debts:
+        # Muddat holati
+        if debt.due_date and debt.status == 'active':
+            days_diff = (debt.due_date - today).days
+            if days_diff < 0:
+                debt.due_date_class = 'overdue'
+            elif days_diff <= 3:
+                debt.due_date_class = 'soon'
+            elif days_diff <= 7:
+                debt.due_date_class = 'warning'
+            else:
+                debt.due_date_class = 'ok'
+        else:
+            debt.due_date_class = ''
+
+        debt.is_overdue = debt.status == 'active' and debt.due_date and debt.due_date < today
+
+    context = {
+        'debts': all_debts,
+        'user_role': user_role,
+        'can_view_all': user_role in ['boss', 'finance'],
+
+        # Umumiy statistika
+        'total_debts_count': total_stats['total_count'] or 0,
+        'active_debts_count': total_stats['active_count'] or 0,
+        'paid_debts_count': total_stats['paid_count'] or 0,
+        'cancelled_debts_count': total_stats['cancelled_count'] or 0,
+
+        # USD statistika
+        'total_debt_usd': total_stats['total_debt_usd'] or Decimal('0'),
+        'total_paid_usd': total_stats['paid_usd'] or Decimal('0'),
+        'total_remaining_usd': total_stats['remaining_usd'] or Decimal('0'),
+
+        # UZS statistika
+        'total_debt_uzs': total_stats['total_debt_uzs'] or Decimal('0'),
+        'total_paid_uzs': total_stats['paid_uzs'] or Decimal('0'),
+        'total_remaining_uzs': total_stats['remaining_uzs'] or Decimal('0'),
+
+        # Kechiktirilgan qarzlar
+        'overdue_count': overdue_stats['count'] or 0,
+        'overdue_total_usd': overdue_stats['total_usd'] or Decimal('0'),
+        'overdue_total_uzs': overdue_stats['total_uzs'] or Decimal('0'),
+
+        # Sotuvchilar statistikasi
+        'salesmen': salesmen,
+        'salesmen_stats': salesmen_stats,
+
+        # Filterlar
+        'selected_salesman': selected_salesman,
+        'debt_type_filter': debt_type_filter,
+        'status_filter': status_filter,
+        'currency_filter': currency_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'overdue_filter': overdue_filter,
+
+        # Filter choices
+        'debt_type_choices': Debt.DEBT_TYPE_CHOICES,
+        'status_choices': Debt.DEBT_STATUS_CHOICES,
+        'currency_choices': Debt.CURRENCY_CHOICES,
     }
 
-    if user_role == 'seller':
-        my_debts = debts.filter(debtor=request.user, status='active')
-        stats['my_total_debt_usd'] = my_debts.filter(currency='USD').aggregate(
-            total=Sum(F('debt_amount') - F('paid_amount'))
-        )['total'] or Decimal('0')
-        stats['my_total_debt_uzs'] = my_debts.filter(currency='UZS').aggregate(
-            total=Sum(F('debt_amount') - F('paid_amount'))
-        )['total'] or Decimal('0')
-    else:
-        stats['my_total_debt_usd'] = Decimal('0')
-        stats['my_total_debt_uzs'] = Decimal('0')
-
-    stats['user_role'] = user_role
-    stats['can_view_all'] = user_role in ['boss', 'finance']
-    stats['debts'] = debts
-
-    return render(request, 'sales/debt_list.html', stats)
+    return render(request, 'sales/debt_list.html', context)
 
 
 @login_required
