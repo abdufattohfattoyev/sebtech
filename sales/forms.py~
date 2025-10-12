@@ -1282,32 +1282,12 @@ class ExpenseForm(forms.ModelForm):
         model = Expense
         fields = ['shop', 'name', 'amount', 'expense_date', 'notes']
         widgets = {
-            'shop': forms.Select(attrs={
-                'class': 'form-control',
-                'required': True
-            }),
-            'name': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Xarajat nomi',
-                'required': True
-            }),
-            'amount': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '1000',
-                'min': '0',
-                'placeholder': "Summa (so'm)",
-                'required': True
-            }),
-            'expense_date': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date',
-                'required': True
-            }),
-            'notes': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Izoh...'
-            })
+            'shop': forms.Select(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Xarajat nomi'}),
+            'amount': forms.NumberInput(
+                attrs={'class': 'form-control', 'step': '1000', 'min': '0', 'placeholder': "Summa (so'm)"}),
+            'expense_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Izoh...'})
         }
         labels = {
             'shop': "Do'kon",
@@ -1321,17 +1301,34 @@ class ExpenseForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # ✅ BARCHA FOYDALANUVCHILAR UCHUN BARCHA DO'KONLAR
-        self.fields['shop'].required = True
-        shops = Shop.objects.all().order_by('name')
-        self.fields['shop'].queryset = shops
+        if self.user:
+            # ✅ Foydalanuvchi rolini aniqlash
+            user_role = 'seller'
+            if hasattr(self.user, 'userprofile'):
+                user_role = self.user.userprofile.role
 
-        if shops.exists():
-            # ✅ Choices ni to'g'ri belgilash
-            self.fields['shop'].empty_label = "Do'konni tanlang"
+            # ✅ Boss va Finance - barcha do'konlar
+            if user_role in ['boss', 'finance']:
+                self.fields['shop'].queryset = Shop.objects.all().order_by('name')
+                self.fields['shop'].empty_label = "Do'konni tanlang"
+
+            # ✅ Seller - faqat o'zi ishlayotgan do'kon
+            else:
+                # Seller ishlaydigan do'konlarni topish
+                self.fields['shop'].queryset = Shop.objects.filter(
+                    owner=self.user
+                ).order_by('name')
+
+                # Agar faqat 1 ta do'kon bo'lsa - avtomatik tanlash
+                if self.fields['shop'].queryset.count() == 1:
+                    self.fields['shop'].initial = self.fields['shop'].queryset.first()
+                    self.fields['shop'].empty_label = None
+                else:
+                    self.fields['shop'].empty_label = "Do'konni tanlang"
         else:
-            self.fields['shop'].empty_label = "Do'konlar mavjud emas"
-            self.fields['shop'].widget.attrs['disabled'] = True
+            # ✅ User yo'q bo'lsa - barcha do'konlar
+            self.fields['shop'].queryset = Shop.objects.all().order_by('name')
+            self.fields['shop'].empty_label = "Do'konni tanlang"
 
         # ✅ Initial sana
         if not self.instance.pk:

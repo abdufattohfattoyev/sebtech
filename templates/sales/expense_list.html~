@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load custom_filters %}
 {% block page_title %}Xarajatlar{% endblock %}
 
 {% block extra_css %}
@@ -83,7 +82,7 @@
                                 </td>
                                 <td>
                                     {% if expense.notes %}
-                                        <span class="text-truncate d-inline-block" style="max-width: 200px;" 
+                                        <span class="text-truncate d-inline-block" style="max-width: 200px;"
                                               title="{{ expense.notes }}">
                                             {{ expense.notes }}
                                         </span>
@@ -93,18 +92,18 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm" role="group">
-                                        <a href="{% url 'sales:expense_detail' expense.pk %}" 
-                                           class="btn btn-outline-info table-action-btn" 
+                                        <a href="{% url 'sales:expense_detail' expense.pk %}"
+                                           class="btn btn-outline-info table-action-btn"
                                            title="Ko'rish">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{% url 'sales:expense_edit' expense.pk %}" 
-                                           class="btn btn-outline-warning table-action-btn" 
+                                        <a href="{% url 'sales:expense_edit' expense.pk %}"
+                                           class="btn btn-outline-warning table-action-btn"
                                            title="Tahrirlash">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <button type="button" 
-                                                class="btn btn-outline-danger table-action-btn" 
+                                        <button type="button"
+                                                class="btn btn-outline-danger table-action-btn"
                                                 title="O'chirish"
                                                 onclick="confirmDelete('{% url 'sales:expense_delete' expense.pk %}', '{{ expense.name }}')">
                                             <i class="fas fa-trash"></i>
@@ -118,44 +117,13 @@
                             <tr>
                                 <td colspan="2" class="text-end fw-bold">JAMI:</td>
                                 <td class="text-end fw-bold text-danger">
-                                    {% widthratio expenses|length 1 1 as count %}
-                                    {{ expenses|sum_field:"amount"|floatformat:0 }} so'm
+                                    {{ total_amount|floatformat:0 }} so'm
                                 </td>
                                 <td colspan="4"></td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-
-                {% if is_paginated %}
-                <nav aria-label="Page navigation" class="mt-4">
-                    <ul class="pagination justify-content-center">
-                        {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page=1">Birinchi</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Oldingi</a>
-                        </li>
-                        {% endif %}
-
-                        <li class="page-item active">
-                            <span class="page-link">
-                                {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-                            </span>
-                        </li>
-
-                        {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Keyingi</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Oxirgi</a>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-                {% endif %}
 
             {% else %}
                 <div class="text-center py-5">

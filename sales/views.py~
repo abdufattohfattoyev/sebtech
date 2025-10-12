@@ -1,7 +1,6 @@
 import logging
-from django.http import HttpResponse
-import csv
-from datetime import datetime
+from datetime import timedelta
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -678,6 +677,7 @@ def phone_exchange_delete(request, pk):
 
 
 # ============ DEBTS ============
+# ============ DEBTS - TO'LIQ QARZ TIZIMI ============
 @login_required
 def debt_list(request):
     """
@@ -893,7 +893,9 @@ def debt_list(request):
 
 
 # ========== QARZ EKSPORT (CSV/Excel) ==========
-
+from django.http import HttpResponse
+import csv
+from datetime import datetime
 
 
 @login_required

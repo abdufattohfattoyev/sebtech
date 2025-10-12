@@ -49,6 +49,7 @@ urlpatterns = [
     path('debts/<int:pk>/', views.debt_detail, name='debt_detail'),
     path('debts/<int:pk>/edit/', views.debt_edit, name='debt_edit'),
     path('debts/<int:pk>/delete/', views.debt_delete, name='debt_delete'),  # BU YO'Q EDI!
+    path('debts/export/', views.debt_export_excel, name='debt_export_excel'),
 
     # Debt Payments
     path('debt-payments/', views.debt_payment_list, name='debt_payment_list'),

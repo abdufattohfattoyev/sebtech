@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-
 {% block page_title %}{{ title }}{% endblock %}
 
 {% block content %}
@@ -17,15 +16,33 @@
 
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label for="{{ form.shop.id_for_label }}" class="form-label">{{ form.shop.label }}</label>
-                    {{ form.shop }}
+                    <label for="{{ form.shop.id_for_label }}" class="form-label required">
+                        {{ form.shop.label }}
+                    </label>
+                    <select name="shop" id="{{ form.shop.id_for_label }}" class="form-control {% if form.shop.errors %}is-invalid{% endif %}" required>
+                        {% if form.shop.field.empty_label %}
+                            <option value="">{{ form.shop.field.empty_label }}</option>
+                        {% endif %}
+                        {% for value, label in form.shop.field.choices %}
+                            {% if value %}
+                                <option value="{{ value }}" {% if form.shop.value == value or form.shop.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
                     {% if form.shop.errors %}
-                        <div class="text-danger mt-1">{{ form.shop.errors.0 }}</div>
+                        <div class="invalid-feedback">{{ form.shop.errors.0 }}</div>
+                    {% endif %}
+                    {% if form.shop.help_text %}
+                        <small class="form-text text-muted">{{ form.shop.help_text }}</small>
                     {% endif %}
                 </div>
 
                 <div class="col-md-6 mb-3">
-                    <label for="{{ form.expense_date.id_for_label }}" class="form-label">{{ form.expense_date.label }}</label>
+                    <label for="{{ form.expense_date.id_for_label }}" class="form-label required">
+                        {{ form.expense_date.label }}
+                    </label>
                     {{ form.expense_date }}
                     {% if form.expense_date.errors %}
                         <div class="text-danger mt-1">{{ form.expense_date.errors.0 }}</div>
@@ -35,7 +52,9 @@
 
             <div class="row">
                 <div class="col-md-8 mb-3">
-                    <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                    <label for="{{ form.name.id_for_label }}" class="form-label required">
+                        {{ form.name.label }}
+                    </label>
                     {{ form.name }}
                     {% if form.name.errors %}
                         <div class="text-danger mt-1">{{ form.name.errors.0 }}</div>
@@ -43,7 +62,9 @@
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <label for="{{ form.amount.id_for_label }}" class="form-label">{{ form.amount.label }}</label>
+                    <label for="{{ form.amount.id_for_label }}" class="form-label required">
+                        {{ form.amount.label }}
+                    </label>
                     {{ form.amount }}
                     {% if form.amount.errors %}
                         <div class="text-danger mt-1">{{ form.amount.errors.0 }}</div>
@@ -52,7 +73,9 @@
             </div>
 
             <div class="mb-3">
-                <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+                <label for="{{ form.notes.id_for_label }}" class="form-label">
+                    {{ form.notes.label }}
+                </label>
                 {{ form.notes }}
                 {% if form.notes.errors %}
                     <div class="text-danger mt-1">{{ form.notes.errors.0 }}</div>
@@ -70,5 +93,20 @@
         </form>
     </div>
 </div>
-{% endblock %}
 
+<!-- Debug info (faqat development uchun) -->
+{% if debug %}
+<div class="card mt-3">
+    <div class="card-body">
+        <h5>Debug Info:</h5>
+        <p><strong>Do'konlar soni:</strong> {{ form.shop.field.queryset.count }}</p>
+        <p><strong>Empty label:</strong> {{ form.shop.field.empty_label }}</p>
+        <ul>
+        {% for value, label in form.shop.field.choices %}
+            <li>{{ value }} - {{ label }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
