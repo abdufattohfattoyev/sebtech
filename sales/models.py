@@ -266,7 +266,7 @@ class PhoneSale(models.Model):
                                         verbose_name="Nasiya ($)")
     debt_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=0,
-        validators=[MinValueValidator(0), MaxValueValidator(1100)],
+        validators=[MinValueValidator(0), MaxValueValidator(3000)],
         verbose_name="Qarz (max 500$)"
     )
 
@@ -479,7 +479,7 @@ class PhoneExchange(models.Model):
                                         verbose_name="Nasiya ($)")
     debt_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=0,
-        validators=[MinValueValidator(0), MaxValueValidator(1100)],
+        validators=[MinValueValidator(0), MaxValueValidator(3000)],
         verbose_name="Qarz (max 500$)"
     )
 

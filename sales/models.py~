@@ -133,7 +133,7 @@ class Debt(models.Model):
         errors = {}
 
         # Valyuta limiti
-        if self.currency == 'USD' and self.debt_amount > 1100:
+        if self.currency == 'USD' and self.debt_amount > 3000:
             errors['debt_amount'] = "Dollar qarz maksimal 500$!"
         elif self.currency == 'UZS' and self.debt_amount > 10000000:
             errors['debt_amount'] = "So'm qarz maksimal 10,000,000!"
