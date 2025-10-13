@@ -1,32 +1,28 @@
 import os
 from pathlib import Path
-from decouple import config
+from decouple import config  # ⚡ .env fayldan secretlarni olish uchun (pip install python-decouple)
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Security
+# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-mj0z8)f^nz%z=nw^m!_myepbe+923*s%aq(#y0!6b@#cpast&5')
-DEBUG = config('DEBUG', default=True, cast=bool)  # Development uchun True
 
-# Hosts
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
-if not DEBUG:
-    ALLOWED_HOSTS.extend(['seb-tech.uz', 'www.seb-tech.uz'])
+# ⚡ Serverda DEBUG = False bo‘lishi kerak
+DEBUG = config('DEBUG', default=False, cast=bool)
+
+# Domenlar va IP
+ALLOWED_HOSTS = ['seb-tech.uz', 'www.seb-tech.uz', 'localhost', '127.0.0.1']
 
 # CSRF sozlamalari
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
+    'https://seb-tech.uz',
+    'https://www.seb-tech.uz',
 ]
-if not DEBUG:
-    CSRF_TRUSTED_ORIGINS.extend([
-        'https://seb-tech.uz',
-        'https://www.seb-tech.uz',
-    ])
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Applications
+# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -36,16 +32,15 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
 
-    # Local apps
+    # Loyihangdagi app'lar
     'shops.apps.ShopsConfig',
     'inventory.apps.InventoryConfig',
     'services.apps.ServicesConfig',
     'sales.apps.SalesConfig',
     'reports.apps.ReportsConfig',
-    'users.apps.UsersConfig',
 
-    # Third party
     'django_filters',
+    'users'
 ]
 
 MIDDLEWARE = [
@@ -78,7 +73,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database
+# Database (hozircha SQLite)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -102,21 +97,19 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# Development uchun STATICFILES_DIRS, production uchun faqat STATIC_ROOT
-if DEBUG:
-    STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Server uchun static to‘planadi
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Authentication
-LOGIN_URL = 'users:login'
-LOGIN_REDIRECT_URL = 'users:dashboard'
-LOGOUT_REDIRECT_URL = 'users:login'
+# Auth redirects
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'inventory:dashboard'
+LOGOUT_REDIRECT_URL = 'login'
 
 # Cache
 CACHES = {
@@ -126,24 +119,10 @@ CACHES = {
     }
 }
 
-# Security (faqat production uchun)
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
-else:
-    # Development uchun
-    SECURE_SSL_REDIRECT = False
-    CSRF_COOKIE_SECURE = False
-    SESSION_COOKIE_SECURE = False
-
-# Session sozlamalari
-SESSION_COOKIE_AGE = 86400  # 24 soat
-SESSION_SAVE_EVERY_REQUEST = True
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+# 🔒 Security (production uchun muhim)
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
+SECURE_HSTS_SECONDS = 31536000  # 1 yil
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
