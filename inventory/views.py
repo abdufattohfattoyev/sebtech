@@ -1105,7 +1105,7 @@ def supplier_detail(request, pk):
 @login_required
 @boss_or_finance_required
 def supplier_payment_create(request, supplier_id):
-    """Taminotchiga to'lov qilish"""
+    """Taminotchiga to'lov qilish - DO'KON TANLASH BILAN"""
     supplier = get_object_or_404(Supplier, pk=supplier_id)
 
     # Taminotchining balansini tekshirish
@@ -1114,7 +1114,8 @@ def supplier_payment_create(request, supplier_id):
         return redirect('inventory:supplier_detail', pk=supplier_id)
 
     if request.method == 'POST':
-        form = SupplierPaymentForm(request.POST, supplier=supplier)
+        # ✅ user parametrini uzatish
+        form = SupplierPaymentForm(request.POST, supplier=supplier, user=request.user)
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -1122,6 +1123,7 @@ def supplier_payment_create(request, supplier_id):
                     payment = form.save(commit=False)
                     payment.supplier = supplier
                     payment.created_by = request.user
+                    # ✅ shop form dan avtomatik olinadi
                     payment.save()
 
                     amount_remaining = payment.amount
@@ -1180,28 +1182,36 @@ def supplier_payment_create(request, supplier_id):
                     supplier.update_total_debt()
                     supplier.refresh_from_db()
 
-                    # 7. Muvaffaqiyat xabari
-                    success_msg = f"{supplier.name} ga ${payment.amount} to'lov qilindi!"
+                    # 7. ✅ Muvaffaqiyat xabari - DO'KON BILAN
+                    success_msg = f"✅ {payment.shop.name} do'konidan {supplier.name} ga ${payment.amount} to'lov qilindi!"
                     if paid_phones_count > 0:
                         success_msg += f" {paid_phones_count} ta telefon qarzi to'landi."
                     if initial_payment_made > 0:
                         success_msg += f" Boshlang'ich qarzdan ${initial_payment_made} to'landi."
                     if amount_remaining > 0:
                         success_msg += f" ${amount_remaining} keyingi to'lovga o'tkazildi."
+
+                    # ✅ KASSA to'lov xabari
+                    if payment.payment_source == 'cash':
+                        success_msg += f" 💵 Kassadan to'lov - kunlik hisobotda CHIQIM sifatida ko'rsatiladi."
+                    else:
+                        success_msg += f" 🔒 Seyfdan to'lov - kunlik hisobotda ko'rsatilmaydi."
+
                     success_msg += f" Qoldiq qarz: ${supplier.balance}"
 
                     messages.success(request, success_msg)
                     return redirect('inventory:supplier_detail', pk=supplier_id)
 
             except Exception as e:
-                messages.error(request, f"To'lov qilishda xatolik: {str(e)}")
+                messages.error(request, f"❌ To'lov qilishda xatolik: {str(e)}")
         else:
             for field, errors in form.errors.items():
                 field_label = form.fields[field].label if field in form.fields else field.replace('_', ' ').title()
                 for error in errors:
-                    messages.error(request, f"{field_label}: {error}")
+                    messages.error(request, f"❌ {field_label}: {error}")
     else:
-        form = SupplierPaymentForm(supplier=supplier)
+        # ✅ user parametrini uzatish
+        form = SupplierPaymentForm(supplier=supplier, user=request.user)
 
     context = {
         'form': form,
@@ -1348,15 +1358,18 @@ def supplier_delete(request, pk):
 @login_required
 @boss_or_finance_required
 def supplier_payment_update(request, payment_id):
-    """To'lovni tahrirlash"""
+    """To'lovni tahrirlash - DO'KON TANLASH BILAN"""
     payment = get_object_or_404(SupplierPayment, pk=payment_id)
     supplier = payment.supplier
 
     if request.method == 'POST':
         # Eski to'lov ma'lumotlarini saqlash
         old_amount = payment.amount
+        old_shop = payment.shop  # ✅ Eski do'konni saqlash
+        old_source = payment.payment_source  # ✅ Eski manbani saqlash
 
-        form = SupplierPaymentForm(request.POST, instance=payment, supplier=supplier)
+        # ✅ user parametrini uzatish
+        form = SupplierPaymentForm(request.POST, instance=payment, supplier=supplier, user=request.user)
         if form.is_valid():
             try:
                 with transaction.atomic():
@@ -1386,6 +1399,7 @@ def supplier_payment_update(request, payment_id):
 
                     # 3. YANGI TO'LOVNI QO'LLASH
                     new_payment = form.save(commit=False)
+                    # ✅ shop form dan avtomatik yangilanadi
                     new_payment.save()
 
                     amount_remaining = new_payment.amount
@@ -1434,8 +1448,21 @@ def supplier_payment_update(request, payment_id):
                     supplier.save(update_fields=['total_paid', 'initial_debt'])
                     supplier.update_total_debt()
 
-                    # Xabar
-                    success_msg = f"To'lov muvaffaqiyatli yangilandi!"
+                    # ✅ Xabar - DO'KON VA MANBA O'ZGARISHLARINI KO'RSATISH
+                    success_msg = f"✅ To'lov muvaffaqiyatli yangilandi!"
+
+                    # Do'kon o'zgarishi
+                    if old_shop != new_payment.shop:
+                        success_msg += f" Do'kon: {old_shop.name} → {new_payment.shop.name}."
+                    else:
+                        success_msg += f" Do'kon: {new_payment.shop.name}."
+
+                    # Manba o'zgarishi
+                    if old_source != new_payment.payment_source:
+                        old_source_name = "Kassa" if old_source == 'cash' else "Seyf"
+                        new_source_name = "Kassa" if new_payment.payment_source == 'cash' else "Seyf"
+                        success_msg += f" Manba: {old_source_name} → {new_source_name}."
+
                     if paid_phones_count > 0:
                         success_msg += f" {paid_phones_count} ta telefon qarzi to'landi."
                     if initial_payment_made > 0:
@@ -1443,17 +1470,24 @@ def supplier_payment_update(request, payment_id):
                     if amount_remaining > 0:
                         success_msg += f" ${amount_remaining} overpayment keyingi to'lovga o'tkazildi."
 
+                    # ✅ KASSA to'lov xabari
+                    if new_payment.payment_source == 'cash':
+                        success_msg += f" 💵 Kassadan to'lov - kunlik hisobotda CHIQIM."
+                    else:
+                        success_msg += f" 🔒 Seyfdan to'lov - kunlik hisobotda ko'rsatilmaydi."
+
                     messages.success(request, success_msg)
                     return redirect('inventory:supplier_detail', pk=supplier.id)
 
             except Exception as e:
-                messages.error(request, f"Yangilashda xatolik: {str(e)}")
+                messages.error(request, f"❌ Yangilashda xatolik: {str(e)}")
         else:
             for field, errors in form.errors.items():
                 for error in errors:
-                    messages.error(request, f"{error}")
+                    messages.error(request, f"❌ {error}")
     else:
-        form = SupplierPaymentForm(instance=payment, supplier=supplier)
+        # ✅ user parametrini uzatish
+        form = SupplierPaymentForm(instance=payment, supplier=supplier, user=request.user)
 
     context = {
         'form': form,

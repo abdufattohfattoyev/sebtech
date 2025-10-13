@@ -473,13 +473,12 @@ def handle_supplier_payment_cashflow(sender, instance, created, **kwargs):
         return
 
     try:
-        # Shop ni topish
-        shop = None
-        if instance.supplier.phone_set.exists():
-            shop = instance.supplier.phone_set.first().shop
+        # ✅ ASOSIY O'ZGARISH - Shop ni to'g'ri topish
+        # Payment modelida shop maydoni bor, to'g'ridan-to'g'ri ishlatamiz
+        shop = instance.shop
 
         if not shop:
-            print(f"⚠️ Supplier {instance.supplier.name} uchun shop topilmadi")
+            print(f"⚠️ Supplier Payment {instance.id} uchun shop topilmadi")
             return
 
         if created:
@@ -492,10 +491,10 @@ def handle_supplier_payment_cashflow(sender, instance, created, **kwargs):
                 amount_uzs=Decimal('0'),
                 related_supplier_payment=instance,
                 description=f"💵 Kassa: {instance.supplier.name} ga to'lov",
-                notes=f"To'lov summasi: ${instance.amount}\nTo'lov turi: {instance.get_payment_type_display()}\n{instance.notes or ''}",
+                notes=f"Do'kon: {shop.name}\nTo'lov summasi: ${instance.amount}\nTo'lov turi: {instance.get_payment_type_display()}\n{instance.notes or ''}",
                 created_by=instance.created_by
             )
-            print(f"✅ Kassa to'lov cashflow yaratildi: ${instance.amount}")
+            print(f"✅ Kassa to'lov cashflow yaratildi: ${instance.amount} - {shop.name}")
         else:
             # ✅ YANGILANISH
             # Avvalgi cashflow ni topish
@@ -509,9 +508,9 @@ def handle_supplier_payment_cashflow(sender, instance, created, **kwargs):
                 cashflow.transaction_date = instance.payment_date
                 cashflow.amount_usd = -instance.amount
                 cashflow.description = f"💵 Kassa: {instance.supplier.name} ga to'lov"
-                cashflow.notes = f"To'lov summasi: ${instance.amount}\nTo'lov turi: {instance.get_payment_type_display()}\n{instance.notes or ''}"
+                cashflow.notes = f"Do'kon: {shop.name}\nTo'lov summasi: ${instance.amount}\nTo'lov turi: {instance.get_payment_type_display()}\n{instance.notes or ''}"
                 cashflow.save()
-                print(f"✅ Kassa to'lov cashflow yangilandi: ${instance.amount}")
+                print(f"✅ Kassa to'lov cashflow yangilandi: ${instance.amount} - {shop.name}")
             else:
                 # Yangi cashflow yaratish
                 CashFlowTransaction.objects.create(
@@ -522,10 +521,10 @@ def handle_supplier_payment_cashflow(sender, instance, created, **kwargs):
                     amount_uzs=Decimal('0'),
                     related_supplier_payment=instance,
                     description=f"💵 Kassa: {instance.supplier.name} ga to'lov",
-                    notes=f"To'lov summasi: ${instance.amount}\nTo'lov turi: {instance.get_payment_type_display()}\n{instance.notes or ''}",
+                    notes=f"Do'kon: {shop.name}\nTo'lov summasi: ${instance.amount}\nTo'lov turi: {instance.get_payment_type_display()}\n{instance.notes or ''}",
                     created_by=instance.created_by
                 )
-                print(f"✅ Kassa to'lov cashflow yaratildi (yangilashda): ${instance.amount}")
+                print(f"✅ Kassa to'lov cashflow yaratildi (yangilashda): ${instance.amount} - {shop.name}")
 
     except Exception as e:
         print(f"❌ Supplier Payment Cashflow error: {e}")

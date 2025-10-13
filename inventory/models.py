@@ -608,11 +608,21 @@ class SupplierPayment(models.Model):
         ('specific', 'Tanlangan telefonlar'),
     ]
 
-    # ✅ YANGI - TO'LOV MANBASI
     PAYMENT_SOURCE_CHOICES = [
         ('cash', 'Kassa'),
         ('safe', 'Seyf'),
     ]
+
+    # ✅ YANGI - DO'KON MAYDONI
+    shop = models.ForeignKey(
+        'shops.Shop',
+        on_delete=models.CASCADE,
+        related_name='supplier_payments',
+        verbose_name="Do'kon",
+        # ✅ DEFAULT BERISH
+        default=1,  # yoki birinchi shop ID si
+        help_text="Qaysi do'kondan to'lov amalga oshirildi"
+    )
 
     supplier = models.ForeignKey(
         Supplier,
@@ -632,8 +642,6 @@ class SupplierPayment(models.Model):
         default='general',
         verbose_name="To'lov turi"
     )
-
-    # ✅ YANGI MAYDON - TO'LOV MANBASI
     payment_source = models.CharField(
         max_length=10,
         choices=PAYMENT_SOURCE_CHOICES,
@@ -641,7 +649,6 @@ class SupplierPayment(models.Model):
         verbose_name="To'lov manbasi",
         help_text="Kassa - kunlik chiqim, Seyf - kunlik chiqim emas"
     )
-
     payment_date = models.DateField(
         default=get_current_date,
         verbose_name="To'lov sanasi"
@@ -667,18 +674,15 @@ class SupplierPayment(models.Model):
         verbose_name = "Taminotchiga to'lov"
         verbose_name_plural = "Taminotchiga to'lovlar"
         ordering = ['-payment_date', '-created_at']
+        indexes = [
+            models.Index(fields=['shop', 'payment_date']),
+            models.Index(fields=['supplier', 'payment_date']),
+        ]
 
     def __str__(self):
         source_icon = "💵" if self.payment_source == 'cash' else "🔒"
         source_name = "Kassa" if self.payment_source == 'cash' else "Seyf"
-        return f"{self.supplier.name} - ${self.amount} ({source_icon} {source_name}) [{self.payment_date}]"
-
-    def get_payment_source_display_with_icon(self):
-        """To'lov manbasi nomini belgisi bilan qaytarish"""
-        if self.payment_source == 'cash':
-            return "💵 Kassa"
-        else:
-            return "🔒 Seyf"
+        return f"{self.shop.name} - {self.supplier.name} - ${self.amount} ({source_icon} {source_name}) [{self.payment_date}]"
 
 
 class SupplierPaymentDetail(models.Model):

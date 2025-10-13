@@ -81,8 +81,13 @@ class SupplierPaymentForm(forms.ModelForm):
 
     class Meta:
         model = SupplierPayment
-        fields = ['supplier', 'amount', 'payment_type', 'payment_source', 'payment_date', 'notes']
+        fields = ['shop', 'supplier', 'amount', 'payment_type', 'payment_source', 'payment_date', 'notes']
         widgets = {
+            # ✅ YANGI - SHOP WIDGET
+            'shop': forms.Select(attrs={
+                'class': 'form-control',
+                'id': 'shop_select'
+            }),
             'supplier': forms.Select(attrs={
                 'class': 'form-control',
                 'id': 'supplier_select'
@@ -96,7 +101,6 @@ class SupplierPaymentForm(forms.ModelForm):
             'payment_type': forms.RadioSelect(attrs={
                 'class': 'payment-type-radio'
             }),
-            # ✅ YANGI - PAYMENT SOURCE WIDGET
             'payment_source': forms.RadioSelect(attrs={
                 'class': 'payment-source-radio'
             }),
@@ -110,13 +114,23 @@ class SupplierPaymentForm(forms.ModelForm):
                 'placeholder': 'Izoh (ixtiyoriy)...'
             }),
         }
-        labels = {
-            'payment_source': 'To\'lov manbasi',
-        }
 
     def __init__(self, *args, **kwargs):
         supplier = kwargs.pop('supplier', None)
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+
+        # ✅ SHOP TANLASH - foydalanuvchiga tegishli do'konlar
+        if user:
+            from shops.models import Shop
+            if hasattr(user, 'userprofile') and user.userprofile.role in ['boss', 'finance']:
+                self.fields['shop'].queryset = Shop.objects.all()
+            else:
+                self.fields['shop'].queryset = Shop.objects.filter(owner=user)
+
+            # Agar bitta do'kon bo'lsa, avtomatik tanlash
+            if self.fields['shop'].queryset.count() == 1:
+                self.fields['shop'].initial = self.fields['shop'].queryset.first()
 
         if supplier:
             self.fields['supplier'].initial = supplier
@@ -138,6 +152,11 @@ class SupplierPaymentForm(forms.ModelForm):
         amount = cleaned_data.get('amount')
         supplier = cleaned_data.get('supplier')
         payment_source = cleaned_data.get('payment_source')
+        shop = cleaned_data.get('shop')
+
+        # ✅ DO'KON TEKSHIRISH
+        if not shop:
+            raise ValidationError({'shop': "Do'kon tanlanishi kerak"})
 
         # Agar tahrirlash bo'lsa, instance (eski to'lov) mavjud
         old_amount = Decimal('0.00')

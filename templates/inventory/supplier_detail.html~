@@ -1,382 +1,221 @@
 {% extends 'base.html' %}
-{% load static %}
-{% load humanize %}
+{% load static humanize %}
 
-{% block title %}{{ supplier.name }} - Taminotchi{% endblock %}
+{% block title %}{{ supplier.name }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-gradient-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h4 class="mb-1">
-                                <i class="fas fa-truck me-2"></i>{{ supplier.name }}
-                            </h4>
-                            <small class="opacity-75">
-                                <i class="fas fa-phone me-1"></i>{{ supplier.phone_number }}
-                                {% if supplier.notes %}
-                                • <i class="fas fa-sticky-note me-1"></i>{{ supplier.notes }}
-                                {% endif %}
-                            </small>
-                        </div>
-                        <div class="d-flex gap-2">
-                            {% if can_edit %}
-                            <a href="{% url 'inventory:supplier_update' supplier.id %}"
-                               class="btn btn-light btn-sm">
-                                <i class="fas fa-edit me-1"></i>Tahrirlash
-                            </a>
-                            {% endif %}
-                            <a href="{% url 'inventory:supplier_list' %}"
-                               class="btn btn-outline-light btn-sm">
-                                <i class="fas fa-arrow-left me-1"></i>Ortga
-                            </a>
-                        </div>
-                    </div>
+    <!-- 📌 HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">
+                <i class="fas fa-truck text-primary me-2"></i>{{ supplier.name }}
+            </h3>
+            <p class="text-muted mb-0">
+                <i class="fas fa-phone me-1"></i>{{ supplier.phone_number }}
+                {% if supplier.notes %} • {{ supplier.notes }}{% endif %}
+            </p>
+        </div>
+        <div class="btn-group">
+            {% if can_edit %}
+            <a href="{% url 'inventory:supplier_update' supplier.id %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit"></i>
+            </a>
+            {% endif %}
+            <a href="{% url 'inventory:supplier_list' %}" class="btn btn-light">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- 💰 QARZ STATISTIKA -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card border-0 shadow-sm">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-history"></i>
+                </div>
+                <div class="stat-content">
+                    <small class="text-muted">Boshlang'ich</small>
+                    <h4>${{ supplier.initial_debt|floatformat:2|intcomma }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card border-0 shadow-sm">
+                <div class="stat-icon bg-warning">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <div class="stat-content">
+                    <small class="text-muted">Telefonlar</small>
+                    <h4>${{ supplier.total_debt|floatformat:2|intcomma }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card border-0 shadow-sm">
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="stat-content">
+                    <small class="text-muted">To'langan</small>
+                    <h4>${{ supplier.total_paid|floatformat:2|intcomma }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card border-0 shadow-sm border-start border-danger border-4">
+                <div class="stat-icon bg-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <small class="text-muted">Jami Qarz</small>
+                    <h4 class="text-danger">${{ balance|floatformat:2|intcomma }}</h4>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Qarz Statistikasi -->
-    <div class="row mb-4">
-        <!-- Boshlang'ich Qarz -->
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-1">Boshlang'ich Qarz</h6>
-                            <h3 class="mb-0 text-secondary">
-                                ${{ supplier.initial_debt|floatformat:2|intcomma }}
-                            </h3>
-                            <small class="text-muted">Tizimga kiritishdan oldingi qarz</small>
-                        </div>
-                        <div class="bg-secondary bg-opacity-10 rounded-circle p-3">
-                            <i class="fas fa-history fa-2x text-secondary"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Telefonlar Qarzi -->
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-1">Telefonlar Qarzi</h6>
-                            <h3 class="mb-0 text-warning">
-                                ${{ supplier.total_debt|floatformat:2|intcomma }}
-                            </h3>
-                            <small class="text-muted">Telefon olishlardan kelib chiqqan qarz</small>
-                        </div>
-                        <div class="bg-warning bg-opacity-10 rounded-circle p-3">
-                            <i class="fas fa-mobile-alt fa-2x text-warning"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- To'langan -->
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-1">To'langan</h6>
-                            <h3 class="mb-0 text-success">
-                                ${{ supplier.total_paid|floatformat:2|intcomma }}
-                            </h3>
-                            <small class="text-muted">Umumiy to'langan summa</small>
-                        </div>
-                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
-                            <i class="fas fa-money-bill-wave fa-2x text-success"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Jami Qarz -->
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm border-danger h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-1">JAMI QARZ</h6>
-                            <h3 class="mb-0 text-danger">
-                                ${{ balance|floatformat:2|intcomma }}
-                            </h3>
-                            <small class="text-muted">
-                                Boshlang'ich + Telefonlar - To'langan
-                            </small>
-                        </div>
-                        <div class="bg-danger bg-opacity-10 rounded-circle p-3">
-                            <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Jami Telefonlar -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h6 class="text-muted mb-1">Jami Telefonlar</h6>
-                            <h2 class="mb-0 text-info">{{ total_phones }}</h2>
-                            <small class="text-muted">Taminotchidan olingan barcha telefonlar</small>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex p-3">
-                                <i class="fas fa-mobile-alt fa-3x text-info"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- To'lov Tugmasi -->
+    <!-- 🚨 TO'LOV ALERT -->
     {% if balance > 0 and can_edit %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="alert alert-warning border-0 shadow-sm d-flex justify-content-between align-items-center">
-                <div>
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Qarz mavjud:</strong> Bu taminotchida ${{ balance|floatformat:2|intcomma }} qarz bor
-                    <br>
-                    <small class="text-muted ms-4">
-                        Boshlang'ich: ${{ supplier.initial_debt|floatformat:2|intcomma }} +
-                        Telefonlar: ${{ supplier.total_debt|floatformat:2|intcomma }} -
-                        To'langan: ${{ supplier.total_paid|floatformat:2|intcomma }}
-                    </small>
-                </div>
-                <a href="{% url 'inventory:supplier_payment_create' supplier.id %}"
-                   class="btn btn-success btn-lg">
-                    <i class="fas fa-money-bill-wave me-1"></i>To'lov Qilish
-                </a>
-            </div>
-        </div>
+    <div class="alert alert-warning d-flex justify-content-between align-items-center mb-4">
+        <span>
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Qarz:</strong> ${{ balance|floatformat:2|intcomma }}
+        </span>
+        <a href="{% url 'inventory:supplier_payment_create' supplier.id %}" class="btn btn-success">
+            <i class="fas fa-money-bill-wave me-2"></i>To'lov
+        </a>
     </div>
-    {% elif balance <= 0 and can_edit %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="alert alert-success border-0 shadow-sm d-flex justify-content-between align-items-center">
-                <div>
-                    <i class="fas fa-check-circle me-2"></i>
-                    <strong>Qarz yo'q:</strong> Bu taminotchida barcha qarzlar to'langan
-                </div>
-                <span class="badge bg-success fs-6">
-                    <i class="fas fa-smile me-1"></i>To'landi
-                </span>
-            </div>
-        </div>
+    {% elif balance <= 0 %}
+    <div class="alert alert-success mb-4">
+        <i class="fas fa-check-circle me-2"></i>Barcha qarzlar to'langan
     </div>
     {% endif %}
 
-    <div class="row">
-        <!-- Qarzda turgan telefonlar -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold">
-                        <i class="fas fa-clock me-2"></i>
-                        Qarzda Turgan Telefonlar
-                    </h5>
-                    <span class="badge bg-dark fs-6">{{ debt_phones.count }} ta</span>
+    <div class="row g-4">
+        <!-- 📱 QARZDA TELEFONLAR -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fas fa-clock text-warning me-2"></i>Qarzda
+                    </h6>
+                    <span class="badge bg-warning">{{ debt_phones.count }}</span>
                 </div>
                 <div class="card-body p-0">
                     {% if debt_phones %}
-                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                        <table class="table table-hover table-sm mb-0">
+                    <div class="table-responsive" style="max-height:450px; overflow-y:auto;">
+                        <table class="table table-sm table-hover mb-0">
                             <thead class="sticky-top bg-light">
                                 <tr>
-                                    <th width="40">#</th>
                                     <th>Model</th>
                                     <th>IMEI</th>
                                     <th class="text-end">Narx</th>
-                                    <th class="text-end">To'langan</th>
                                     <th class="text-end">Qarz</th>
-                                    <th width="80">Sana</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for phone in debt_phones %}
-                                <tr class="{% if forloop.counter|divisibleby:2 %}table-light{% endif %}">
-                                    <td class="text-muted">{{ forloop.counter }}</td>
+                                <tr>
                                     <td>
-                                        <div>
-                                            <strong class="text-dark">{{ phone.phone_model }}</strong>
-                                            {% if phone.memory_size %}
-                                            <br>
-                                            <small class="text-muted">{{ phone.memory_size }} GB</small>
-                                            {% endif %}
-                                        </div>
+                                        <strong>{{ phone.phone_model }}</strong>
+                                        <small class="text-muted d-block">{{ phone.memory_size }}</small>
                                     </td>
-                                    <td>
-                                        <small class="font-monospace text-muted">{{ phone.imei }}</small>
-                                    </td>
-                                    <td class="text-end">
-                                        <span class="fw-bold">${{ phone.cost_price|floatformat:2|intcomma }}</span>
-                                    </td>
-                                    <td class="text-end text-success">
-                                        ${{ phone.paid_amount|floatformat:2|intcomma }}
-                                    </td>
-                                    <td class="text-end">
-                                        <strong class="text-danger">${{ phone.debt_balance|floatformat:2|intcomma }}</strong>
-                                    </td>
-                                    <td>
-                                        <small class="text-muted">{{ phone.created_at|date:"d.m.Y" }}</small>
+                                    <td><code>{{ phone.imei|truncatechars:12 }}</code></td>
+                                    <td class="text-end">${{ phone.cost_price|floatformat:2 }}</td>
+                                    <td class="text-end text-danger fw-bold">
+                                        ${{ phone.debt_balance|floatformat:2 }}
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
-                            <tfoot class="table-warning">
+                            <tfoot class="bg-light">
                                 <tr>
-                                    <th colspan="5" class="text-end">Jami Telefonlar Qarzi:</th>
-                                    <th class="text-end text-warning fw-bold">
-                                        ${{ supplier.total_debt|floatformat:2|intcomma }}
+                                    <th colspan="3" class="text-end">Jami:</th>
+                                    <th class="text-end text-danger">
+                                        ${{ supplier.total_debt|floatformat:2 }}
                                     </th>
-                                    <th></th>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-check-circle fa-4x text-success mb-3 opacity-50"></i>
-                        <h6 class="text-muted">Qarzda Telefon Yo'q</h6>
-                        <p class="text-muted small">Barcha telefonlar to'langan</p>
+                        <i class="fas fa-check-circle fa-3x text-success mb-3 opacity-25"></i>
+                        <p class="text-muted">Qarzda telefon yo'q</p>
                     </div>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- To'langan telefonlar -->
-        <div class="col-lg-6 mb-4" id="paid-phones">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold">
-                        <i class="fas fa-check-circle me-2"></i>
-                        To'langan Telefonlar
-                    </h5>
-                    <span class="badge bg-light text-dark fs-6">{{ paid_phones_total }} ta</span>
+        <!-- ✅ TO'LANGAN TELEFONLAR -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fas fa-check-circle text-success me-2"></i>To'langan
+                    </h6>
+                    <span class="badge bg-success">{{ paid_phones_total }}</span>
                 </div>
                 <div class="card-body p-0">
                     {% if paid_phones %}
-                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                        <table class="table table-hover table-sm mb-0">
+                    <div class="table-responsive" style="max-height:450px; overflow-y:auto;">
+                        <table class="table table-sm table-hover mb-0">
                             <thead class="sticky-top bg-light">
                                 <tr>
-                                    <th width="40">#</th>
                                     <th>Model</th>
                                     <th>IMEI</th>
                                     <th class="text-end">Narx</th>
-                                    <th width="80">Sana</th>
+                                    <th>Sana</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for phone in paid_phones %}
-                                <tr class="{% if forloop.counter|divisibleby:2 %}table-light{% endif %}">
-                                    <td class="text-muted">
-                                        {{ forloop.counter0|add:paid_phones.start_index }}
-                                    </td>
+                                <tr>
                                     <td>
-                                        <div>
-                                            <strong class="text-dark">{{ phone.phone_model }}</strong>
-                                            {% if phone.memory_size %}
-                                            <br>
-                                            <small class="text-muted">{{ phone.memory_size }} GB</small>
-                                            {% endif %}
-                                        </div>
+                                        <strong>{{ phone.phone_model }}</strong>
+                                        <small class="text-muted d-block">{{ phone.memory_size }}</small>
                                     </td>
-                                    <td>
-                                        <small class="font-monospace text-muted">{{ phone.imei }}</small>
+                                    <td><code>{{ phone.imei|truncatechars:12 }}</code></td>
+                                    <td class="text-end text-success fw-bold">
+                                        ${{ phone.cost_price|floatformat:2 }}
                                     </td>
-                                    <td class="text-end">
-                                        <span class="fw-bold text-success">${{ phone.cost_price|floatformat:2|intcomma }}</span>
-                                    </td>
-                                    <td>
-                                        <small class="text-muted">{{ phone.created_at|date:"d.m.Y" }}</small>
-                                    </td>
+                                    <td><small>{{ phone.created_at|date:"d.m.Y" }}</small></td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
 
-                    <!-- Pagination Footer -->
+                    <!-- Pagination -->
                     {% if paid_phones.has_other_pages %}
-                    <div class="card-footer bg-white border-top">
+                    <div class="card-footer bg-white border-top py-2">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <small class="text-muted">
-                                    {{ paid_phones.start_index }}-{{ paid_phones.end_index }} / {{ paid_phones_total }} ta
-                                </small>
+                            <small class="text-muted">
+                                {{ paid_phones.start_index }}-{{ paid_phones.end_index }} / {{ paid_phones_total }}
+                            </small>
+                            <div class="btn-group btn-group-sm">
+                                {% if paid_phones.has_previous %}
+                                <a href="?page={{ paid_phones.previous_page_number }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                                {% endif %}
+                                <span class="btn btn-light disabled">{{ paid_phones.number }}</span>
+                                {% if paid_phones.has_next %}
+                                <a href="?page={{ paid_phones.next_page_number }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                                {% endif %}
                             </div>
-                            <nav aria-label="To'langan telefonlar sahifalari">
-                                <ul class="pagination pagination-sm mb-0">
-                                    {% if paid_phones.has_previous %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page=1#paid-phones" title="Birinchi sahifa">
-                                            <i class="fas fa-angle-double-left"></i>
-                                        </a>
-                                    </li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ paid_phones.previous_page_number }}#paid-phones" title="Oldingi sahifa">
-                                            <i class="fas fa-angle-left"></i>
-                                        </a>
-                                    </li>
-                                    {% endif %}
-
-                                    {% for num in paid_phones.paginator.page_range %}
-                                        {% if paid_phones.number == num %}
-                                        <li class="page-item active">
-                                            <span class="page-link">{{ num }}</span>
-                                        </li>
-                                        {% elif num > paid_phones.number|add:'-3' and num < paid_phones.number|add:'3' %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ num }}#paid-phones">{{ num }}</a>
-                                        </li>
-                                        {% endif %}
-                                    {% endfor %}
-
-                                    {% if paid_phones.has_next %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ paid_phones.next_page_number }}#paid-phones" title="Keyingi sahifa">
-                                            <i class="fas fa-angle-right"></i>
-                                        </a>
-                                    </li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ paid_phones.paginator.num_pages }}#paid-phones" title="Oxirgi sahifa">
-                                            <i class="fas fa-angle-double-right"></i>
-                                        </a>
-                                    </li>
-                                    {% endif %}
-                                </ul>
-                            </nav>
                         </div>
                     </div>
                     {% endif %}
-
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-mobile-alt fa-4x text-muted mb-3 opacity-50"></i>
-                        <h6 class="text-muted">To'langan Telefon Yo'q</h6>
-                        <p class="text-muted small">Hozircha to'langan telefonlar mavjud emas</p>
+                        <i class="fas fa-mobile-alt fa-3x text-muted mb-3 opacity-25"></i>
+                        <p class="text-muted">To'langan telefon yo'q</p>
                     </div>
                     {% endif %}
                 </div>
@@ -384,229 +223,151 @@
         </div>
     </div>
 
-    <!-- To'lovlar Tarixi -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold">
-                        <i class="fas fa-history me-2 text-primary"></i>
-                        To'lovlar Tarixi
-                    </h5>
-                    <span class="badge bg-primary rounded-pill fs-6">{{ payments.count }} ta</span>
-                </div>
-                <div class="card-body p-0">
-                    {% if payments %}
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th width="50">#</th>
-                                    <th>Sana</th>
-                                    <th>Summa</th>
-                                    <th>Turi</th>
-                                    <th>Telefonlar</th>
-                                    <th>Amalga Oshirgan</th>
-                                    <th>Izoh</th>
-                                    <th width="100" class="text-center">Harakat</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for payment in payments %}
-                                <tr>
-                                    <td class="text-muted">{{ forloop.counter }}</td>
-                                    <td>
-                                        <strong>{{ payment.payment_date|date:"d.m.Y" }}</strong><br>
-                                        <small class="text-muted">{{ payment.created_at|date:"H:i" }}</small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-success fs-6">
-                                            ${{ payment.amount|floatformat:2|intcomma }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{% if payment.payment_type == 'general' %}info{% else %}warning text-dark{% endif %}">
-                                            {{ payment.get_payment_type_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-secondary rounded-pill">
-                                            {{ payment.details.count }} ta
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <small>
-                                            <i class="fas fa-user me-1 text-muted"></i>
-                                            {{ payment.created_by.get_full_name|default:payment.created_by.username }}
-                                        </small>
-                                    </td>
-                                    <td>
-                                        {% if payment.notes %}
-                                            <small class="text-muted" title="{{ payment.notes }}">
-                                                {{ payment.notes|truncatewords:3 }}
-                                            </small>
-                                        {% else %}
-                                            <small class="text-muted">-</small>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="btn-group btn-group-sm">
-                                            <a href="{% url 'inventory:supplier_payment_detail' payment.id %}"
-                                               class="btn btn-outline-primary"
-                                               data-bs-toggle="tooltip"
-                                               title="Tafsilotlarni ko'rish">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            {% if can_edit %}
-                                            <a href="{% url 'inventory:supplier_payment_update' payment.id %}"
-                                               class="btn btn-outline-warning"
-                                               data-bs-toggle="tooltip"
-                                               title="Tahrirlash">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="{% url 'inventory:supplier_payment_delete' payment.id %}"
-                                               class="btn btn-outline-danger"
-                                               data-bs-toggle="tooltip"
-                                               title="O'chirish">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                            {% endif %}
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-file-invoice-dollar fa-4x text-muted mb-3 opacity-50"></i>
-                        <h6 class="text-muted">To'lovlar Yo'q</h6>
-                        <p class="text-muted small">Hozircha hech qanday to'lov amalga oshirilmagan</p>
-                    </div>
-                    {% endif %}
-                </div>
+    <!-- 📋 TO'LOVLAR TARIXI -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white border-bottom d-flex justify-content-between">
+            <h6 class="mb-0 fw-semibold">
+                <i class="fas fa-history text-primary me-2"></i>To'lovlar
+            </h6>
+            <span class="badge bg-primary">{{ payments.count }}</span>
+        </div>
+        <div class="card-body p-0">
+            {% if payments %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Sana</th>
+                            <th>Summa</th>
+                            <th>Turi</th>
+                            <th>💵 Manba</th>
+                            <th>Tel.</th>
+                            <th>Kim</th>
+                            <th width="120"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>
+                                <strong>{{ payment.payment_date|date:"d.m.Y" }}</strong>
+                                <small class="text-muted d-block">{{ payment.created_at|date:"H:i" }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-success">
+                                    ${{ payment.amount|floatformat:2|intcomma }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if payment.payment_type == 'general' %}info{% else %}warning{% endif %}">
+                                    {% if payment.payment_type == 'general' %}FIFO{% else %}Maxsus{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                {% if payment.payment_source == 'cash' %}
+                                    <span class="badge bg-danger">💵 Kassa</span>
+                                    <small class="text-danger d-block">
+                                        <i class="fas fa-exclamation-triangle"></i> Chiqim
+                                    </small>
+                                {% else %}
+                                    <span class="badge bg-secondary">🔒 Seyf</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ payment.details.count }}</span>
+                            </td>
+                            <td>
+                                <small>{{ payment.created_by.username }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'inventory:supplier_payment_detail' payment.id %}"
+                                       class="btn btn-outline-primary" title="Ko'rish">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if can_edit %}
+                                    <a href="{% url 'inventory:supplier_payment_update' payment.id %}"
+                                       class="btn btn-outline-warning" title="Tahrirlash">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'inventory:supplier_payment_delete' payment.id %}"
+                                       class="btn btn-outline-danger" title="O'chirish">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-file-invoice-dollar fa-3x text-muted mb-3 opacity-25"></i>
+                <p class="text-muted">To'lovlar yo'q</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <style>
-/* Gradient Header */
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* Stat Card */
+.stat-card {
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.2s;
 }
 
-/* Sticky Table Header */
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
+}
+
+.stat-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.stat-content h4 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.stat-content small {
+    display: block;
+    font-size: 0.875rem;
+}
+
+/* Sticky Header */
 .sticky-top {
     position: sticky;
     top: 0;
     z-index: 10;
+}
+
+/* Table Hover */
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Code */
+code {
     background-color: #f8f9fa;
-}
-
-/* Card Shadows */
-.shadow-sm {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
-}
-
-/* Table Styles */
-.table thead th {
-    font-weight: 600;
-    font-size: 0.875rem;
-    border-bottom: 2px solid #dee2e6;
-    white-space: nowrap;
-}
-
-.table tbody tr {
-    transition: all 0.2s ease;
-}
-
-.table tbody tr:hover {
-    background-color: rgba(0, 123, 255, 0.05);
-    transform: translateY(-1px);
-}
-
-/* Font Monospace */
-.font-monospace {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.85em;
-}
-
-/* Pagination */
-.pagination .page-link {
+    padding: 0.2rem 0.4rem;
     border-radius: 0.25rem;
-    margin: 0 2px;
-    border: 1px solid #dee2e6;
-}
-
-.pagination .page-item.active .page-link {
-    background-color: #667eea;
-    border-color: #667eea;
-}
-
-/* Badge Improvements */
-.badge {
-    font-weight: 500;
-    letter-spacing: 0.5px;
-}
-
-/* Card Border Danger */
-.border-danger {
-    border: 2px solid #dc3545 !important;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .table thead th {
-        font-size: 0.75rem;
-    }
-
-    .table tbody td {
-        font-size: 0.875rem;
-    }
-
-    .btn-group .btn {
-        padding: 0.25rem 0.5rem;
-    }
-
-    .card-header h5 {
-        font-size: 1rem;
-    }
-}
-
-/* Hover effects */
-.card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-
-/* Text alignment */
-.text-end {
-    text-align: right !important;
+    font-size: 0.875rem;
 }
 </style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Bootstrap tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
-    // Auto-hide alerts after 5 seconds
-    setTimeout(function() {
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(function(alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        });
-    }, 5000);
-});
-</script>
 {% endblock %}

@@ -1,232 +1,224 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}To'lov Tafsilotlari - #{{ payment.id }}{% endblock %}
+{% block title %}To'lov #{{ payment.id }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-            <!-- Header -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h4 class="mb-1">
-                                <i class="fas fa-file-invoice-dollar me-2"></i>
-                                To'lov Tafsilotlari #{{ payment.id }}
-                            </h4>
-                            <small class="text-muted">
-                                Taminotchi: <strong>{{ payment.supplier.name }}</strong>
-                            </small>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button onclick="window.print()" class="btn btn-outline-primary">
-                                <i class="fas fa-print me-1"></i>Chop etish
-                            </button>
-                            {% if request.user.userprofile.role in 'boss,finance' %}
-                            <a href="{% url 'inventory:supplier_payment_update' payment.id %}"
-                               class="btn btn-primary">
-                                <i class="fas fa-edit me-1"></i>Tahrirlash
-                            </a>
-                            <button type="button"
-                                    class="btn btn-danger"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#deleteModal">
-                                <i class="fas fa-trash me-1"></i>O'chirish
-                            </button>
-                            {% endif %}
-                            <a href="{% url 'inventory:supplier_detail' payment.supplier.id %}"
-                               class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left me-1"></i>Ortga
-                            </a>
-                        </div>
-                    </div>
+            <!-- 📌 HEADER -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="mb-1">
+                        <i class="fas fa-file-invoice-dollar text-primary me-2"></i>
+                        To'lov #{{ payment.id }}
+                    </h3>
+                    <p class="text-muted mb-0">{{ payment.supplier.name }}</p>
+                </div>
+                <div class="btn-group">
+                    <button onclick="window.print()" class="btn btn-light">
+                        <i class="fas fa-print"></i>
+                    </button>
+                    {% if request.user.userprofile.role in 'boss,finance' %}
+                    <a href="{% url 'inventory:supplier_payment_update' payment.id %}" class="btn btn-outline-primary">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'inventory:supplier_detail' payment.supplier.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
                 </div>
             </div>
 
-            <!-- To'lov Ma'lumotlari -->
-            <div class="row mb-4">
+            <!-- 💰 STATS -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm text-center">
+                        <div class="card-body">
+                            <small class="text-muted d-block">Summa</small>
+                            <h3 class="text-success mb-0">${{ payment.amount|floatformat:2 }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <!-- ✅ DO'KON MA'LUMOTI -->
                 <div class="col-md-3">
-                    <div class="card border-success">
-                        <div class="card-body text-center">
-                            <h6 class="text-muted mb-2">To'lov Summasi</h6>
-                            <h3 class="mb-0 text-success">
-                                ${{ payment.amount|floatformat:2 }}
-                            </h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <div class="card border-info">
-                        <div class="card-body text-center">
-                            <h6 class="text-muted mb-2">To'lov Turi</h6>
+                    <div class="card border-0 shadow-sm text-center">
+                        <div class="card-body">
+                            <small class="text-muted d-block">
+                                <i class="fas fa-store me-1"></i>Do'kon
+                            </small>
                             <h5 class="mb-0">
-                                <span class="badge bg-{% if payment.payment_type == 'general' %}info{% else %}warning{% endif %}">
-                                    {{ payment.get_payment_type_display }}
-                                </span>
-                            </h5>
-                        </div>
-                    </div>
-                </div>
-                <!-- ✅ YANGI - TO'LOV MANBASI -->
-                <div class="col-md-2">
-                    <div class="card border-{% if payment.payment_source == 'cash' %}danger{% else %}secondary{% endif %}">
-                        <div class="card-body text-center">
-                            <h6 class="text-muted mb-2">Manba</h6>
-                            <h5 class="mb-0">
-                                {% if payment.payment_source == 'cash' %}
-                                    <span class="badge bg-danger">
-                                        💵 Kassa
+                                {% if payment.shop %}
+                                    <span class="badge bg-primary">
+                                        {{ payment.shop.name }}
                                     </span>
-                                    <br>
-                                    <small class="text-danger mt-1 d-block">
-                                        Kunlik chiqim
-                                    </small>
                                 {% else %}
-                                    <span class="badge bg-secondary">
-                                        🔒 Seyf
-                                    </span>
+                                    <span class="badge bg-secondary">N/A</span>
                                 {% endif %}
                             </h5>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2">
-                    <div class="card border-primary">
-                        <div class="card-body text-center">
-                            <h6 class="text-muted mb-2">Telefonlar</h6>
-                            <h3 class="mb-0 text-primary">
-                                {{ payment.details.count }}
-                            </h3>
+                    <div class="card border-0 shadow-sm text-center">
+                        <div class="card-body">
+                            <small class="text-muted d-block">Turi</small>
+                            <h5 class="mb-0">
+                                <span class="badge bg-{% if payment.payment_type == 'general' %}info{% else %}warning{% endif %}">
+                                    {% if payment.payment_type == 'general' %}FIFO{% else %}Maxsus{% endif %}
+                                </span>
+                            </h5>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card border-secondary">
-                        <div class="card-body text-center">
-                            <h6 class="text-muted mb-2">Sana</h6>
+                    <div class="card border-0 shadow-sm text-center">
+                        <div class="card-body">
+                            <small class="text-muted d-block">💵 Manba</small>
                             <h5 class="mb-0">
-                                {{ payment.payment_date|date:"d.m.Y" }}
+                                {% if payment.payment_source == 'cash' %}
+                                    <span class="badge bg-danger">Kassa</span>
+                                    <small class="text-danger d-block mt-1">
+                                        <i class="fas fa-exclamation-triangle"></i> Chiqim
+                                    </small>
+                                {% else %}
+                                    <span class="badge bg-secondary">Seyf</span>
+                                {% endif %}
                             </h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm text-center">
+                        <div class="card-body">
+                            <small class="text-muted d-block">Sana</small>
+                            <h5 class="mb-0">{{ payment.payment_date|date:"d.m.Y" }}</h5>
                             <small class="text-muted">{{ payment.created_at|date:"H:i" }}</small>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Qo'shimcha Ma'lumotlar -->
-            <div class="card mb-4">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Qo'shimcha Ma'lumotlar
-                    </h6>
-                </div>
+            <!-- ℹ️ INFO -->
+            <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4">
-                            <p class="mb-2">
-                                <strong>Taminotchi:</strong><br>
-                                <a href="{% url 'inventory:supplier_detail' payment.supplier.id %}"
-                                   class="text-decoration-none">
+                        <div class="col-md-3">
+                            <small class="text-muted">
+                                <i class="fas fa-truck me-1"></i>Taminotchi
+                            </small>
+                            <p class="mb-0 fw-semibold">
+                                <a href="{% url 'inventory:supplier_detail' payment.supplier.id %}">
                                     {{ payment.supplier.name }}
                                 </a>
                             </p>
                         </div>
-                        <div class="col-md-4">
-                            <p class="mb-2">
-                                <strong>Amalga oshirgan:</strong><br>
-                                {{ payment.created_by.username }}
+                        <!-- ✅ DO'KON INFO -->
+                        <div class="col-md-3">
+                            <small class="text-muted">
+                                <i class="fas fa-store me-1"></i>Do'kon
+                            </small>
+                            <p class="mb-0 fw-semibold">
+                                {% if payment.shop %}
+                                    {{ payment.shop.name }}
+                                    {% if payment.shop.address %}
+                                        <small class="text-muted d-block">{{ payment.shop.address }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Belgilanmagan</span>
+                                {% endif %}
                             </p>
                         </div>
-                        <div class="col-md-4">
-                            <p class="mb-2">
-                                <strong>Yaratilgan:</strong><br>
-                                {{ payment.created_at|date:"d.m.Y H:i" }}
-                            </p>
+                        <div class="col-md-3">
+                            <small class="text-muted">
+                                <i class="fas fa-user me-1"></i>Amalga oshirgan
+                            </small>
+                            <p class="mb-0 fw-semibold">{{ payment.created_by.username }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>Yaratilgan
+                            </small>
+                            <p class="mb-0 fw-semibold">{{ payment.created_at|date:"d.m.Y H:i" }}</p>
                         </div>
                     </div>
 
                     <!-- ✅ KASSA OGOHLANTIRISH -->
                     {% if payment.payment_source == 'cash' %}
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <div class="alert alert-danger border-0 mb-0">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                <strong>Kassadan To'lov:</strong> Bu to'lov kassadan amalga oshirilgan va
-                                kunlik hisobotda chiqim sifatida ko'rsatiladi.
+                    <div class="alert alert-danger border-0 mt-3 mb-0">
+                        <div class="d-flex">
+                            <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                            <div>
+                                <strong>Kassadan To'lov</strong>
+                                <p class="mb-0">
+                                    Bu to'lov <strong>{{ payment.shop.name|default:"do'kon" }}</strong> kassasidan amalga oshirilgan
+                                    va <strong>{{ payment.payment_date|date:"d.m.Y" }}</strong> kunlik hisobotda
+                                    <span class="text-decoration-underline">chiqim</span> sifatida ko'rsatiladi.
+                                </p>
                             </div>
                         </div>
                     </div>
                     {% endif %}
 
                     {% if payment.notes %}
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <div class="alert alert-info mb-0">
-                                <strong>Izoh:</strong><br>
-                                {{ payment.notes }}
-                            </div>
-                        </div>
+                    <div class="alert alert-info border-0 mt-3 mb-0">
+                        <i class="fas fa-comment me-2"></i>
+                        <strong>Izoh:</strong> {{ payment.notes }}
                     </div>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Telefonlar Tafsilotlari -->
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-mobile-alt me-2"></i>
-                        To'lov Tarqatish Tafsilotlari
-                        <span class="badge bg-light text-dark ms-2">{{ payment.details.count }} ta telefon</span>
-                    </h5>
+            <!-- 📱 TELEFONLAR -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom d-flex justify-content-between">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fas fa-mobile-alt text-primary me-2"></i>To'lov Tafsilotlari
+                    </h6>
+                    <span class="badge bg-primary">{{ payment.details.count }} ta telefon</span>
                 </div>
                 <div class="card-body p-0">
                     {% if payment.details.exists %}
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
-                            <thead class="table-light">
+                            <thead class="bg-light">
                                 <tr>
-                                    <th width="50">#</th>
-                                    <th>Telefon</th>
+                                    <th width="40">#</th>
+                                    <th>Model</th>
                                     <th>IMEI</th>
-                                    <th>Tan Narx</th>
                                     <th class="text-end">Oldingi Qarz</th>
-                                    <th class="text-end">To'langan</th>
+                                    <th class="text-end">To'landi</th>
                                     <th class="text-end">Yangi Qarz</th>
-                                    <th class="text-center">Holat</th>
+                                    <th width="100" class="text-center">Holat</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for detail in payment.details.all %}
                                 <tr>
-                                    <td>{{ forloop.counter }}</td>
+                                    <td class="text-muted">{{ forloop.counter }}</td>
                                     <td>
-                                        <strong>{{ detail.phone.phone_model }}</strong><br>
-                                        <small class="text-muted">{{ detail.phone.memory_size }}</small>
+                                        <strong>{{ detail.phone.phone_model }}</strong>
+                                        <small class="text-muted d-block">{{ detail.phone.memory_size }}</small>
                                     </td>
-                                    <td>
-                                        <small class="font-monospace">{{ detail.phone.imei }}</small>
-                                    </td>
-                                    <td>
-                                        ${{ detail.phone.cost_price|floatformat:2 }}
-                                    </td>
+                                    <td><code>{{ detail.phone.imei }}</code></td>
                                     <td class="text-end text-danger">
                                         ${{ detail.previous_balance|floatformat:2 }}
                                     </td>
-                                    <td class="text-end text-success">
-                                        <strong>-${{ detail.amount|floatformat:2 }}</strong>
+                                    <td class="text-end text-success fw-bold">
+                                        -${{ detail.amount|floatformat:2 }}
                                     </td>
                                     <td class="text-end">
                                         {% if detail.new_balance > 0 %}
-                                            <span class="text-warning">
+                                            <span class="text-warning fw-bold">
                                                 ${{ detail.new_balance|floatformat:2 }}
                                             </span>
                                         {% else %}
                                             <span class="text-success">
-                                                <i class="fas fa-check-circle me-1"></i>$0.00
+                                                <i class="fas fa-check-circle"></i> $0.00
                                             </span>
                                         {% endif %}
                                     </td>
@@ -244,9 +236,9 @@
                                 </tr>
                                 {% endfor %}
                             </tbody>
-                            <tfoot class="table-light">
+                            <tfoot class="bg-light">
                                 <tr>
-                                    <th colspan="5" class="text-end">Jami To'langan:</th>
+                                    <th colspan="4" class="text-end">Jami To'langan:</th>
                                     <th class="text-end text-success">
                                         <h5 class="mb-0">-${{ payment.amount|floatformat:2 }}</h5>
                                     </th>
@@ -257,103 +249,112 @@
                     </div>
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <h6 class="text-muted">Tafsilotlar topilmadi</h6>
+                        <i class="fas fa-inbox fa-3x text-muted mb-3 opacity-25"></i>
+                        <p class="text-muted">Tafsilotlar topilmadi</p>
                     </div>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Havolalar -->
-            <div class="card mt-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Taminotchi sahifasiga o'tish</h6>
-                            <small class="text-muted">
-                                Barcha to'lovlar va qarzlar ro'yxatini ko'rish
-                            </small>
-                        </div>
-                        <a href="{% url 'inventory:supplier_detail' payment.supplier.id %}"
-                           class="btn btn-primary">
-                            <i class="fas fa-arrow-right me-1"></i>
-                            {{ payment.supplier.name }}
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Delete Modal -->
-            {% if request.user.userprofile.role in 'boss,finance' %}
-            <div class="modal fade" id="deleteModal" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header border-0">
-                            <h5 class="modal-title">
-                                <i class="fas fa-exclamation-triangle text-danger me-2"></i>
-                                To'lovni O'chirish
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p>Ushbu to'lovni o'chirmoqchimisiz?</p>
-                            <p class="mb-0">
-                                <strong>Summa:</strong>
-                                <span class="text-danger">${{ payment.amount|floatformat:2 }}</span>
-                            </p>
-                            {% if payment.payment_source == 'cash' %}
-                            <p class="text-danger mb-0">
-                                <small>
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Bu kassa to'lovi bo'lib, o'chirilsa kunlik chiqimdan ham o'chiriladi.
-                                </small>
-                            </p>
-                            {% endif %}
-                        </div>
-                        <div class="modal-footer border-0">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                Bekor Qilish
-                            </button>
-                            <a href="{% url 'inventory:supplier_payment_delete' payment.id %}"
-                               class="btn btn-danger">
-                                O'chirish
-                            </a>
+            <!-- 🔗 QUICK LINKS -->
+            <div class="row g-3 mt-4">
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <i class="fas fa-truck text-primary me-2"></i>Taminotchi
+                                    </h6>
+                                    <small class="text-muted">Barcha to'lovlar va qarzlar</small>
+                                </div>
+                                <a href="{% url 'inventory:supplier_detail' payment.supplier.id %}"
+                                   class="btn btn-primary">
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
+                {% if payment.shop %}
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <i class="fas fa-store text-success me-2"></i>Do'kon Hisoboti
+                                    </h6>
+                                    <small class="text-muted">{{ payment.payment_date|date:"d.m.Y" }} kunlik hisobot</small>
+                                </div>
+                                <a href="{% url 'reports:daily_report' %}?shop={{ payment.shop.id }}&date={{ payment.payment_date|date:'Y-m-d' }}"
+                                   class="btn btn-success">
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
 
+<!-- Delete Modal -->
+{% if request.user.userprofile.role in 'boss,finance' %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                    To'lovni O'chirish
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Ushbu to'lovni o'chirmoqchimisiz?</p>
+                <div class="alert alert-light mb-3">
+                    <p class="mb-1"><strong>Summa:</strong> <span class="text-success">${{ payment.amount|floatformat:2 }}</span></p>
+                    <p class="mb-1"><strong>Taminotchi:</strong> {{ payment.supplier.name }}</p>
+                    <p class="mb-1"><strong>Do'kon:</strong> {{ payment.shop.name|default:"N/A" }}</p>
+                    <p class="mb-0"><strong>Sana:</strong> {{ payment.payment_date|date:"d.m.Y" }}</p>
+                </div>
+                {% if payment.payment_source == 'cash' %}
+                <div class="alert alert-danger mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Diqqat:</strong> Bu kassa to'lovi. O'chirilganda kunlik hisobotdan ham o'chiriladi.
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor</button>
+                <a href="{% url 'inventory:supplier_payment_delete' payment.id %}" class="btn btn-danger">
+                    <i class="fas fa-trash me-2"></i>O'chirish
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <style>
+code {
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
 @media print {
-    .btn, .card-header .d-flex .btn-group {
-        display: none !important;
-    }
-
-    .card {
-        border: 1px solid #dee2e6 !important;
-        box-shadow: none !important;
-    }
-
-    body {
-        background: white !important;
-    }
-
-    .modal {
-        display: none !important;
-    }
-}
-
-.table td, .table th {
-    vertical-align: middle;
-}
-
-.font-monospace {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.9em;
+    .btn, .btn-group { display: none !important; }
+    .card { box-shadow: none !important; }
+    .modal { display: none !important; }
 }
 </style>
 {% endblock %}
