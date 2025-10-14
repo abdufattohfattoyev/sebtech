@@ -1,0 +1,1471 @@
+from datetime import timedelta
+from django import forms
+from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.db import transaction
+from decimal import Decimal
+
+from .models import PhoneSale, PhoneReturn, AccessorySale, PhoneExchange, Debt, DebtPayment, Expense
+from inventory.models import Phone
+from shops.models import Customer, Shop
+
+
+# ============ HELPER FUNCTIONS ============
+def manage_sale_debts(sale_obj, form_data, user, is_new=True):
+    """
+    Universal qarz boshqarish funksiyasi - PhoneSale, AccessorySale, PhoneExchange uchun
+
+    Args:
+        sale_obj: PhoneSale, AccessorySale yoki PhoneExchange instance
+        form_data: cleaned_data
+        user: Current user
+        is_new: Yangi yaratish yoki tahrirlash
+    """
+    debt_amount = form_data.get('debt_amount', Decimal('0'))
+    debt_due_date = form_data.get('debt_due_date')
+    customer = sale_obj.customer
+
+    # Valyuta va identifikator aniqlash
+    if isinstance(sale_obj, PhoneSale):
+        currency = 'USD'
+        identifier = f"IMEI: {sale_obj.phone.imei}"
+        description = f"Telefon sotish: {sale_obj.phone.phone_model} {sale_obj.phone.memory_size}"
+    elif isinstance(sale_obj, AccessorySale):
+        currency = 'UZS'
+        identifier = f"Aksessuar: {sale_obj.accessory.name} x {sale_obj.quantity}"
+        description = identifier
+    elif isinstance(sale_obj, PhoneExchange):
+        currency = 'USD'
+        identifier = f"IMEI: {sale_obj.new_phone.imei}"
+        description = f"Telefon almashtirish: {sale_obj.old_phone_model} → {sale_obj.new_phone.phone_model}"
+        # PhoneExchange uchun qarz faqat customer_pays holatida
+        if sale_obj.exchange_type != 'customer_pays':
+            return
+    else:
+        return
+
+    # Shop owner
+    if isinstance(sale_obj, AccessorySale):
+        shop_owner = sale_obj.accessory.shop.owner
+    else:
+        shop_owner = sale_obj.phone.shop.owner if isinstance(sale_obj, PhoneSale) else sale_obj.new_phone.shop.owner
+
+    if is_new:
+        # ========== YANGI YARATISH ==========
+        if debt_amount > 0:
+            if user == shop_owner:
+                # Boshliq o'zi - 1 ta qarz
+                Debt.objects.create(
+                    debt_type='customer_to_seller',
+                    creditor=shop_owner,
+                    customer=customer,
+                    currency=currency,
+                    debt_amount=debt_amount,
+                    paid_amount=Decimal('0'),
+                    due_date=debt_due_date,
+                    status='active',
+                    notes=f"{description} ({identifier})"
+                )
+            else:
+                # Xodim - 2 ta qarz
+                Debt.objects.create(
+                    debt_type='customer_to_seller',
+                    creditor=user,
+                    customer=customer,
+                    currency=currency,
+                    debt_amount=debt_amount,
+                    paid_amount=Decimal('0'),
+                    due_date=debt_due_date,
+                    status='active',
+                    notes=f"{description} ({identifier})"
+                )
+
+                Debt.objects.create(
+                    debt_type='seller_to_boss',
+                    creditor=shop_owner,
+                    debtor=user,
+                    currency=currency,
+                    debt_amount=debt_amount,
+                    paid_amount=Decimal('0'),
+                    due_date=debt_due_date,
+                    status='active',
+                    notes=f"Qarz javobgarligi: {description} (Mijoz: {customer.name}, {identifier})"
+                )
+    else:
+        # ========== TAHRIRLASH ==========
+        # Mavjud qarzlarni topish
+        customer_debt = Debt.objects.filter(
+            debt_type='customer_to_seller',
+            currency=currency,
+            notes__icontains=identifier.split(':')[1].strip()  # IMEI yoki aksessuar nomi
+        ).first()
+
+        seller_debt = Debt.objects.filter(
+            debt_type='seller_to_boss',
+            debtor=sale_obj.salesman,
+            currency=currency,
+            notes__icontains=identifier.split(':')[1].strip()
+        ).first()
+
+        if debt_amount > 0:
+            # QARZ YANGILASH yoki YARATISH
+            if customer_debt:
+                customer_debt.debt_amount = debt_amount
+                customer_debt.customer = customer
+                customer_debt.creditor = shop_owner if user == shop_owner else sale_obj.salesman
+                if debt_due_date:
+                    customer_debt.due_date = debt_due_date
+                customer_debt.notes = f"{description} (yangilandi, {identifier})"
+                customer_debt.save()
+            else:
+                Debt.objects.create(
+                    debt_type='customer_to_seller',
+                    creditor=shop_owner if user == shop_owner else sale_obj.salesman,
+                    customer=customer,
+                    currency=currency,
+                    debt_amount=debt_amount,
+                    paid_amount=Decimal('0'),
+                    due_date=debt_due_date,
+                    status='active',
+                    notes=f"{description} (yangilandi, {identifier})"
+                )
+
+            # Sotuvchi → Boss qarz
+            if user != shop_owner:
+                if seller_debt:
+                    seller_debt.debt_amount = debt_amount
+                    if debt_due_date:
+                        seller_debt.due_date = debt_due_date
+                    seller_debt.notes = f"Qarz javobgarligi (yangilandi): {description} (Mijoz: {customer.name}, {identifier})"
+                    seller_debt.save()
+                else:
+                    Debt.objects.create(
+                        debt_type='seller_to_boss',
+                        creditor=shop_owner,
+                        debtor=sale_obj.salesman,
+                        currency=currency,
+                        debt_amount=debt_amount,
+                        paid_amount=Decimal('0'),
+                        due_date=debt_due_date,
+                        status='active',
+                        notes=f"Qarz javobgarligi (yangilandi): {description} (Mijoz: {customer.name}, {identifier})"
+                    )
+            else:
+                if seller_debt:
+                    seller_debt.delete()
+        else:
+            # QARZ 0 - O'CHIRISH
+            if customer_debt:
+                customer_debt.delete()
+            if seller_debt:
+                seller_debt.delete()
+
+
+def get_or_create_customer(phone, name, user):
+    """Mijozni yaratish yoki yangilash"""
+    customer, created = Customer.objects.get_or_create(
+        phone_number=phone,
+        defaults={'name': name, 'created_by': user}
+    )
+    if not created and customer.name != name:
+        customer.name = name
+        customer.save(update_fields=['name'])
+    return customer
+
+
+# ============ FORMS ============
+
+class DebtPaymentForm(forms.ModelForm):
+    """Qarz to'lovi formi"""
+
+    class Meta:
+        model = DebtPayment
+        fields = ['payment_amount', 'payment_date', 'notes']
+        widgets = {
+            'payment_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0.01',
+                'placeholder': '0.00',
+                'required': True
+            }),
+            'payment_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'required': True
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Qo\'shimcha izohlar...'
+            }),
+        }
+        labels = {
+            'payment_amount': 'To\'lov summasi',
+            'payment_date': 'To\'lov sanasi',
+            'notes': 'Izohlar'
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        self.debt = kwargs.pop('debt', None)
+        super().__init__(*args, **kwargs)
+
+        if not self.instance.pk:
+            self.fields['payment_date'].initial = timezone.now().date()
+
+    def clean_payment_amount(self):
+        amount = self.cleaned_data.get('payment_amount')
+
+        if amount and self.debt:
+            if amount <= 0:
+                raise ValidationError("To'lov summasi musbat son bo'lishi kerak.")
+
+            if amount > self.debt.remaining_amount:
+                raise ValidationError(
+                    f"To'lov summasi qarz qoldiqidan ({self.debt.currency_symbol}{self.debt.remaining_amount:.2f}) "
+                    f"oshmasligi kerak."
+                )
+
+        return amount
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.debt:
+            instance.debt = self.debt
+        if commit:
+            instance.save()
+        return instance
+
+
+class PhoneSaleForm(forms.ModelForm):
+    """Telefon sotish formi"""
+
+    # ✅ YANGI: Sotuvchi tanlash maydoni
+    salesman_select = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-control',
+            'id': 'id_salesman_select'
+        }),
+        label="Sotuvchi"
+    )
+
+    customer_name = forms.CharField(
+        max_length=100,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Mijoz ismi',
+            'id': 'id_customer_name'
+        }),
+        label="Mijoz ismi"
+    )
+
+    customer_phone = forms.CharField(
+        max_length=15,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': '+998901234567',
+            'id': 'id_customer_phone'
+        }),
+        label="Mijoz telefon raqami"
+    )
+
+    debt_due_date = forms.DateField(
+        required=False,
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'id': 'id_debt_due_date'
+            }
+        ),
+        label="Qarz qaytarish muddati"
+    )
+
+    class Meta:
+        model = PhoneSale
+        fields = [
+            'phone', 'sale_price', 'cash_amount', 'card_amount',
+            'credit_amount', 'debt_amount', 'sale_date', 'notes'
+        ]
+        widgets = {
+            'phone': forms.HiddenInput(),
+            'sale_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Sotish narxi ($)',
+                'id': 'id_sale_price'
+            }),
+            'cash_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'id': 'id_cash_amount'
+            }),
+            'card_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'id': 'id_card_amount'
+            }),
+            'credit_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'id': 'id_credit_amount'
+            }),
+            'debt_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'max': '1100',
+                'value': 0,
+                'id': 'id_debt_amount'
+            }),
+            'sale_date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={
+                    'class': 'form-control',
+                    'type': 'date',
+                    'id': 'id_sale_date'
+                }
+            ),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Izoh...'
+            })
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # ✅ FOYDALANUVCHI ROLINI ANIQLASH
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        # ✅ BOSS YOKI FINANCE BO'LSA - DROPDOWN KO'RSATISH
+        if user_role in ['boss', 'finance']:
+            from users.models import UserProfile
+
+            # ✅ 1. BARCHA SOTUVCHILARNI OLISH
+            seller_user_ids = list(
+                UserProfile.objects.filter(role='seller').values_list('user_id', flat=True)
+            )
+
+            # ✅ 2. O'ZINI HAM QO'SHISH
+            if self.user.id not in seller_user_ids:
+                seller_user_ids.append(self.user.id)
+
+            # ✅ 3. QUERYSET YARATISH
+            salesmen = User.objects.filter(id__in=seller_user_ids).order_by('first_name', 'username')
+
+            # ✅ 4. FIELD SOZLASH
+            self.fields['salesman_select'].queryset = salesmen
+            self.fields['salesman_select'].required = True
+            self.fields['salesman_select'].empty_label = "Sotuvchini tanlang"
+
+            # ✅ 5. INITIAL QIYMAT
+            if self.instance.pk and self.instance.salesman:
+                # TAHRIRLASH - mavjud sotuvchi
+                self.fields['salesman_select'].initial = self.instance.salesman
+            elif not self.instance.pk:
+                # YANGI YARATISH - o'zini o'rnatish
+                self.fields['salesman_select'].initial = self.user
+
+            # ✅ 6. DEBUG (keyin o'chirish mumkin)
+            print(f"🔍 Queryset: {salesmen.count()} users")
+            print(f"🔍 Initial: {self.fields['salesman_select'].initial}")
+
+        else:
+            # ✅ FAQAT SOTUVCHI BO'LSA - YASHIRISH
+            self.fields['salesman_select'].widget = forms.HiddenInput()
+            self.fields['salesman_select'].required = False
+
+    def clean_phone(self):
+        phone = self.cleaned_data.get('phone')
+        if not phone:
+            raise ValidationError("Telefon tanlanishi kerak!")
+
+        if not self.instance.pk:
+            if phone.status in ['master', 'sold']:
+                status_text = "ustada" if phone.status == 'master' else "sotilgan"
+                raise ValidationError(
+                    f"Bu telefon {status_text} holatida! "
+                    f"Ustada yoki sotilgan telefonlarni sotish mumkin emas."
+                )
+        return phone
+
+    def clean(self):
+        cleaned_data = super().clean()
+        sale_price = cleaned_data.get('sale_price')
+        debt_amount = cleaned_data.get('debt_amount') or Decimal('0')
+        debt_due_date = cleaned_data.get('debt_due_date')
+
+        cash_amount = cleaned_data.get('cash_amount') or Decimal('0')
+        card_amount = cleaned_data.get('card_amount') or Decimal('0')
+        credit_amount = cleaned_data.get('credit_amount') or Decimal('0')
+
+        # ✅ SOTUVCHINI ANIQLASH
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        salesman_select = cleaned_data.get('salesman_select')
+
+        # ✅ BOSS YOKI FINANCE BO'LSA - tanlash SHART
+        if user_role in ['boss', 'finance']:
+            if not salesman_select:
+                raise ValidationError({'salesman_select': "Sotuvchini tanlash shart!"})
+
+        # Mijozni validatsiya paytida yaratish/olish
+        customer_phone = cleaned_data.get('customer_phone')
+        customer_name = cleaned_data.get('customer_name')
+
+        if customer_phone and customer_name and self.user:
+            self.instance.customer = get_or_create_customer(
+                customer_phone,
+                customer_name,
+                self.user
+            )
+
+        # To'lovlar yig'indisini tekshirish
+        if sale_price:
+            total_payments = cash_amount + card_amount + credit_amount + debt_amount
+            if abs(total_payments - sale_price) > Decimal('0.01'):
+                raise ValidationError(
+                    f"To'lovlar yig'indisi ({total_payments:.2f}$) sotish narxiga ({sale_price:.2f}$) teng bo'lishi kerak!"
+                )
+
+        # Qarz uchun muddat tekshiruvi
+        if debt_amount > 0 and not debt_due_date:
+            raise ValidationError({
+                'debt_due_date': "Qarz uchun qaytarish muddati kiritilishi kerak!"
+            })
+
+        return cleaned_data
+
+    @transaction.atomic
+    def save(self, commit=True):
+        is_new = not self.instance.pk
+        phone_sale = super().save(commit=False)
+
+        # ✅ SOTUVCHINI O'RNATISH
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        if user_role in ['boss', 'finance']:
+            # ✅ Boss yoki finance - salesman_select dan olish
+            salesman_select = self.cleaned_data.get('salesman_select')
+            if salesman_select:
+                phone_sale.salesman = salesman_select
+            else:
+                # ✅ Agar tanlangan bo'lmasa (xato holatda) - o'zini o'rnatish
+                phone_sale.salesman = self.user
+        else:
+            # ✅ Faqat sotuvchi - o'zini o'rnatish
+            phone_sale.salesman = self.user
+
+        if not phone_sale.customer:
+            phone_sale.customer = get_or_create_customer(
+                self.cleaned_data.get('customer_phone'),
+                self.cleaned_data.get('customer_name'),
+                self.user
+            )
+
+        if commit:
+            phone_sale.save()
+
+            # Qarz boshqarish - TANLANGAN SOTUVCHI BILAN
+            manage_sale_debts(
+                phone_sale,
+                self.cleaned_data,
+                phone_sale.salesman,  # ✅ Tanlangan sotuvchi
+                is_new=is_new
+            )
+
+        return phone_sale
+
+
+class AccessorySaleForm(forms.ModelForm):
+    """Aksessuar sotish formi"""
+    accessory_code = forms.CharField(
+        max_length=10,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Kod: 0001',
+            'id': 'accessory_code_search'
+        }),
+        label="Aksessuar kodi"
+    )
+
+    customer_name = forms.CharField(
+        max_length=100,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Mijoz ismi',
+            'id': 'cust_name'
+        }),
+        label="Mijoz ismi"
+    )
+
+    customer_phone = forms.CharField(
+        max_length=15,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': '+998901234567',
+            'id': 'cust_phone'
+        }),
+        label="Mijoz telefon raqami"
+    )
+
+    debt_due_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date',
+            'id': 'id_accessory_debt_due_date'
+        }),
+        label="Qarz qaytarish muddati"
+    )
+
+    class Meta:
+        model = AccessorySale
+        fields = [
+            'accessory', 'quantity', 'unit_price',
+            'cash_amount', 'card_amount', 'credit_amount', 'debt_amount',
+            'sale_date', 'notes'
+        ]
+        widgets = {
+            'accessory': forms.Select(attrs={
+                'class': 'form-control',
+                'id': 'id_accessory',
+                'style': 'display:none;'
+            }),
+            'quantity': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'value': '1',
+                'min': '1',
+                'id': 'qty'
+            }),
+            'unit_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'id': 'price',
+                'placeholder': "Narx (so'm)"
+            }),
+            'cash_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'value': '0',
+                'min': '0',
+                'id': 'cash'
+            }),
+            'card_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'value': '0',
+                'min': '0',
+                'id': 'card'
+            }),
+            'credit_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'value': '0',
+                'min': '0',
+                'id': 'credit'
+            }),
+            'debt_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'value': '0',
+                'min': '0',
+                'max': '10000000',
+                'id': 'debt'
+            }),
+            'sale_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'id': 'date'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Izoh...'
+            })
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if not self.instance.pk:
+            self.initial['sale_date'] = timezone.now().date()
+            self.initial['debt_due_date'] = timezone.now().date() + timedelta(days=30)
+        else:
+            if self.instance.customer:
+                self.initial['customer_name'] = self.instance.customer.name
+                self.initial['customer_phone'] = self.instance.customer.phone_number
+
+            if self.instance.debt_amount > 0:
+                debt = Debt.objects.filter(
+                    debt_type='customer_to_seller',
+                    customer=self.instance.customer,
+                    currency='UZS',
+                    notes__icontains=self.instance.accessory.name
+                ).first()
+                if debt and debt.due_date:
+                    self.initial['debt_due_date'] = debt.due_date
+
+    def clean(self):
+        cleaned_data = super().clean()
+        accessory = cleaned_data.get('accessory')
+        customer_name = cleaned_data.get('customer_name')
+        customer_phone = cleaned_data.get('customer_phone')
+        quantity = cleaned_data.get('quantity')
+        unit_price = cleaned_data.get('unit_price')
+
+        cash_amount = cleaned_data.get('cash_amount') or Decimal('0')
+        card_amount = cleaned_data.get('card_amount') or Decimal('0')
+        credit_amount = cleaned_data.get('credit_amount') or Decimal('0')
+        debt_amount = cleaned_data.get('debt_amount') or Decimal('0')
+        debt_due_date = cleaned_data.get('debt_due_date')
+
+        if not customer_name or not customer_name.strip():
+            raise ValidationError({'customer_name': "Mijoz ismi kiritilishi kerak."})
+
+        if not customer_phone or not customer_phone.strip():
+            raise ValidationError({'customer_phone': "Telefon raqami kiritilishi kerak."})
+
+        if not accessory:
+            raise ValidationError({'accessory': "Aksessuar tanlanishi kerak."})
+
+        if quantity and accessory:
+            available_quantity = accessory.quantity
+            if self.instance.pk:
+                available_quantity += self.instance.quantity
+
+            if quantity > available_quantity:
+                raise ValidationError({
+                    'quantity': f"Yetarli aksessuar yo'q! Mavjud: {available_quantity} dona"
+                })
+
+        if unit_price and quantity:
+            total_price = unit_price * quantity
+            total_payments = cash_amount + card_amount + credit_amount + debt_amount
+
+            if abs(total_payments - total_price) > Decimal('1000'):
+                raise ValidationError(
+                    f"To'lovlar yig'indisi ({total_payments:,.0f} so'm) jami narxga ({total_price:,.0f} so'm) teng bo'lishi kerak!"
+                )
+
+        if debt_amount > 0 and not debt_due_date:
+            raise ValidationError({
+                'debt_due_date': "Qarz uchun qaytarish muddati kiritilishi kerak!"
+            })
+
+        return cleaned_data
+
+    @transaction.atomic
+    def save(self, commit=True):
+        is_new = not self.instance.pk
+        accessory_sale = super().save(commit=False)
+        accessory_sale.salesman = self.user
+
+        # Mijoz
+        accessory_sale.customer = get_or_create_customer(
+            self.cleaned_data.get('customer_phone'),
+            self.cleaned_data.get('customer_name'),
+            self.user
+        )
+
+        accessory_sale.total_price = accessory_sale.unit_price * accessory_sale.quantity
+
+        if commit:
+            # Aksessuar sonini boshqarish
+            if is_new:
+                if accessory_sale.accessory.quantity < accessory_sale.quantity:
+                    raise ValidationError(f"Yetarli aksessuar yo'q!")
+                accessory_sale.accessory.quantity -= accessory_sale.quantity
+                accessory_sale.accessory.save(update_fields=['quantity'])
+            else:
+                old_quantity = self.initial.get('quantity', 0)
+                quantity_diff = accessory_sale.quantity - old_quantity
+                if quantity_diff != 0:
+                    if quantity_diff > 0:
+                        if accessory_sale.accessory.quantity < quantity_diff:
+                            raise ValidationError(f"Yetarli aksessuar yo'q!")
+                    accessory_sale.accessory.quantity -= quantity_diff
+                    accessory_sale.accessory.save(update_fields=['quantity'])
+
+            accessory_sale.save()
+
+            # Qarz boshqarish
+            manage_sale_debts(
+                accessory_sale,
+                self.cleaned_data,
+                self.user,
+                is_new=is_new
+            )
+
+        return accessory_sale
+
+
+class PhoneExchangeForm(forms.ModelForm):
+    """Telefon almashtirish formi"""
+
+    # ✅ YANGI: Sotuvchi tanlash maydoni
+    salesman_select = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-control',
+            'id': 'id_salesman_select_exchange'
+        }),
+        label="Sotuvchi"
+    )
+
+    customer_name_input = forms.CharField(
+        max_length=100,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Mijoz ismi',
+            'id': 'id_customer_name_input'
+        }),
+        label="Mijoz ismi"
+    )
+
+    customer_phone_input = forms.CharField(
+        max_length=15,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': '+998901234567',
+            'id': 'id_customer_phone_input'
+        }),
+        label="Mijoz telefon raqami"
+    )
+
+    debt_due_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date',
+            'id': 'id_exchange_debt_due_date'
+        }),
+        label="Qarz qaytarish muddati"
+    )
+
+    class Meta:
+        model = PhoneExchange
+        fields = [
+            'new_phone', 'new_phone_price', 'old_phone_model', 'old_phone_memory',
+            'old_phone_imei', 'old_phone_condition_percentage', 'old_phone_accepted_price',
+            'old_phone_repair_cost', 'old_phone_imei_cost', 'old_phone_future_sale_price',
+            'old_phone_image', 'exchange_type', 'cash_amount', 'card_amount',
+            'credit_amount', 'debt_amount', 'exchange_date', 'notes'
+        ]
+
+        widgets = {
+            'new_phone': forms.HiddenInput(attrs={'id': 'id_new_phone'}),
+            'new_phone_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Yangi telefon narxi ($)'
+            }),
+            'old_phone_model': forms.Select(attrs={'class': 'form-control', 'required': True}),
+            'old_phone_memory': forms.Select(attrs={'class': 'form-control', 'required': True}),
+            'old_phone_imei': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '15 raqamli IMEI'
+            }),
+            'old_phone_condition_percentage': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 1,
+                'max': 100,
+                'value': 80,
+                'placeholder': 'Holati (%)'
+            }),
+            'old_phone_accepted_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Qabul narxi ($)'
+            }),
+            'old_phone_repair_cost': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'placeholder': 'Ta\'mirlash xarajati ($)'
+            }),
+            'old_phone_imei_cost': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'placeholder': 'IMEI xarajati ($)'
+            }),
+            'old_phone_future_sale_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'placeholder': 'Kelajakdagi sotish narxi ($)'
+            }),
+            'old_phone_image': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
+            'exchange_type': forms.Select(attrs={'class': 'form-control', 'required': True}),
+            'cash_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'placeholder': 'Naqd ($)'
+            }),
+            'card_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'placeholder': 'Karta ($)'
+            }),
+            'credit_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'value': 0,
+                'placeholder': 'Nasiya ($)'
+            }),
+            'debt_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0',
+                'max': '1100',
+                'value': 0,
+                'placeholder': 'Qarz (max 500$)'
+            }),
+            'exchange_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'required': True
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Qo\'shimcha izohlar...'
+            })
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # ✅ FOYDALANUVCHI ROLINI ANIQLASH
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        # ✅ BOSS YOKI FINANCE BO'LSA - DROPDOWN
+        if user_role in ['boss', 'finance']:
+            from users.models import UserProfile
+
+            # ✅ TO'G'RI YECHIM - BARCHA SOTUVCHILARNI OLISH
+            seller_ids = list(
+                UserProfile.objects.filter(role='seller').values_list('user_id', flat=True)
+            )
+
+            # ✅ O'ZINI HAM QO'SHISH (agar ro'yxatda bo'lmasa)
+            if self.user.id not in seller_ids:
+                seller_ids.append(self.user.id)
+
+            salesmen = User.objects.filter(id__in=seller_ids).order_by('first_name', 'username')
+
+            self.fields['salesman_select'].queryset = salesmen
+            self.fields['salesman_select'].required = True
+            self.fields['salesman_select'].empty_label = "Sotuvchini tanlang"
+
+            # TAHRIRLASHDA JORIY SOTUVCHINI O'RNATISH
+            if self.instance.pk and self.instance.salesman:
+                self.fields['salesman_select'].initial = self.instance.salesman
+            # ✅ YANGI YARATISHDA O'ZINI INITIAL QILISH
+            elif not self.instance.pk:
+                self.fields['salesman_select'].initial = self.user
+        else:
+            # ✅ FAQAT SOTUVCHI - YASHIRISH
+            self.fields['salesman_select'].widget = forms.HiddenInput()
+            self.fields['salesman_select'].required = False
+
+        self.fields['new_phone'].queryset = Phone.objects.filter(status='shop')
+
+        if not self.instance.pk:
+            self.fields['exchange_date'].initial = timezone.now().date()
+            self.fields['debt_due_date'].initial = timezone.now().date() + timedelta(days=30)
+        else:
+            if self.instance.customer_name:
+                self.fields['customer_name_input'].initial = self.instance.customer_name
+            if self.instance.customer_phone_number:
+                self.fields['customer_phone_input'].initial = self.instance.customer_phone_number
+
+            if self.instance.debt_amount > 0 and self.instance.exchange_type == 'customer_pays':
+                if self.instance.new_phone:
+                    debt = Debt.objects.filter(
+                        debt_type='customer_to_seller',
+                        customer=self.instance.customer,
+                        currency='USD',
+                        notes__icontains=self.instance.new_phone.imei
+                    ).first()
+                    if debt and debt.due_date:
+                        self.fields['debt_due_date'].initial = debt.due_date
+
+    def clean(self):
+        cleaned_data = super().clean()
+        customer_name = cleaned_data.get('customer_name_input', '').strip()
+        customer_phone = cleaned_data.get('customer_phone_input', '').strip()
+        debt_amount = cleaned_data.get('debt_amount') or Decimal('0')
+        debt_due_date = cleaned_data.get('debt_due_date')
+        exchange_type = cleaned_data.get('exchange_type')
+        new_phone = cleaned_data.get('new_phone')
+
+        # ✅ SOTUVCHINI ANIQLASH
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        salesman_select = cleaned_data.get('salesman_select')
+
+        if user_role in ['boss', 'finance']:
+            if not salesman_select:
+                raise ValidationError({'salesman_select': "Sotuvchini tanlash shart!"})
+
+        if not customer_name:
+            raise ValidationError({'customer_name_input': "Mijoz ismi kiritilishi kerak."})
+
+        if not customer_phone:
+            raise ValidationError({'customer_phone_input': "Mijoz telefon raqami kiritilishi kerak."})
+
+        if not new_phone:
+            raise ValidationError({'new_phone': "Yangi telefon tanlanishi kerak!"})
+
+        if debt_amount > 0:
+            if not debt_due_date:
+                raise ValidationError({
+                    'debt_due_date': "Qarz uchun qaytarish muddati kiritilishi kerak!"
+                })
+
+            if exchange_type != 'customer_pays':
+                raise ValidationError({
+                    'debt_amount': "Qarz faqat 'Mijoz to'laydi' holatida bo'lishi mumkin!"
+                })
+
+        if exchange_type == 'customer_pays':
+            cash_amount = cleaned_data.get('cash_amount') or Decimal('0')
+            card_amount = cleaned_data.get('card_amount') or Decimal('0')
+            credit_amount = cleaned_data.get('credit_amount') or Decimal('0')
+
+            new_phone_price = cleaned_data.get('new_phone_price') or Decimal('0')
+            old_phone_accepted_price = cleaned_data.get('old_phone_accepted_price') or Decimal('0')
+            price_difference = new_phone_price - old_phone_accepted_price
+
+            if price_difference > 0:
+                total_payments = cash_amount + card_amount + credit_amount + debt_amount
+                if abs(total_payments - price_difference) > Decimal('0.01'):
+                    raise ValidationError(
+                        f"To'lovlar yig'indisi ({total_payments:.2f}$) narx farqiga ({price_difference:.2f}$) teng bo'lishi kerak!"
+                    )
+
+        cleaned_data['customer_name'] = customer_name
+        cleaned_data['customer_phone_number'] = customer_phone
+
+        return cleaned_data
+
+    @transaction.atomic
+    def save(self, commit=True):
+        is_new = not self.instance.pk
+        exchange = super().save(commit=False)
+
+        # ✅ SOTUVCHINI O'RNATISH
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        if user_role in ['boss', 'finance']:
+            # ✅ Boss yoki finance - salesman_select dan olish
+            salesman_select = self.cleaned_data.get('salesman_select')
+            if salesman_select:
+                exchange.salesman = salesman_select
+            else:
+                exchange.salesman = self.user
+        else:
+            # ✅ Faqat sotuvchi - o'zini o'rnatish
+            exchange.salesman = self.user
+
+        if not exchange.created_by:
+            exchange.created_by = self.user
+
+        if 'customer_name' in self.cleaned_data:
+            exchange.customer_name = self.cleaned_data['customer_name']
+        if 'customer_phone_number' in self.cleaned_data:
+            exchange.customer_phone_number = self.cleaned_data['customer_phone_number']
+
+        if exchange.customer_name and exchange.customer_phone_number and self.user:
+            exchange.customer = get_or_create_customer(
+                exchange.customer_phone_number,
+                exchange.customer_name,
+                self.user
+            )
+
+        exchange.calculate_price_difference()
+
+        if commit:
+            exchange.save()
+
+            # Qarz boshqarish - TANLANGAN SOTUVCHI BILAN
+            if exchange.exchange_type == 'customer_pays':
+                manage_sale_debts(
+                    exchange,
+                    self.cleaned_data,
+                    exchange.salesman,  # ✅ Tanlangan sotuvchi
+                    is_new=is_new
+                )
+
+        return exchange
+
+
+class PhoneReturnForm(forms.ModelForm):
+    """Telefon qaytarish formi"""
+
+    return_date = forms.DateField(
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(
+            format='%Y-%m-%d',
+            attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'required': True,
+            }
+        ),
+        label='Qaytarish sanasi'
+    )
+
+    class Meta:
+        model = PhoneReturn
+        fields = ['phone_sale', 'return_amount', 'return_date', 'reason', 'notes']
+        widgets = {
+            'phone_sale': forms.HiddenInput(attrs={'required': True}),
+            'return_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'required': True,
+                'min': '0.01'
+            }),
+            'reason': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'required': True,
+                'placeholder': 'Qaytarish sababini kiriting...'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Qo\'shimcha izohlar (ixtiyoriy)'
+            }),
+        }
+        labels = {
+            'phone_sale': 'Telefon sotuvi',
+            'return_amount': 'Qaytarilgan summa ($)',
+            'reason': 'Qaytarish sababi',
+            'notes': 'Izohlar'
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        self.fields['phone_sale'].required = True
+        self.fields['return_amount'].required = True
+        self.fields['return_date'].required = True
+        self.fields['reason'].required = True
+        self.fields['notes'].required = False
+
+        if user:
+            # ✅ Faqat qaytarilmagan sotuvlar
+            self.fields['phone_sale'].queryset = PhoneSale.objects.filter(
+                phone__status='sold',
+                is_returned=False
+            ).select_related('phone__phone_model', 'phone__memory_size', 'customer')
+
+        if not self.instance.pk:
+            self.fields['return_date'].initial = timezone.now().date()
+        else:
+            if self.instance.return_date:
+                self.fields['return_date'].initial = self.instance.return_date
+
+    def clean_phone_sale(self):
+        phone_sale = self.cleaned_data.get('phone_sale')
+        if not phone_sale:
+            raise ValidationError("Telefon sotuvini tanlash shart!")
+
+        if not self.instance.pk:
+            if PhoneReturn.objects.filter(phone_sale_id=phone_sale.id).exists():
+                raise ValidationError("Bu sotish allaqachon qaytarilgan!")
+
+        return phone_sale
+
+    def clean_return_amount(self):
+        return_amount = self.cleaned_data.get('return_amount')
+        if not return_amount or return_amount <= 0:
+            raise ValidationError("Qaytarish summasi 0 dan katta bo'lishi kerak!")
+        return return_amount
+
+    def clean_reason(self):
+        reason = self.cleaned_data.get('reason', '').strip()
+        if not reason:
+            raise ValidationError("Qaytarish sababi kiritilishi kerak!")
+        return reason
+
+    def clean(self):
+        cleaned_data = super().clean()
+        phone_sale = cleaned_data.get('phone_sale')
+        return_amount = cleaned_data.get('return_amount')
+
+        if phone_sale and return_amount:
+            if return_amount > phone_sale.sale_price:
+                raise ValidationError({
+                    'return_amount': f'Qaytarish summasi sotish narxidan (${phone_sale.sale_price}) katta bo\'lishi mumkin emas!'
+                })
+
+        return cleaned_data
+
+
+class DebtForm(forms.ModelForm):
+    """Qarz formi"""
+    customer_name = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Mijoz ismi',
+            'id': 'id_customer_name'
+        }),
+        label="Mijoz ismi"
+    )
+
+    customer_phone = forms.CharField(
+        max_length=15,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': '+998901234567',
+            'id': 'id_customer_phone'
+        }),
+        label="Mijoz telefon raqami"
+    )
+
+    class Meta:
+        model = Debt
+        fields = ['debt_type', 'creditor', 'debtor', 'customer', 'master',
+                  'currency', 'debt_amount', 'due_date', 'notes']
+        widgets = {
+            'debt_type': forms.Select(attrs={
+                'class': 'form-select',
+                'id': 'id_debt_type',
+                'required': True
+            }),
+            'creditor': forms.Select(attrs={
+                'class': 'form-select',
+                'id': 'id_creditor',
+            }),
+            'debtor': forms.Select(attrs={
+                'class': 'form-select',
+                'id': 'id_debtor',
+            }),
+            'customer': forms.Select(attrs={
+                'class': 'form-select d-none',
+                'id': 'id_customer',
+            }),
+            'master': forms.Select(attrs={
+                'class': 'form-select',
+                'id': 'id_master',
+            }),
+            'currency': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'debt_amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'min': '0.01',
+                'placeholder': 'Qarz summasi',
+                'required': True
+            }),
+            'due_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'required': True
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Izohlar...'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        if user_role == 'seller':
+            self.fields['debt_type'].choices = [
+                ('customer_to_seller', 'Mijoz → Men'),
+                ('seller_to_boss', 'Men → Boshliq'),
+            ]
+
+            boss_ids = Shop.objects.values_list('owner_id', flat=True).distinct()
+
+            from django.db.models import Q
+            self.fields['creditor'].queryset = User.objects.filter(
+                Q(id=self.user.id) | Q(id__in=boss_ids)
+            ).distinct()
+
+            self.fields['creditor'].empty_label = None
+            self.fields['creditor'].required = False
+            self.fields['creditor'].initial = self.user.id
+
+            self.fields['debtor'].required = False
+            self.fields['master'].required = False
+
+        elif user_role in ['boss', 'finance']:
+            self.fields['debt_type'].choices = Debt.DEBT_TYPE_CHOICES
+            self.fields['creditor'].queryset = User.objects.all()
+            self.fields['creditor'].empty_label = None
+
+            from users.models import UserProfile
+            seller_ids = UserProfile.objects.filter(role='seller').values_list('user_id', flat=True)
+            self.fields['debtor'].queryset = User.objects.filter(id__in=seller_ids)
+            self.fields['debtor'].empty_label = None
+
+            self.fields['debtor'].required = False
+            self.fields['master'].required = False
+
+            try:
+                from services.models import Master
+                self.fields['master'].queryset = Master.objects.all()
+            except:
+                self.fields['master'].queryset = User.objects.none()
+
+        if self.user:
+            self.fields['customer'].queryset = Customer.objects.all().order_by('name')
+
+        if not self.instance.pk:
+            today = timezone.now().date()
+            due_date = today + timedelta(days=30)
+            self.fields['due_date'].initial = due_date
+            self.fields['currency'].initial = 'USD'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        debt_type = cleaned_data.get('debt_type')
+        creditor = cleaned_data.get('creditor')
+        debtor = cleaned_data.get('debtor')
+        customer = cleaned_data.get('customer')
+        master = cleaned_data.get('master')
+        customer_name = cleaned_data.get('customer_name', '').strip()
+        customer_phone = cleaned_data.get('customer_phone', '').strip()
+        currency = cleaned_data.get('currency')
+        debt_amount = cleaned_data.get('debt_amount')
+
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        if user_role == 'seller':
+            if debt_type == 'seller_to_boss':
+                cleaned_data['debtor'] = self.user
+
+                if not creditor:
+                    raise ValidationError({'creditor': "Boshliqni tanlang!"})
+
+                boss_ids = Shop.objects.values_list('owner_id', flat=True).distinct()
+                if creditor.id not in boss_ids:
+                    raise ValidationError({'creditor': "Faqat boshliqlardan qarz olish mumkin!"})
+
+            elif debt_type == 'customer_to_seller':
+                cleaned_data['creditor'] = self.user
+
+                if not customer and not (customer_name and customer_phone):
+                    raise ValidationError({
+                        'customer_name': "Mijoz ismi va telefon raqami kerak!"
+                    })
+
+        elif user_role in ['boss', 'finance']:
+            if debt_type == 'customer_to_seller':
+                if not creditor:
+                    raise ValidationError({'creditor': "Qarz beruvchini tanlang!"})
+
+                if not customer and not (customer_name and customer_phone):
+                    raise ValidationError({
+                        'customer_name': "Mijoz ma'lumotlari kerak!"
+                    })
+
+            elif debt_type == 'seller_to_boss':
+                if not debtor:
+                    raise ValidationError({'debtor': "Sotuvchini tanlang!"})
+                if not creditor:
+                    raise ValidationError({'creditor': "Boshliqni tanlang!"})
+
+            elif debt_type == 'boss_to_master':
+                if not master:
+                    raise ValidationError({'master': "Ustani tanlang!"})
+                if not creditor:
+                    raise ValidationError({'creditor': "Boshliqni tanlang!"})
+
+        if debt_amount:
+            if currency == 'USD' and debt_amount > 3000:
+                raise ValidationError({'debt_amount': "Dollar qarz maksimal 500$!"})
+            elif currency == 'UZS' and debt_amount > 10000000:
+                raise ValidationError({'debt_amount': "So'm qarz maksimal 10,000,000!"})
+
+        return cleaned_data
+
+    @transaction.atomic
+    def save(self, commit=True):
+        debt = super().save(commit=False)
+
+        user_role = 'seller'
+        if self.user and hasattr(self.user, 'userprofile'):
+            user_role = self.user.userprofile.role
+
+        if debt.debt_type == 'customer_to_seller':
+            customer_name = self.cleaned_data.get('customer_name', '').strip()
+            customer_phone = self.cleaned_data.get('customer_phone', '').strip()
+
+            if customer_name and customer_phone:
+                debt.customer = get_or_create_customer(
+                    customer_phone,
+                    customer_name,
+                    self.user
+                )
+
+            if user_role == 'seller':
+                debt.creditor = self.user
+
+            debt.debtor = None
+            debt.master = None
+
+        elif debt.debt_type == 'seller_to_boss':
+            if user_role == 'seller':
+                debt.debtor = self.user
+
+            debt.customer = None
+            debt.master = None
+
+        elif debt.debt_type == 'boss_to_master':
+            debt.customer = None
+            debt.debtor = None
+
+        debt.status = 'active'
+        debt.paid_amount = Decimal('0')
+
+        if commit:
+            debt.save()
+
+        return debt
+
+
+class ExpenseForm(forms.ModelForm):
+    """Xarajat formi"""
+
+    class Meta:
+        model = Expense
+        fields = ['shop', 'name', 'amount', 'expense_date', 'notes']
+        widgets = {
+            'shop': forms.Select(attrs={
+                'class': 'form-control',
+                'required': True
+            }),
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Xarajat nomi',
+                'required': True
+            }),
+            'amount': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '1000',
+                'min': '0',
+                'placeholder': "Summa (so'm)",
+                'required': True
+            }),
+            'expense_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'required': True
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Izoh...'
+            })
+        }
+        labels = {
+            'shop': "Do'kon",
+            'name': 'Xarajat nomi',
+            'amount': "Summa (so'm)",
+            'expense_date': 'Xarajat sanasi',
+            'notes': 'Izoh'
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # ✅ BARCHA FOYDALANUVCHILAR UCHUN BARCHA DO'KONLAR
+        self.fields['shop'].required = True
+        shops = Shop.objects.all().order_by('name')
+        self.fields['shop'].queryset = shops
+
+        if shops.exists():
+            # ✅ Choices ni to'g'ri belgilash
+            self.fields['shop'].empty_label = "Do'konni tanlang"
+        else:
+            self.fields['shop'].empty_label = "Do'konlar mavjud emas"
+            self.fields['shop'].widget.attrs['disabled'] = True
+
+        # ✅ Initial sana
+        if not self.instance.pk:
+            self.fields['expense_date'].initial = timezone.now().date()
+
+
+class CustomerSearchForm(forms.Form):
+    """Mijoz qidirish formi"""
+    phone_number = forms.CharField(
+        max_length=15,
+        required=False,
+        label="Telefon raqami bo'yicha qidirish",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': '+998901234567',
+            'id': 'customerSearch'
+        })
+    )
+

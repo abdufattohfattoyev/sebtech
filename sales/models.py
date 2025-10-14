@@ -515,9 +515,11 @@ class PhoneExchange(models.Model):
         return f"{self.customer_name} — {self.old_phone_model} → {self.new_phone}"
 
     def __init__(self, *args, **kwargs):
-        """Asl telefon ID ni saqlash"""
+        """Asl telefon ID va IMEI ni saqlash"""
         super().__init__(*args, **kwargs)
         self._original_new_phone_id = self.new_phone_id if self.pk else None
+        # ✅ YANGI - Eski IMEI ni saqlash
+        self._original_old_phone_imei = self.old_phone_imei if self.pk else None
 
     @property
     def old_phone_total_cost(self):
@@ -582,6 +584,9 @@ class PhoneExchange(models.Model):
         """Saqlash"""
         is_new = not self.pk
 
+        # ✅ SIGNAL CHAQIRILMASLIGI UCHUN FLAG
+        skip_signal = kwargs.pop('skip_signal', False)
+
         # Yangi telefonni "sotilgan" qilish
         if self.new_phone_id:
             should_update_status = (
@@ -596,7 +601,7 @@ class PhoneExchange(models.Model):
 
         super().save(*args, **kwargs)
 
-        # Eski telefonni yaratish (faqat yangi yaratishda)
+        # ✅ YANGI TELEFON YARATISH (faqat yangi yaratishda)
         if is_new and not self.created_old_phone_id:
             old_phone = Phone.objects.create(
                 shop=self.new_phone.shop,
@@ -608,12 +613,12 @@ class PhoneExchange(models.Model):
                 purchase_price=self.old_phone_accepted_price,
                 imei_cost=self.old_phone_imei_cost or 0,
                 repair_cost=self.old_phone_repair_cost or 0,
-
-                # ✅ YANGI - Sotish narxini qo'shish
                 sale_price=self.old_phone_future_sale_price if self.old_phone_future_sale_price else None,
-
                 image=self.old_phone_image,
-                created_at=timezone.now().date(),
+
+                # ✅ FIX 1 - Almashtirish sanasidan foydalanish
+                created_at=self.exchange_date,
+
                 created_by=self.salesman,
                 source_type='exchange',
                 original_owner_name=self.customer_name,
@@ -623,3 +628,19 @@ class PhoneExchange(models.Model):
             # Recursion oldini olish
             PhoneExchange.objects.filter(pk=self.pk).update(created_old_phone=old_phone)
             self.created_old_phone = old_phone
+
+        # ✅ FIX 2 - ESKI TELEFONNING IMEI SINI YANGILASH (tahrirlashda)
+        elif not is_new and self.created_old_phone_id and not skip_signal:
+            # IMEI o'zgarganligi tekshirish
+            if hasattr(self, '_original_old_phone_imei') and self._original_old_phone_imei != self.old_phone_imei:
+                try:
+                    from inventory.models import Phone as PhoneModel
+                    old_phone = PhoneModel.objects.get(pk=self.created_old_phone_id)
+                    old_phone.imei = self.old_phone_imei
+                    old_phone.save(update_fields=['imei'])
+
+                    # Keyingi safar uchun yangi IMEI ni saqlash
+                    self._original_old_phone_imei = self.old_phone_imei
+
+                except PhoneModel.DoesNotExist:
+                    pass

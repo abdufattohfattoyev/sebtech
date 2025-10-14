@@ -13,7 +13,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
 
-.container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+.container { max-width: 1800px; margin: 0 auto; padding: 20px; }
 
 /* Header */
 .header {
@@ -23,6 +23,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   border-radius: 12px;
   margin-bottom: 24px;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  position: relative;
 }
 .header h1 { font-size: 32px; margin-bottom: 8px; font-weight: 700; }
 .header-subtitle {
@@ -41,9 +42,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   border-radius: 20px;
   font-size: 14px;
   transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .back-link:hover {
   background: rgba(255,255,255,0.3);
+  color: white;
+  text-decoration: none;
   transform: translateX(-2px);
 }
 
@@ -70,7 +76,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 /* Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -100,7 +106,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .stat-item.accessory::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
 .stat-item.return::before { background: linear-gradient(90deg, #dc2626, #f87171); }
 .stat-item.profit::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
-.stat-item.sales::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.stat-item.net::before { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+.stat-item.salary::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.stat-item.sales::before { background: linear-gradient(90deg, #ec4899, #f472b6); }
 
 .stat-icon {
   font-size: 32px;
@@ -124,7 +132,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .stat-value.accessory { color: #3b82f6; }
 .stat-value.return { color: #dc2626; }
 .stat-value.profit { color: #8b5cf6; }
-.stat-value.sales { color: #f59e0b; }
+.stat-value.net { color: #06b6d4; }
+.stat-value.salary { color: #f59e0b; }
+.stat-value.sales { color: #ec4899; }
 .stat-currency {
   font-size: 12px;
   color: #9ca3af;
@@ -151,7 +161,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 }
 .salary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
 }
 .salary-item {
@@ -189,7 +199,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 /* Charts */
 .charts-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
   gap: 24px;
   margin-top: 24px;
 }
@@ -220,21 +230,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   height: 320px;
 }
 
-/* Month Selector */
-.month-selector {
+/* ✅ YANGI - Filter Section */
+.filter-section {
   background: linear-gradient(135deg, #f8fafc, #f1f5f9);
   padding: 20px;
   border-radius: 10px;
   margin-bottom: 24px;
   border: 1px solid #e2e8f0;
 }
-.month-form {
+.filter-form {
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
 }
-.month-form select, .month-form button {
+.filter-form select, .filter-form button {
   padding: 10px 16px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -243,21 +253,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   font-weight: 500;
   transition: all 0.2s;
 }
-.month-form select:focus {
+.filter-form select:focus {
   outline: none;
   border-color: #8b5cf6;
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
-.month-form button {
+.filter-form button {
   background: linear-gradient(135deg, #8b5cf6, #6366f1);
   color: white;
   border: none;
   cursor: pointer;
   padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.month-form button:hover {
+.filter-form button:hover {
   background: linear-gradient(135deg, #7c3aed, #4f46e5);
   transform: translateY(-1px);
+}
+.filter-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+  margin-right: 8px;
 }
 
 /* Daily Sales Table */
@@ -297,6 +316,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   background: linear-gradient(135deg, #ecfdf5, #d1fae5);
   font-weight: 700;
   border-top: 2px solid #10b981;
+}
+
+/* Detailed Sales Table */
+.detailed-sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 24px;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  font-size: 13px;
+}
+.detailed-sales-table th {
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+  text-transform: uppercase;
+}
+.detailed-sales-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.detailed-sales-table tr:hover {
+  background: #f8fafc;
 }
 
 /* Info Cards */
@@ -351,6 +398,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   color: #92400e;
   font-size: 22px;
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 .no-shop-warning p {
   color: #92400e;
@@ -359,9 +410,46 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   line-height: 1.6;
 }
 
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0;
+}
+.tab {
+  padding: 12px 24px;
+  background: #f8fafc;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  font-weight: 600;
+  color: #6b7280;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab.active {
+  background: #8b5cf6;
+  color: white;
+}
+.tab:hover:not(.active) {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: block;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
-  .charts-container { grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); }
+  .charts-container { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
   .salary-item.total { grid-column: span 1; }
 }
 
@@ -373,16 +461,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .salary-grid { grid-template-columns: 1fr; }
   .chart-canvas { height: 260px; }
   .info-cards { grid-template-columns: 1fr; }
-  .month-form { flex-direction: column; align-items: stretch; }
+  .filter-form { flex-direction: column; align-items: stretch; }
   .charts-container { grid-template-columns: 1fr; }
-  .daily-sales-table { font-size: 12px; }
-  .daily-sales-table th, .daily-sales-table td { padding: 10px 12px; }
+  .daily-sales-table, .detailed-sales-table { font-size: 12px; }
+  .daily-sales-table th, .daily-sales-table td,
+  .detailed-sales-table th, .detailed-sales-table td { padding: 10px 12px; }
+  .tabs { flex-wrap: wrap; }
+  .tab { flex: 1; min-width: 120px; justify-content: center; }
 }
 
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: 1fr; }
   .header h1 { font-size: 20px; }
   .stat-value { font-size: 28px; }
+  .charts-container { grid-template-columns: 1fr; }
+  .chart-wrapper { padding: 16px; }
 }
 </style>
 {% endblock %}
@@ -399,36 +492,70 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       {% endif %}
     </h1>
     <div class="header-subtitle">
-      <span>{{ month_name }} {{ current_year }} | {{ selected_shop.name }}</span>
+      <span>{{ month_name }} {{ current_year }}</span>
+      {% if selected_shop %}
+        <span>| {{ selected_shop.name }}</span>
+      {% endif %}
       {% if is_boss_view %}
-        <a href="{% url 'users:dashboard' %}" class="back-link">Orqaga</a>
+        <a href="{% url 'users:dashboard' %}" class="back-link">← Orqaga</a>
       {% endif %}
     </div>
   </div>
 
   {% if no_shop %}
+  <!-- No Shop Warning -->
   <div class="no-shop-warning">
-    <h3>Do'kon topilmadi</h3>
+    <h3>⚠️ Do'kon topilmadi</h3>
     <p>Sizning statistikangizni ko'rsatish uchun do'kon ma'lumotlari mavjud emas.</p>
+    <p>Iltimos, administrator bilan bog'laning.</p>
   </div>
 
   {% elif seller_data %}
-  <!-- OY TANLASH -->
+
+  <!-- ✅ YANGI - DO'KON VA OY TANLASH -->
   <div class="section">
-    <div class="section-title">📅 Davr Tanlash</div>
-    <div class="month-selector">
-      <form method="get" class="month-form">
-        <select name="month" required>
-          {% for num, name in month_names.items %}
-            <option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>
-          {% endfor %}
-        </select>
-        <select name="year" required>
-          {% for year in available_years %}
-            <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
-          {% endfor %}
-        </select>
-        <button type="submit">Ko'rsatish</button>
+    <div class="section-title">🎯 Filtrlar</div>
+    <div class="filter-section">
+      <form method="get" class="filter-form">
+        <!-- Do'kon tanlash -->
+        {% if available_shops and available_shops|length > 1 %}
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="filter-label">🏪 Do'kon:</span>
+          <select name="shop" required>
+            {% for shop in available_shops %}
+              <option value="{{ shop.id }}" {% if shop.id == selected_shop.id %}selected{% endif %}>
+                {{ shop.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <!-- Oy tanlash -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="filter-label">📅 Oy:</span>
+          <select name="month" required>
+            {% for num, name in month_names.items %}
+              <option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Yil tanlash -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="filter-label">📆 Yil:</span>
+          <select name="year" required>
+            {% for year in available_years %}
+              <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Submit button -->
+        <button type="submit">
+          <i class="fas fa-search"></i>
+          Ko'rsatish
+        </button>
       </form>
     </div>
   </div>
@@ -436,12 +563,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <!-- OYLIK STATISTIKA -->
   <div class="section">
     <div class="section-title">📊 Oylik Natijalar ({{ month_name }} {{ current_year }})</div>
+
+    <!-- Oylik Stats -->
     <div class="stats-grid">
       <div class="stat-item phone">
         <div class="stat-icon">📱</div>
-        <div class="stat-label">Telefon</div>
+        <div class="stat-label">Telefon Sotildi</div>
         <div class="stat-value phone">{{ seller_data.monthly.phone_count }}</div>
-        <div class="stat-currency">dona</div>
+        <div class="stat-currency">tel + almashtirish</div>
       </div>
       <div class="stat-item accessory">
         <div class="stat-icon">🎧</div>
@@ -451,417 +580,176 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </div>
       <div class="stat-item return">
         <div class="stat-icon">↩️</div>
-        <div class="stat-label">Qaytarish</div>
+        <div class="stat-label">Qaytarilgan</div>
         <div class="stat-value return">{{ seller_data.monthly.returns_count }}</div>
         <div class="stat-currency">dona</div>
       </div>
       <div class="stat-item profit">
         <div class="stat-icon">💵</div>
         <div class="stat-label">Tel Foyda</div>
-        <div class="stat-value profit">${{ seller_data.monthly.phone_profit|floatformat:0|intcomma }}</div>
+        <div class="stat-value profit">
+          ${{ seller_data.monthly.phone_profit|floatformat:0|intcomma }}
+        </div>
         <div class="stat-currency">USD</div>
       </div>
       <div class="stat-item profit">
         <div class="stat-icon">💰</div>
         <div class="stat-label">Aks Foyda</div>
-        <div class="stat-value profit">{{ seller_data.monthly.accessory_profit|floatformat:0|intcomma }}</div>
+        <div class="stat-value profit">
+          {{ seller_data.monthly.accessory_profit|floatformat:0|intcomma }}
+        </div>
         <div class="stat-currency">so'm</div>
       </div>
       <div class="stat-item sales">
-        <div class="stat-icon">✅</div>
-        <div class="stat-label">Jami Foyda</div>
-        <div class="stat-value sales">${{ seller_data.monthly.phone_profit|floatformat:0|intcomma }}</div>
-        <div class="stat-currency">+ {{ seller_data.monthly.accessory_profit|floatformat:0|intcomma }} so'm</div>
+        <div class="stat-icon">💳</div>
+        <div class="stat-label">Tel Savdo Summasi</div>
+        <div class="stat-value sales">
+          ${{ seller_data.monthly.phone_sales|floatformat:0|intcomma }}
+        </div>
+        <div class="stat-currency">USD</div>
+      </div>
+      <div class="stat-item sales">
+        <div class="stat-icon">💸</div>
+        <div class="stat-label">Aks Savdo Summasi</div>
+        <div class="stat-value sales">
+          {{ seller_data.monthly.accessory_sales|floatformat:0|intcomma }}
+        </div>
+        <div class="stat-currency">so'm</div>
       </div>
     </div>
 
-    <!-- Maosh -->
+    <!-- Maosh Section -->
     <div class="salary-section">
       <div class="salary-title">💰 Maosh Hisob-kitobi</div>
       <div class="salary-grid">
         <div class="salary-item">
-          <div class="salary-label">Asosiy Maosh</div>
+          <div class="salary-label">🏦 Asosiy Maosh</div>
           <div class="salary-value">${{ seller_data.monthly.base_salary_usd|floatformat:0|intcomma }}</div>
           <div class="stat-currency">+ {{ seller_data.monthly.base_salary_uzs|floatformat:0|intcomma }} so'm</div>
         </div>
         <div class="salary-item">
-          <div class="salary-label">Tel Komissiya</div>
+          <div class="salary-label">📱 Tel. Komissiya</div>
           <div class="salary-value">${{ seller_data.monthly.phone_commission|floatformat:0|intcomma }}</div>
         </div>
         <div class="salary-item">
-          <div class="salary-label">Aks Komissiya</div>
+          <div class="salary-label">🎧 Aks. Komissiya</div>
           <div class="salary-value">{{ seller_data.monthly.accessory_commission|floatformat:0|intcomma }}</div>
           <div class="stat-currency">so'm</div>
         </div>
         <div class="salary-item total">
-          <div class="salary-label">Jami Maosh</div>
-          <div class="salary-value">${{ seller_data.monthly.total_salary_usd|floatformat:0|intcomma }}</div>
+          <div class="salary-label">✅ Jami Maosh</div>
+          <div class="salary-value">
+            ${{ seller_data.monthly.total_salary_usd|floatformat:0|intcomma }}
+          </div>
           <div class="stat-currency">+ {{ seller_data.monthly.total_salary_uzs|floatformat:0|intcomma }} so'm</div>
         </div>
       </div>
     </div>
 
-    <!-- Kunlik Jadval -->
-    {% if daily_sales_data %}
-    <div class="section-title" style="margin-top: 30px;">📋 Kunlik Tafsilot</div>
-    <div style="overflow-x: auto;">
-      <table class="daily-sales-table">
-        <thead>
-          <tr>
-            <th>Kun</th>
-            <th>Tel</th>
-            <th>Aks</th>
-            <th>Tel Foyda</th>
-            <th>Aks Foyda</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for day_data in daily_sales_data %}
-          {% if day_data.total_count > 0 %}
-          <tr>
-            <td class="day-header">{{ day_data.day }}-{{ month_name|slice:":3" }}</td>
-            <td><strong>{{ day_data.phone_count }}</strong></td>
-            <td><strong>{{ day_data.accessory_count }}</strong></td>
-            <td>${{ day_data.phone_profit|floatformat:0|intcomma }}</td>
-            <td>{{ day_data.accessory_profit|floatformat:0|intcomma }} so'm</td>
-          </tr>
-          {% endif %}
-          {% endfor %}
-          <tr class="total-row">
-            <td><strong>JAMI</strong></td>
-            <td><strong>{{ seller_data.monthly.phone_count }}</strong></td>
-            <td><strong>{{ seller_data.monthly.accessory_count }}</strong></td>
-            <td><strong>${{ seller_data.monthly.phone_profit|floatformat:0|intcomma }}</strong></td>
-            <td><strong>{{ seller_data.monthly.accessory_profit|floatformat:0|intcomma }} so'm</strong></td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Tabs for Detailed View -->
+    <div class="tabs">
+      <button class="tab active" data-tab="summary">📋 Umumiy Ko'rinish</button>
+      <button class="tab" data-tab="daily">📅 Kunlik Sotuvlar</button>
+      <button class="tab" data-tab="detailed">🔍 Batafsil Ma'lumot</button>
     </div>
-    {% endif %}
 
-    <!-- Kunlik Diagrammalar -->
-    <div class="charts-container">
-      <div class="chart-wrapper">
-        <div class="chart-title">📊 Kunlik Sotuvlar (Soni)</div>
-        <div class="chart-canvas">
-          <canvas id="dailyCountChart"></canvas>
-        </div>
+    <!-- Summary Tab -->
+    <div class="tab-content active" id="summary">
+      <!-- Kunlik Sotuvlar Jadvali -->
+      {% if daily_sales_data %}
+      <div style="overflow-x: auto;">
+        <table class="daily-sales-table">
+          <thead>
+            <tr>
+              <th>Kun</th>
+              <th>📱 Telefon</th>
+              <th>🎧 Aksessuar</th>
+              <th>📦 Jami</th>
+              <th>💵 Tel Foyda</th>
+              <th>💰 Aks Foyda</th>
+              <th>💳 Tel Savdo</th>
+              <th>💸 Aks Savdo</th>
+              <th>💰 Kunlik Maosh</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for day_data in daily_sales_data %}
+            {% if day_data.total_count > 0 %}
+            <tr>
+              <td class="day-header">{{ day_data.day }}-{{ month_name|slice:":3" }}</td>
+              <td><strong>{{ day_data.phone_count }}</strong></td>
+              <td><strong>{{ day_data.accessory_count }}</strong></td>
+              <td><strong>{{ day_data.total_count }}</strong></td>
+              <td>${{ day_data.phone_profit|floatformat:0|intcomma }}</td>
+              <td>{{ day_data.accessory_profit|floatformat:0|intcomma }}</td>
+              <td>${{ day_data.phone_sales|floatformat:0|intcomma }}</td>
+              <td>{{ day_data.accessory_sales|floatformat:0|intcomma }}</td>
+              <td><strong>${{ day_data.daily_salary|floatformat:0|intcomma }}</strong></td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+            <tr class="total-row">
+              <td><strong>📊 JAMI</strong></td>
+              <td><strong>{{ seller_data.monthly.phone_count }}</strong></td>
+              <td><strong>{{ seller_data.monthly.accessory_count }}</strong></td>
+              <td><strong>{{ seller_data.monthly.phone_count|add:seller_data.monthly.accessory_count }}</strong></td>
+              <td><strong>${{ seller_data.monthly.phone_profit|floatformat:0|intcomma }}</strong></td>
+              <td><strong>{{ seller_data.monthly.accessory_profit|floatformat:0|intcomma }}</strong></td>
+              <td><strong>${{ seller_data.monthly.phone_sales|floatformat:0|intcomma }}</strong></td>
+              <td><strong>{{ seller_data.monthly.accessory_sales|floatformat:0|intcomma }}</strong></td>
+              <td><strong>${{ seller_data.monthly.total_salary_usd|floatformat:0|intcomma }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div class="chart-wrapper">
-        <div class="chart-title">💵 Kunlik Telefon Foydasi</div>
-        <div class="chart-canvas">
-          <canvas id="dailyPhoneProfitChart"></canvas>
-        </div>
-      </div>
-      <div class="chart-wrapper">
-        <div class="chart-title">💰 Kunlik Aksessuar Foydasi</div>
-        <div class="chart-canvas">
-          <canvas id="dailyAccessoryProfitChart"></canvas>
-        </div>
-      </div>
+      {% endif %}
     </div>
-  </div>
 
-  <!-- YILLIK STATISTIKA -->
-  <div class="section">
-    <div class="section-title">📈 Yillik Natijalar ({{ current_year }})</div>
-    <div class="stats-grid">
-      <div class="stat-item phone">
-        <div class="stat-icon">📱</div>
-        <div class="stat-label">Telefon</div>
-        <div class="stat-value phone">{{ seller_data.yearly.phone_count }}</div>
-        <div class="stat-currency">dona</div>
-      </div>
-      <div class="stat-item accessory">
-        <div class="stat-icon">🎧</div>
-        <div class="stat-label">Aksessuar</div>
-        <div class="stat-value accessory">{{ seller_data.yearly.accessory_count }}</div>
-        <div class="stat-currency">dona</div>
-      </div>
-      <div class="stat-item return">
-        <div class="stat-icon">↩️</div>
-        <div class="stat-label">Qaytarish</div>
-        <div class="stat-value return">{{ seller_data.yearly.returns_count }}</div>
-        <div class="stat-currency">dona</div>
-      </div>
-      <div class="stat-item sales">
-        <div class="stat-icon">💰</div>
-        <div class="stat-label">Yillik Maosh</div>
-        <div class="stat-value sales">${{ seller_data.yearly.total_salary_usd|floatformat:0|intcomma }}</div>
-        <div class="stat-currency">+ {{ seller_data.yearly.total_salary_uzs|floatformat:0|intcomma }} so'm</div>
+    <!-- Daily Sales Tab -->
+    <div class="tab-content" id="daily">
+      <div class="charts-container">
+        <div class="chart-wrapper">
+          <div class="chart-title">📊 Kunlik Sotuvlar Sonlari ({{ month_name }})</div>
+          <div class="chart-canvas">
+            <canvas id="dailyBarChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <div class="chart-title">💵 Kunlik Telefon Foydasi</div>
+          <div class="chart-canvas">
+            <canvas id="dailyPhoneProfitChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <div class="chart-title">💰 Kunlik Aksessuar Foydasi</div>
+          <div class="chart-canvas">
+            <canvas id="dailyAccessoryProfitChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <div class="chart-title">💳 Kunlik Savdo Summalari</div>
+          <div class="chart-canvas">
+            <canvas id="dailySalesChart"></canvas>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Yillik Diagrammalar -->
-    <div class="charts-container">
-      <div class="chart-wrapper">
-        <div class="chart-title">📊 Oylik Sotuvlar (Soni)</div>
-        <div class="chart-canvas">
-          <canvas id="yearlyCountChart"></canvas>
-        </div>
-      </div>
-      <div class="chart-wrapper">
-        <div class="chart-title">💵 Oylik Telefon Foydasi</div>
-        <div class="chart-canvas">
-          <canvas id="yearlyPhoneProfitChart"></canvas>
-        </div>
-      </div>
-      <div class="chart-wrapper">
-        <div class="chart-title">💰 Oylik Aksessuar Foydasi</div>
-        <div class="chart-canvas">
-          <canvas id="yearlyAccessoryProfitChart"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- QO'SHIMCHA MA'LUMOTLAR -->
-  <div class="section">
-    <div class="section-title">ℹ️ Qo'shimcha Ma'lumotlar</div>
-    <div class="info-cards">
-      <div class="info-card">
-        <h4>👤 Profil</h4>
-        <p><strong>FIO:</strong> {{ profile.user.get_full_name|default:profile.user.username }}</p>
-        <p><strong>Username:</strong> @{{ profile.user.username }}</p>
-        <p><strong>Telefon:</strong> {{ profile.phone_number|default:"—" }}</p>
-        <p><strong>Rol:</strong> {{ profile.get_role_display }}</p>
-      </div>
-      <div class="info-card">
-        <h4>💰 Komissiya</h4>
-        <p><strong>Telefon:</strong> {{ profile.phone_commission_percent }}%</p>
-        <p><strong>Aksessuar:</strong> {{ profile.accessory_commission_percent }}%</p>
-        <p><strong>Almashtirish:</strong> {{ profile.exchange_commission_percent }}%</p>
-        <p><strong>Asosiy maosh:</strong> ${{ profile.base_salary_usd|floatformat:0 }} + {{ profile.base_salary_uzs|floatformat:0 }} so'm</p>
-      </div>
-      <div class="info-card">
-        <h4>🏪 Do'kon</h4>
-        <p><strong>Nomi:</strong> {{ selected_shop.name }}</p>
-        <p><strong>Manzil:</strong> {{ selected_shop.address|default:"—" }}</p>
-        <p><strong>Telefon:</strong> {{ selected_shop.phone|default:"—" }}</p>
-      </div>
-    </div>
-  </div>
-
-  {% endif %}
-</div>
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-{% if seller_data %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const daysInMonth = {{ daily_sales_data|length }};
-  const dayLabels = Array.from({length: daysInMonth}, (_, i) => i + 1);
-  const monthLabels = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
-
-  // Kunlik Sotuvlar Soni
-  const dailyCountCtx = document.getElementById('dailyCountChart');
-  if (dailyCountCtx) {
-    new Chart(dailyCountCtx, {
-      type: 'bar',
-      data: {
-        labels: dayLabels,
-        datasets: [{
-          label: 'Telefon',
-          data: {{ seller_data.charts.daily_phone|safe }},
-          backgroundColor: '#10b981'
-        }, {
-          label: 'Aksessuar',
-          data: {{ seller_data.charts.daily_accessory|safe }},
-          backgroundColor: '#3b82f6'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: {
-          y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-          x: { grid: { display: false }, ticks: { maxRotation: 45 } }
-        }
-      }
-    });
-  }
-
-  // Kunlik Telefon Foydasi
-  const dailyPhoneProfitCtx = document.getElementById('dailyPhoneProfitChart');
-  if (dailyPhoneProfitCtx) {
-    new Chart(dailyPhoneProfitCtx, {
-      type: 'line',
-      data: {
-        labels: dayLabels,
-        datasets: [{
-          label: 'Telefon Foydasi',
-          data: {{ seller_data.charts.daily_phone|safe }},  // Foyda uchun view ni yangilang yoki count ishlat
-          borderColor: '#f59e0b',
-          backgroundColor: 'rgba(245, 158, 11, 0.1)',
-          fill: true,
-          tension: 0.4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: {
-          y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-          x: { grid: { display: false }, ticks: { maxRotation: 45 } }
-        }
-      }
-    });
-  }
-
-  // Kunlik Aksessuar Foydasi
-  const dailyAccessoryProfitCtx = document.getElementById('dailyAccessoryProfitChart');
-  if (dailyAccessoryProfitCtx) {
-    new Chart(dailyAccessoryProfitCtx, {
-      type: 'line',
-      data: {
-        labels: dayLabels,
-        datasets: [{
-          label: 'Aksessuar Foydasi',
-          data: {{ seller_data.charts.daily_accessory|safe }},  // Foyda uchun view ni yangilang yoki count ishlat
-          borderColor: '#ef4444',
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-          fill: true,
-          tension: 0.4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: {
-          y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-          x: { grid: { display: false }, ticks: { maxRotation: 45 } }
-        }
-      }
-    });
-  }
-
-  // Oylik Sotuvlar Soni
-  const yearlyCountCtx = document.getElementById('yearlyCountChart');
-  if (yearlyCountCtx) {
-    new Chart(yearlyCountCtx, {
-      type: 'bar',
-      data: {
-        labels: monthLabels,
-        datasets: [{
-          label: 'Telefon',
-          data: {{ seller_data.charts.monthly_phone|safe }},
-          backgroundColor: '#10b981'
-        }, {
-          label: 'Aksessuar',
-          data: {{ seller_data.charts.monthly_accessory|safe }},
-          backgroundColor: '#3b82f6'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
-      }
-    });
-  }
-
-  // Oylik Telefon Foydasi
-  const yearlyPhoneProfitCtx = document.getElementById('yearlyPhoneProfitChart');
-  if (yearlyPhoneProfitCtx) {
-    new Chart(yearlyPhoneProfitCtx, {
-      type: 'line',
-      data: {
-        labels: monthLabels,
-        datasets: [{
-          label: 'Telefon Foydasi',
-          data: {{ seller_data.charts.monthly_phone_profit|safe }},
-          borderColor: '#f59e0b',
-          backgroundColor: 'rgba(245, 158, 11, 0.1)',
-          borderWidth: 3,
-          tension: 0.4,
-          fill: true,
-          pointRadius: 5,
-          pointHoverRadius: 7
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                return 'Foyda: $' + context.parsed.y.toLocaleString();
-              }
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: { color: 'rgba(0,0,0,0.05)' },
-            ticks: {
-              callback: function(value) {
-                return '$' + value.toLocaleString();
-              }
-            }
-          },
-          x: { grid: { display: false } }
-        }
-      }
-    });
-  }
-
-  // Oylik Aksessuar Foydasi
-  const yearlyAccessoryProfitCtx = document.getElementById('yearlyAccessoryProfitChart');
-  if (yearlyAccessoryProfitCtx) {
-    new Chart(yearlyAccessoryProfitCtx, {
-      type: 'line',
-      data: {
-        labels: monthLabels,
-        datasets: [{
-          label: 'Aksessuar Foydasi',
-          data: {{ seller_data.charts.monthly_accessory_profit|safe }},
-          borderColor: '#ef4444',
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-          borderWidth: 3,
-          tension: 0.4,
-          fill: true,
-          pointRadius: 5,
-          pointHoverRadius: 7
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                return 'Foyda: ' + context.parsed.y.toLocaleString() + ' so\'m';
-              }
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: { color: 'rgba(0,0,0,0.05)' },
-            ticks: {
-              callback: function(value) {
-                return value.toLocaleString() + ' so\'m';
-              }
-            }
-          },
-          x: { grid: { display: false } }
-        }
-      }
-    });
-  }
-});
-</script>
-{% endif %}
-{% endblock %}
+    <!-- Detailed Tab -->
+    <div class="tab-content" id="detailed">
+      <div class="section-title">🔍 Batafsil Kunlik Ma'lumotlar</div>
+      <div style="overflow-x: auto;">
+        <table class="detailed-sales-table">
+          <thead>
+            <tr>
+              <th>Kun</th>
+              <th>📱 Tel Sotuv</th>
+              <th>🔄 Almashtirish</th>
+              <th>🎧 Aksessuar</th>
+              <th>↩️ Qaytarish</th>
+              <th>💵 Tel Foyda</th>
+              <th>💰 Aks Foyda</th>
+              <th>💳 Tel Savdo</th>
+              <th>💸 Aks Savdo</th>
+              <th>📊 Kunlik Maosh</th>
+            </tr>

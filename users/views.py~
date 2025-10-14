@@ -87,13 +87,11 @@ def dashboard(request):
                 'no_shop': True
             })
 
-        # ✅ SOTUVCHI ISHLAGAN DO'KONLARNI TOPISH - TO'G'RILANGAN
-        from sales.models import PhoneSale, AccessorySale, PhoneExchange
-
+        # ✅ SOTUVCHI ISHLAGAN DO'KONLARNI TOPISH
         seller_shops = Shop.objects.filter(
-            Q(id__in=PhoneSale.objects.filter(salesman=request.user).values_list('phone__shop_id', flat=True)) |
-            Q(id__in=AccessorySale.objects.filter(salesman=request.user).values_list('accessory__shop_id', flat=True)) |
-            Q(id__in=PhoneExchange.objects.filter(salesman=request.user).values_list('new_phone__shop_id', flat=True))
+            Q(phones__phonesale__salesman=request.user) |
+            Q(accessories__accessorysale__salesman=request.user) |
+            Q(phones__phoneexchange__salesman=request.user)
         ).distinct().order_by('name')
 
         # Agar sotuvchi hech qayerda ishlamagan bo'lsa - birinchi do'konni ko'rsatish
@@ -244,8 +242,7 @@ def dashboard(request):
                     'daily_salary': 0,
                 })
 
-        total_monthly_phone_profit = monthly_data['profits']['phone_profit'] + monthly_data['profits'][
-            'exchange_profit']
+        total_monthly_phone_profit = monthly_data['profits']['phone_profit'] + monthly_data['profits']['exchange_profit']
         total_monthly_profit = total_monthly_phone_profit + monthly_data['profits']['accessory_profit']
 
         seller_data = {
@@ -262,8 +259,7 @@ def dashboard(request):
                 'total_salary_uzs': monthly_data['commission']['total_salary_uzs'],
                 'base_salary_usd': monthly_data['commission']['base_salary_usd'],
                 'base_salary_uzs': monthly_data['commission']['base_salary_uzs'],
-                'phone_commission': monthly_data['commission']['phone_commission'] + monthly_data['commission'][
-                    'exchange_commission'],
+                'phone_commission': monthly_data['commission']['phone_commission'] + monthly_data['commission']['exchange_commission'],
                 'accessory_commission': monthly_data['commission']['accessory_commission'],
             },
             'yearly': {
@@ -315,7 +311,7 @@ def dashboard(request):
 
 @login_required
 def seller_statistics(request, pk):
-    """Boss uchun sotuvchi statistikasini ko'rish - TO'G'RILANGAN"""
+    """Boss uchun sotuvchi statistikasini ko'rish"""
     if not is_boss(request.user):
         messages.error(request, "Sizda bu ma'lumotlarni ko'rish uchun ruxsat yo'q!")
         return redirect('users:dashboard')
@@ -336,15 +332,11 @@ def seller_statistics(request, pk):
             'is_boss_view': True
         })
 
-    # ✅ SOTUVCHI ISHLAGAN DO'KONLARNI TOPISH - TO'G'RILANGAN
-    from sales.models import PhoneSale, AccessorySale, PhoneExchange
-
+    # ✅ SOTUVCHI ISHLAGAN DO'KONLARNI TOPISH
     seller_shops = Shop.objects.filter(
-        Q(id__in=PhoneSale.objects.filter(salesman=seller_profile.user).values_list('phone__shop_id', flat=True)) |
-        Q(id__in=AccessorySale.objects.filter(salesman=seller_profile.user).values_list('accessory__shop_id',
-                                                                                        flat=True)) |
-        Q(id__in=PhoneExchange.objects.filter(salesman=seller_profile.user).values_list('new_phone__shop_id',
-                                                                                        flat=True))
+        Q(phones__phonesale__salesman=seller_profile.user) |
+        Q(accessories__accessorysale__salesman=seller_profile.user) |
+        Q(phones__phoneexchange__salesman=seller_profile.user)
     ).distinct().order_by('name')
 
     # Boss barcha do'konlarni ko'radi, lekin sotuvchi ishlagan do'konlar birinchi
@@ -512,8 +504,7 @@ def seller_statistics(request, pk):
             'total_salary_uzs': monthly_data['commission']['total_salary_uzs'],
             'base_salary_usd': monthly_data['commission']['base_salary_usd'],
             'base_salary_uzs': monthly_data['commission']['base_salary_uzs'],
-            'phone_commission': monthly_data['commission']['phone_commission'] + monthly_data['commission'][
-                'exchange_commission'],
+            'phone_commission': monthly_data['commission']['phone_commission'] + monthly_data['commission']['exchange_commission'],
             'accessory_commission': monthly_data['commission']['accessory_commission'],
         },
         'yearly': {
@@ -563,7 +554,6 @@ def seller_statistics(request, pk):
         'is_boss_view': True,
     })
 
-
 @login_required
 def my_profile(request):
     """O'z profilini tahrirlash"""
@@ -612,16 +602,14 @@ def user_create(request):
                     profile.base_salary_usd = profile_form.cleaned_data.get('base_salary_usd', 0)
                     profile.base_salary_uzs = profile_form.cleaned_data.get('base_salary_uzs', 0)
                     profile.phone_commission_percent = profile_form.cleaned_data.get('phone_commission_percent', 5.00)
-                    profile.accessory_commission_percent = profile_form.cleaned_data.get('accessory_commission_percent',
-                                                                                         10.00)
-                    profile.exchange_commission_percent = profile_form.cleaned_data.get('exchange_commission_percent',
-                                                                                        5.00)
+                    profile.accessory_commission_percent = profile_form.cleaned_data.get('accessory_commission_percent', 10.00)
+                    profile.exchange_commission_percent = profile_form.cleaned_data.get('exchange_commission_percent', 5.00)
 
                     if 'avatar' in request.FILES:
                         profile.avatar = request.FILES['avatar']
 
                     profile.save()
-                    messages.success(request, f"✅ {user.username} muvaffaqiyatli yaratildi!")
+                    messages.success(request, f"✓ {user.username} muvaffaqiyatli yaratildi!")
                     return redirect('users:dashboard')
             except Exception as e:
                 messages.error(request, f"Xatolik: {str(e)}")
@@ -653,7 +641,7 @@ def user_edit(request, pk):
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
             profile_form.save()
-            messages.success(request, "✅ Ma'lumotlar yangilandi!")
+            messages.success(request, "✓ Ma'lumotlar yangilandi!")
             return redirect('users:dashboard')
     else:
         user_form = UserEditForm(instance=profile.user)
@@ -684,7 +672,7 @@ def user_delete(request, pk):
     if request.method == 'POST':
         username = profile.user.username
         profile.user.delete()
-        messages.success(request, f"✅ {username} o'chirildi!")
+        messages.success(request, f"✓ {username} o'chirildi!")
         return redirect('users:dashboard')
 
     return render(request, 'users/user_delete.html', {'profile': profile})

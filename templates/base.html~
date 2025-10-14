@@ -504,19 +504,18 @@
 
         <nav class="nav-menu">
     <!-- Dashboard -->
-    <!-- Shop Dashboard -->
-<a href="{% url 'inventory:dashboard' %}"
-   class="nav-link {% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'inventory' %}active{% endif %}">
-    <i class="fas fa-home"></i>
-    Bosh sahifa
-</a>
+    <a href="{% url 'inventory:dashboard' %}"
+       class="nav-link {% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'inventory' %}active{% endif %}">
+        <i class="fas fa-home"></i>
+        Bosh sahifa
+    </a>
 
-<!-- Inventory Dashboard -->
-<a href="{% url 'shop:dashboard' %}"
-   class="nav-link {% if request.resolver_match.app_name == 'shop' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-    <i class="fas fa-tachometer-alt"></i>
-    Inventar Dashboard
-</a>
+    <!-- Inventory Dashboard -->
+    <a href="{% url 'shop:dashboard' %}"
+       class="nav-link {% if request.resolver_match.app_name == 'shop' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <i class="fas fa-tachometer-alt"></i>
+        Inventar Dashboard
+    </a>
 
 
     <!-- Telefonlar -->

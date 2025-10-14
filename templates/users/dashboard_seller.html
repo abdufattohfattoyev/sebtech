@@ -230,21 +230,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   height: 320px;
 }
 
-/* Month Selector */
-.month-selector {
+/* ✅ YANGI - Filter Section */
+.filter-section {
   background: linear-gradient(135deg, #f8fafc, #f1f5f9);
   padding: 20px;
   border-radius: 10px;
   margin-bottom: 24px;
   border: 1px solid #e2e8f0;
 }
-.month-form {
+.filter-form {
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
 }
-.month-form select, .month-form button {
+.filter-form select, .filter-form button {
   padding: 10px 16px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -253,21 +253,30 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   font-weight: 500;
   transition: all 0.2s;
 }
-.month-form select:focus {
+.filter-form select:focus {
   outline: none;
   border-color: #8b5cf6;
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
-.month-form button {
+.filter-form button {
   background: linear-gradient(135deg, #8b5cf6, #6366f1);
   color: white;
   border: none;
   cursor: pointer;
   padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.month-form button:hover {
+.filter-form button:hover {
   background: linear-gradient(135deg, #7c3aed, #4f46e5);
   transform: translateY(-1px);
+}
+.filter-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+  margin-right: 8px;
 }
 
 /* Daily Sales Table */
@@ -452,7 +461,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .salary-grid { grid-template-columns: 1fr; }
   .chart-canvas { height: 260px; }
   .info-cards { grid-template-columns: 1fr; }
-  .month-form { flex-direction: column; align-items: stretch; }
+  .filter-form { flex-direction: column; align-items: stretch; }
   .charts-container { grid-template-columns: 1fr; }
   .daily-sales-table, .detailed-sales-table { font-size: 12px; }
   .daily-sales-table th, .daily-sales-table td,
@@ -483,7 +492,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       {% endif %}
     </h1>
     <div class="header-subtitle">
-      <span>{{ month_name }} {{ current_year }} | {{ selected_shop.name }}</span>
+      <span>{{ month_name }} {{ current_year }}</span>
+      {% if selected_shop %}
+        <span>| {{ selected_shop.name }}</span>
+      {% endif %}
       {% if is_boss_view %}
         <a href="{% url 'users:dashboard' %}" class="back-link">← Orqaga</a>
       {% endif %}
@@ -500,22 +512,50 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
   {% elif seller_data %}
 
-  <!-- OY TANLASH -->
+  <!-- ✅ YANGI - DO'KON VA OY TANLASH -->
   <div class="section">
-    <div class="section-title">📅 Davr Tanlash</div>
-    <div class="month-selector">
-      <form method="get" class="month-form">
-        <select name="month" required>
-          {% for num, name in month_names.items %}
-            <option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>
-          {% endfor %}
-        </select>
-        <select name="year" required>
-          {% for year in available_years %}
-            <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
-          {% endfor %}
-        </select>
-        <button type="submit">📊 Ko'rsatish</button>
+    <div class="section-title">🎯 Filtrlar</div>
+    <div class="filter-section">
+      <form method="get" class="filter-form">
+        <!-- Do'kon tanlash -->
+        {% if available_shops and available_shops|length > 1 %}
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="filter-label">🏪 Do'kon:</span>
+          <select name="shop" required>
+            {% for shop in available_shops %}
+              <option value="{{ shop.id }}" {% if shop.id == selected_shop.id %}selected{% endif %}>
+                {{ shop.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <!-- Oy tanlash -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="filter-label">📅 Oy:</span>
+          <select name="month" required>
+            {% for num, name in month_names.items %}
+              <option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Yil tanlash -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="filter-label">📆 Yil:</span>
+          <select name="year" required>
+            {% for year in available_years %}
+              <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Submit button -->
+        <button type="submit">
+          <i class="fas fa-search"></i>
+          Ko'rsatish
+        </button>
       </form>
     </div>
   </div>
@@ -712,8 +752,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
               <th>💳 Tel Savdo</th>
               <th>💸 Aks Savdo</th>
               <th>📊 Kunlik Maosh</th>
-            </tr>
-          </thead>
+            </tr></thead>
           <tbody>
             {% for day_data in daily_sales_data %}
             <tr>
@@ -819,8 +858,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="info-card">
         <h4>🏪 Do'kon</h4>
         <p><strong>Nomi:</strong> {{ selected_shop.name }}</p>
-        <p><strong>Manzil:</strong> {{ selected_shop.address|default:"—" }}</p>
-        <p><strong>Telefon:</strong> {{ selected_shop.phone|default:"—" }}</p>
+        {% if selected_shop.address %}
+        <p><strong>Manzil:</strong> {{ selected_shop.address }}</p>
+        {% endif %}
+        {% if selected_shop.phone %}
+        <p><strong>Telefon:</strong> {{ selected_shop.phone }}</p>
+        {% endif %}
       </div>
     </div>
   </div>

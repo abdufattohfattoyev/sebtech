@@ -33,6 +33,21 @@
     padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; margin-right: 8px;
 }
 
+/* ✅ Sotuvchi tanlash card */
+.salesman-select-card {
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    border: 2px solid #2196f3;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.salesman-select-card label {
+    color: #1565c0;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
 .payment-calc {
     background: #f8f9fa; border-radius: 8px; padding: 16px; margin-top: 16px;
     border: 2px solid #e9ecef; transition: all 0.3s;
@@ -63,6 +78,7 @@
 }
 
 @media (max-width: 768px) {
+    .salesman-select-card { padding: 10px; }
     .result-details { display: block; margin-top: 4px; }
     .phone-badge { display: block; margin: 4px 0; }
     .payment-calc {
@@ -132,6 +148,25 @@
 
     <form method="post" id="saleForm" class="needs-validation" novalidate>
         {% csrf_token %}
+
+        <!-- ✅ YANGI: SOTUVCHI TANLASH (Faqat Boss va Finance uchun) -->
+        {% if form.fields.salesman_select.widget.input_type != 'hidden' %}
+        <div class="salesman-select-card">
+            <label class="form-label mb-2">
+                <i class="fas fa-user-tie text-primary"></i> {{ form.salesman_select.label }} <span class="text-danger">*</span>
+            </label>
+            {{ form.salesman_select }}
+            {% if form.salesman_select.errors %}
+                <div class="text-danger small mt-1">
+                    {% for error in form.salesman_select.errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        {% else %}
+            {{ form.salesman_select }}
+        {% endif %}
 
         <!-- IMEI Qidirish -->
         <div class="card mb-2">
@@ -244,7 +279,7 @@
                 </div>
 
                 <!-- Qarz muddati -->
-                <div class="debt-due-field {% if form.instance.debt_amount and form.instance.debt_amount > 0 %}show{% endif %}" id="debtDueField">
+                <div class="debt-due-field" id="debtDueField">
                     <label>
                         <i class="fas fa-calendar-alt"></i> Qarz qaytarish muddati <span class="text-danger">*</span>
                     </label>
@@ -313,6 +348,18 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const $ = id => document.getElementById(id);
+
+    // ✅ Sotuvchi tanlash maydonini kuzatish
+    const salesmanSelect = $('id_salesman_select');
+    if (salesmanSelect && salesmanSelect.tagName === 'SELECT') {
+        console.log('Sotuvchi tanlash maydoni faol');
+
+        // Agar tahrirlash rejimida bo'lsa va sotuvchi tanlangan bo'lsa
+        {% if editing and phone_sale.salesman %}
+        salesmanSelect.value = "{{ phone_sale.salesman.id }}";
+        {% endif %}
+    }
+
     const elements = {
         imeiSearch: $('imeiSearch'),
         searchResults: $('searchResults'),
@@ -342,10 +389,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let searchTimeout, results = [], selectedIndex = -1, currentPhoneData = null;
 
+    // ✅ Boshlang'ich ma'lumotlarni yuklash
     initializePhoneData();
 
     function initializePhoneData() {
-        // Telefon ma'lumotlarini yuklash
         {% if form.instance.phone %}
         const phoneData = {
             id: {{ form.instance.phone.id }},
@@ -361,31 +408,17 @@ document.addEventListener('DOMContentLoaded', function() {
         displaySelectedPhone(phoneData);
         {% endif %}
 
-        // ✅ SALE DATE ni to'ldirish (EDIT paytida)
-        {% if editing and form.instance.sale_date %}
-        if (elements.saleDate && !elements.saleDate.value) {
-            elements.saleDate.value = '{{ form.instance.sale_date|date:"Y-m-d" }}';
-        }
-        {% endif %}
-
-        // Qarz maydonini ko'rsatish va sanani to'ldirish
+        // Qarz maydonini ko'rsatish
         const debtAmount = parseFloat(elements.debtAmount.value) || 0;
         if (debtAmount > 0) {
             elements.debtDueField.classList.add('show');
             elements.debtDueDate.required = true;
-
-            // ✅ DEBT DUE DATE ni to'ldirish
-            {% if form.debt_due_date.value %}
-            if (!elements.debtDueDate.value) {
-                elements.debtDueDate.value = '{{ form.debt_due_date.value|date:"Y-m-d" }}';
-            }
-            {% endif %}
         }
 
-        // To'lovlar kalkulyatorini yangilash
         calculatePayments();
     }
 
+    // Qarz maydonini kuzatish
     function checkDebtDueField() {
         const debtAmount = parseFloat(elements.debtAmount.value) || 0;
         if (debtAmount > 0) {
@@ -451,7 +484,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="result-item" data-index="${i}">
                     <div class="result-title">${phone.model} ${phone.memory}</div>
                     <div class="result-details">
-                        IMEI: ${phone.imei} • ${phone.condition}% • Narx: $${phone.sale_price || 'N/A'}
+                        IMEI: ${phone.imei} • ${phone.condition}% • $${phone.sale_price || 'N/A'}
+                        ${phone.status === 'returned' ? ' • <span class="badge bg-warning">Qaytarilgan</span>' : ''}
                     </div>
                 </div>
             `).join('');
@@ -483,8 +517,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displaySelectedPhone(phone) {
+        const statusBadge = phone.status === 'returned' ?
+            ' <span class="badge bg-warning">Qaytarilgan</span>' : '';
         elements.phoneTitle.textContent = `${phone.model} ${phone.memory}`;
-        elements.phoneDetails.textContent = `IMEI: ${phone.imei} • ${phone.condition}% • Narx: $${phone.sale_price || 'N/A'}`;
+        elements.phoneDetails.innerHTML = `IMEI: ${phone.imei} • ${phone.condition}% • Narx: $${phone.sale_price || 'N/A'}${statusBadge}`;
         elements.selectedPhone.classList.add('show');
 
         if (!elements.salePrice.value && phone.sale_price) {
@@ -530,6 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // To'lovlarni hisoblash
     function calculatePayments() {
         const total = elements.payments.reduce((sum, el) => sum + (parseFloat(el.value) || 0), 0);
         const price = parseFloat(elements.salePrice.value) || 0;
@@ -559,10 +596,13 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => toast.remove(), 3000);
     }
 
+    // ✅ To'lov maydonlari - Focus bo'lganda 0 larni o'chirish
     elements.payments.concat([elements.salePrice]).forEach(el => {
         el.addEventListener('input', calculatePayments);
         el.addEventListener('focus', function() {
-            if (this.value === '0' || this.value === '0.00') this.value = '';
+            if (this.value === '0' || this.value === '0.00' || this.value === '0.0') {
+                this.value = '';
+            }
         });
         el.addEventListener('blur', function() {
             if (this.value === '' || this.value === '.') {
@@ -572,7 +612,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Form submit
     $('saleForm').addEventListener('submit', function(e) {
+        // ✅ Sotuvchi tanlash validatsiyasi
+        if (salesmanSelect && salesmanSelect.tagName === 'SELECT' && !salesmanSelect.value) {
+            e.preventDefault();
+            alert('Sotuvchini tanlash shart!');
+            salesmanSelect.focus();
+            return;
+        }
+
         if (!elements.phoneId.value) {
             e.preventDefault();
             showAlert('Telefon tanlanishi shart!', 'danger');
@@ -615,6 +664,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('submitBtn').disabled = true;
     });
 
+    // Telefon raqamini formatlash
     elements.customerPhone.addEventListener('input', function() {
         let val = this.value.replace(/\D/g, '');
         if (val.startsWith('998')) val = '+' + val;
@@ -622,6 +672,7 @@ document.addEventListener('DOMContentLoaded', function() {
         this.value = val;
     });
 
+    // Tashqariga bosish
     document.addEventListener('click', e => {
         if (!elements.imeiSearch.contains(e.target) && !elements.searchResults.contains(e.target)) {
             hideResults();
