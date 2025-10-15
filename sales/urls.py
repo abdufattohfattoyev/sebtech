@@ -38,6 +38,7 @@ urlpatterns = [
 
     # Phone Exchange
     path('phone-exchange/', views.phone_exchange_list, name='phone_exchange_list'),
+    path('phone-exchange/export/', views.phone_exchange_export, name='phone_exchange_export'),
     path('phone-exchange/create/', views.phone_exchange_create, name='phone_exchange_create'),
     path('phone-exchange/<int:pk>/', views.phone_exchange_detail, name='phone_exchange_detail'),
     path('phone-exchange/<int:pk>/edit/', views.phone_exchange_edit, name='phone_exchange_edit'),

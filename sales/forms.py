@@ -1037,7 +1037,7 @@ class PhoneReturnForm(forms.ModelForm):
 
 
 class DebtForm(forms.ModelForm):
-    """Qarz formi"""
+    """Qarz formi - FINAL TUZATILGAN (Boss ham tahrirlash mumkin)"""
     customer_name = forms.CharField(
         max_length=100,
         required=False,
@@ -1097,11 +1097,14 @@ class DebtForm(forms.ModelForm):
                 'placeholder': 'Qarz summasi',
                 'required': True
             }),
-            'due_date': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date',
-                'required': True
-            }),
+            'due_date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={
+                    'class': 'form-control',
+                    'type': 'date',
+                    'required': True
+                }
+            ),
             'notes': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 3,
@@ -1113,9 +1116,16 @@ class DebtForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
+        # ✅ Date format
+        self.fields['due_date'].input_formats = ['%Y-%m-%d', '%d.%m.%Y']
+        self.fields['due_date'].widget.format = '%Y-%m-%d'
+
         user_role = 'seller'
         if self.user and hasattr(self.user, 'userprofile'):
             user_role = self.user.userprofile.role
+
+        # ✅ TAHRIRLASH rejimini aniqlash
+        is_editing = bool(self.instance.pk)
 
         if user_role == 'seller':
             self.fields['debt_type'].choices = [
@@ -1159,11 +1169,34 @@ class DebtForm(forms.ModelForm):
         if self.user:
             self.fields['customer'].queryset = Customer.objects.all().order_by('name')
 
-        if not self.instance.pk:
+        # ✅ TAHRIRLASH vs YANGI YARATISH
+        if not is_editing:
+            # YANGI QARZ
             today = timezone.now().date()
             due_date = today + timedelta(days=30)
             self.fields['due_date'].initial = due_date
             self.fields['currency'].initial = 'USD'
+        else:
+            # ✅ TAHRIRLASH - Initial qiymatlarni o'rnatish
+            # Due date
+            if self.instance.due_date:
+                self.fields['due_date'].initial = self.instance.due_date
+
+            # Mijoz ma'lumotlari
+            if self.instance.customer:
+                self.fields['customer_name'].initial = self.instance.customer.name
+                self.fields['customer_phone'].initial = self.instance.customer.phone_number
+
+            # ✅ KRITIK: Tahrirlashda fieldlarni disable qilmaslik
+            # Faqat initial qiymatlarni o'rnatish
+            if self.instance.creditor:
+                self.fields['creditor'].initial = self.instance.creditor.id
+
+            if self.instance.debtor:
+                self.fields['debtor'].initial = self.instance.debtor.id
+
+            if self.instance.master:
+                self.fields['master'].initial = self.instance.master.id
 
     def clean(self):
         cleaned_data = super().clean()
@@ -1181,9 +1214,14 @@ class DebtForm(forms.ModelForm):
         if self.user and hasattr(self.user, 'userprofile'):
             user_role = self.user.userprofile.role
 
+        # ✅ FAQAT YANGI YARATISHDA qarz oluvchilarni avtomatik o'rnatish
+        is_editing = bool(self.instance.pk)
+
         if user_role == 'seller':
             if debt_type == 'seller_to_boss':
-                cleaned_data['debtor'] = self.user
+                # ✅ TAHRIRLASHDA - eski debtor'ni saqlash
+                if not is_editing:
+                    cleaned_data['debtor'] = self.user
 
                 if not creditor:
                     raise ValidationError({'creditor': "Boshliqni tanlang!"})
@@ -1193,7 +1231,9 @@ class DebtForm(forms.ModelForm):
                     raise ValidationError({'creditor': "Faqat boshliqlardan qarz olish mumkin!"})
 
             elif debt_type == 'customer_to_seller':
-                cleaned_data['creditor'] = self.user
+                # ✅ TAHRIRLASHDA - eski creditor'ni saqlash
+                if not is_editing:
+                    cleaned_data['creditor'] = self.user
 
                 if not customer and not (customer_name and customer_phone):
                     raise ValidationError({
@@ -1211,6 +1251,7 @@ class DebtForm(forms.ModelForm):
                     })
 
             elif debt_type == 'seller_to_boss':
+                # ✅ BOSS TAHRIRLASHDA ham validatsiya
                 if not debtor:
                     raise ValidationError({'debtor': "Sotuvchini tanlang!"})
                 if not creditor:
@@ -1232,42 +1273,62 @@ class DebtForm(forms.ModelForm):
 
     @transaction.atomic
     def save(self, commit=True):
+        is_new = not self.instance.pk
         debt = super().save(commit=False)
 
         user_role = 'seller'
         if self.user and hasattr(self.user, 'userprofile'):
             user_role = self.user.userprofile.role
 
-        if debt.debt_type == 'customer_to_seller':
-            customer_name = self.cleaned_data.get('customer_name', '').strip()
-            customer_phone = self.cleaned_data.get('customer_phone', '').strip()
+        # ✅ FAQAT YANGI YARATISHDA qarz oluvchilarni o'rnatish
+        if is_new:
+            if debt.debt_type == 'customer_to_seller':
+                customer_name = self.cleaned_data.get('customer_name', '').strip()
+                customer_phone = self.cleaned_data.get('customer_phone', '').strip()
 
-            if customer_name and customer_phone:
-                debt.customer = get_or_create_customer(
-                    customer_phone,
-                    customer_name,
-                    self.user
-                )
+                if customer_name and customer_phone:
+                    debt.customer = get_or_create_customer(
+                        customer_phone,
+                        customer_name,
+                        self.user
+                    )
 
-            if user_role == 'seller':
-                debt.creditor = self.user
+                if user_role == 'seller':
+                    debt.creditor = self.user
 
-            debt.debtor = None
-            debt.master = None
+                debt.debtor = None
+                debt.master = None
 
-        elif debt.debt_type == 'seller_to_boss':
-            if user_role == 'seller':
-                debt.debtor = self.user
+            elif debt.debt_type == 'seller_to_boss':
+                if user_role == 'seller':
+                    debt.debtor = self.user
 
-            debt.customer = None
-            debt.master = None
+                debt.customer = None
+                debt.master = None
 
-        elif debt.debt_type == 'boss_to_master':
-            debt.customer = None
-            debt.debtor = None
+            elif debt.debt_type == 'boss_to_master':
+                debt.customer = None
+                debt.debtor = None
 
-        debt.status = 'active'
-        debt.paid_amount = Decimal('0')
+            # FAQAT YANGI YARATISHDA
+            debt.status = 'active'
+            debt.paid_amount = Decimal('0')
+        else:
+            # ✅ TAHRIRLASHDA
+            # Creditor, Debtor, Customer, Master - formdan kelgan qiymatlarni ishlatish
+            # (Super().save() allaqachon ularni o'rnatgan)
+
+            # Mijoz ma'lumotlarini yangilash (agar kerak bo'lsa)
+            if debt.debt_type == 'customer_to_seller':
+                customer_name = self.cleaned_data.get('customer_name', '').strip()
+                customer_phone = self.cleaned_data.get('customer_phone', '').strip()
+
+                if customer_name and customer_phone:
+                    debt.customer = get_or_create_customer(
+                        customer_phone,
+                        customer_name,
+                        self.user
+                    )
 
         if commit:
             debt.save()

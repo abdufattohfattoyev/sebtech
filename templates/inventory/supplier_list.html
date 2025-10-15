@@ -30,67 +30,67 @@
 
     <!-- Statistika Kartalari -->
     <div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="text-muted mb-1">Jami Taminotchilar</h6>
-                        <h3 class="mb-0 text-primary">{{ total_suppliers }}</h3>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Jami Taminotchilar</h6>
+                            <h2 class="mb-0 text-primary fw-bold">{{ total_suppliers }}</h2>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-truck fa-2x text-primary"></i>
+                        </div>
                     </div>
-                    <div class="bg-primary bg-opacity-10 rounded-circle p-3">
-                        <i class="fas fa-truck fa-2x text-primary"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Qarzda</h6>
+                            <h2 class="mb-0 text-warning fw-bold">{{ suppliers_with_debt }}</h2>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Jami Qarz</h6>
+                            <h2 class="mb-0 text-danger fw-bold">${{ total_debt|floatformat:2 }}</h2>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-dollar-sign fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">To'langan</h6>
+                            <h2 class="mb-0 text-success fw-bold">${{ total_paid|floatformat:2 }}</h2>
+                        </div>
+                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="text-muted mb-1">Qarzda</h6>
-                        <h3 class="mb-0 text-warning">{{ suppliers_with_debt }}</h3>
-                    </div>
-                    <div class="bg-warning bg-opacity-10 rounded-circle p-3">
-                        <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="text-muted mb-1">Jami Qarz</h6>
-                        <h3 class="mb-0 text-danger">${{ total_debt|floatformat:2 }}</h3>
-                    </div>
-                    <div class="bg-danger bg-opacity-10 rounded-circle p-3">
-                        <i class="fas fa-dollar-sign fa-2x text-danger"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="text-muted mb-1">To'langan</h6>
-                        <h3 class="mb-0 text-success">${{ total_paid|floatformat:2 }}</h3>
-                    </div>
-                    <div class="bg-success bg-opacity-10 rounded-circle p-3">
-                        <i class="fas fa-check-circle fa-2x text-success"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
     <!-- Qidiruv va Filterlar -->
     <div class="row mb-4">
@@ -157,7 +157,7 @@
                                     <th width="60" class="text-center">#</th>
                                     <th>Taminotchi</th>
                                     <th width="200">Aloqa</th>
-                                    <th>Qarz Holati</th>
+                                    <th width="200">Qarz Holati</th>
                                     <th>Izoh</th>
                                     <th width="120">Qo'shilgan</th>
                                     <th width="180" class="text-center">Harakatlar</th>
@@ -174,31 +174,32 @@
                                     <td>
                                         <a href="{% url 'inventory:supplier_detail' supplier.id %}"
                                            class="text-decoration-none">
-                                            <strong class="text-dark">{{ supplier.name }}</strong>
+                                            <strong class="text-dark fs-6">{{ supplier.name }}</strong>
                                         </a>
                                     </td>
                                     <td>
                                         <a href="tel:{{ supplier.phone_number }}"
                                            class="text-decoration-none text-muted">
                                             <i class="fas fa-phone me-2 text-primary"></i>
-                                            {{ supplier.phone_number }}
+                                            <span class="fs-6">{{ supplier.phone_number }}</span>
                                         </a>
                                     </td>
                                     <td>
                                         {% if supplier.balance > 0 %}
-                                        <div>
-                                            <span class="badge bg-warning text-dark d-block mb-1">
+                                        <div class="debt-info">
+                                            <div class="badge bg-warning text-dark fs-6 mb-2 px-3 py-2 d-inline-block">
                                                 <i class="fas fa-exclamation-circle me-1"></i>
-                                                Qarz: ${{ supplier.balance|floatformat:2 }}
-                                            </span>
+                                                <strong>Qarz: ${{ supplier.balance|floatformat:2 }}</strong>
+                                            </div>
                                             {% if supplier.initial_debt > 0 %}
-                                            <small class="text-muted d-block">
-                                                Boshlang'ich: ${{ supplier.initial_debt|floatformat:2 }}
-                                            </small>
+                                            <div class="small text-muted">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Boshlang'ich: <strong>${{ supplier.initial_debt|floatformat:2 }}</strong>
+                                            </div>
                                             {% endif %}
                                         </div>
                                         {% else %}
-                                        <span class="badge bg-success">
+                                        <span class="badge bg-success fs-6 px-3 py-2">
                                             <i class="fas fa-check-circle me-1"></i>
                                             Qarz yo'q
                                         </span>
@@ -206,14 +207,14 @@
                                     </td>
                                     <td>
                                         {% if supplier.notes %}
-                                            <span class="text-muted small"
+                                            <span class="text-muted"
                                                   data-bs-toggle="tooltip"
                                                   data-bs-placement="top"
                                                   title="{{ supplier.notes }}">
                                                 {{ supplier.notes|truncatewords:5 }}
                                             </span>
                                         {% else %}
-                                            <span class="text-muted small">-</span>
+                                            <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -284,7 +285,7 @@
                                                         <div class="alert alert-danger border-0">
                                                             <i class="fas fa-exclamation-triangle me-2"></i>
                                                             <strong>Qarz mavjud:</strong> Bu taminotchida
-                                                            ${{ supplier.balance|floatformat:2 }} qarz bor!
+                                                            <strong class="fs-5">${{ supplier.balance|floatformat:2 }}</strong> qarz bor!
                                                         </div>
                                                         {% endif %}
 
@@ -405,6 +406,24 @@
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
+/* ✅ KATTAROQ SUMMA STILI */
+.debt-info .badge {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 1rem !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.debt-info .badge strong {
+    font-size: 1.1rem;
+}
+
+/* ✅ KATTAROQ STATISTIKA RAQAMLARI */
+.card-body h2 {
+    font-size: 2rem !important;
+    line-height: 1.2;
+}
+
 /* Table Styles */
 .table thead th {
     font-weight: 600;
@@ -420,6 +439,15 @@
 
 .table tbody tr:hover {
     background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* ✅ KATTAROQ MATN JADVALDDA */
+.table tbody td {
+    font-size: 0.95rem;
+}
+
+.table tbody td .fs-6 {
+    font-size: 1rem !important;
 }
 
 /* Card Shadows */
@@ -452,6 +480,12 @@
 
 .badge.rounded-pill {
     padding: 0.35em 0.85em;
+}
+
+/* ✅ YASHIL SUCCESS BADGE HAM KATTAROQ */
+.badge.bg-success {
+    font-size: 0.95rem !important;
+    padding: 0.5rem 1rem !important;
 }
 
 /* Modal Improvements */
@@ -493,6 +527,11 @@
     .btn-sm {
         width: 100%;
     }
+
+    /* ✅ MOBILDA HAM KATTA BO'LSIN */
+    .card-body h2 {
+        font-size: 1.75rem !important;
+    }
 }
 </style>
 
@@ -501,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Bootstrap tooltips ni faollashtirish
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+        return new bootstrap.tooltip(tooltipTriggerEl);
     });
 });
 </script>

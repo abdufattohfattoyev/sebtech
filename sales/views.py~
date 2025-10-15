@@ -250,16 +250,28 @@ def phone_sale_detail(request, pk):
 @login_required
 @boss_or_finance_required
 def phone_sale_edit(request, pk):
-    """Telefon sotishni tahrirlash - SOTUVCHI O'ZGARTIRILISHI MUMKIN"""
+    """Telefon sotishni tahrirlash - SOTUVCHI SAQLANADI"""
     phone_sale = get_object_or_404(PhoneSale, pk=pk)
+    original_salesman = phone_sale.salesman
 
     if request.method == 'POST':
         form = PhoneSaleForm(request.POST, instance=phone_sale, user=request.user)
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # ✅ FORM O'ZI SOTUVCHINI BOSHQARADI
-                    updated_sale = form.save(commit=True)
+                    updated_sale = form.save(commit=False)
+
+                    # ✅ ASL SOTUVCHINI QAYTA O'RNATISH
+                    updated_sale.salesman = original_salesman
+                    updated_sale.save()
+
+                    # ✅ Qarzlarni yangilash
+                    manage_sale_debts(
+                        updated_sale,
+                        form.cleaned_data,
+                        original_salesman,
+                        is_new=False
+                    )
 
                     messages.success(request, 'Telefon sotish va qarz yangilandi!')
                     return redirect('sales:phone_sale_detail', pk=phone_sale.pk)
@@ -270,7 +282,14 @@ def phone_sale_edit(request, pk):
         else:
             show_form_errors(request, form)
     else:
+        # ✅ GET so'rov - formani yaratish
         form = PhoneSaleForm(instance=phone_sale, user=request.user)
+
+        # ✅ MUHIM: Initial qiymatlar __init__ da allaqachon o'rnatilgan!
+        # Shuning uchun bu yerda QAYTA O'RNATMASLIK KERAK
+        # Faqat debug uchun tekshirish:
+        # print(f"Initial sale_date: {form.fields['sale_date'].initial}")
+        # print(f"Initial debt_due_date: {form.fields['debt_due_date'].initial}")
 
     return render(request, 'sales/phone_sale_form.html', {
         'form': form,
@@ -532,11 +551,118 @@ def phone_return_edit(request, pk):
 # ============ PHONE EXCHANGE ============
 @login_required
 def phone_exchange_list(request):
+    """Telefon almashtirishlar ro'yxati - to'liq filterlar bilan"""
+    from django.core.paginator import Paginator
+    from django.db.models import Sum, Count
+
+    # Base queryset
     phone_exchanges = PhoneExchange.objects.select_related(
         'new_phone__phone_model', 'new_phone__memory_size',
         'old_phone_model', 'old_phone_memory', 'salesman', 'customer'
-    ).order_by('-exchange_date')
-    return render(request, 'sales/phone_exchange_list.html', {'phone_exchanges': phone_exchanges})
+    )
+
+    # ========== FILTERLAR ==========
+    search_query = request.GET.get('search', '').strip()
+    selected_salesman = request.GET.get('salesman', '')
+    exchange_type_filter = request.GET.get('exchange_type', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    # Qidiruv
+    if search_query:
+        phone_exchanges = phone_exchanges.filter(
+            Q(customer_name__icontains=search_query) |
+            Q(customer_phone_number__icontains=search_query) |
+            Q(new_phone__imei__icontains=search_query) |
+            Q(old_phone_imei__icontains=search_query) |
+            Q(notes__icontains=search_query)
+        )
+
+    # Sotuvchi
+    if selected_salesman:
+        try:
+            phone_exchanges = phone_exchanges.filter(salesman_id=selected_salesman)
+        except (ValueError, TypeError):
+            messages.warning(request, "Noto'g'ri sotuvchi ID")
+
+    # Almashtirish turi
+    if exchange_type_filter:
+        phone_exchanges = phone_exchanges.filter(exchange_type=exchange_type_filter)
+
+    # Sana oralig'i
+    if date_from:
+        try:
+            phone_exchanges = phone_exchanges.filter(exchange_date__gte=date_from)
+        except ValidationError:
+            messages.warning(request, "Noto'g'ri boshlanish sanasi")
+
+    if date_to:
+        try:
+            phone_exchanges = phone_exchanges.filter(exchange_date__lte=date_to)
+        except ValidationError:
+            messages.warning(request, "Noto'g'ri tugash sanasi")
+
+    # Ordering
+    phone_exchanges = phone_exchanges.order_by('-exchange_date', '-id')
+
+    # ========== STATISTIKA ==========
+    stats = phone_exchanges.aggregate(
+        total_count=Count('id'),
+        customer_pays_count=Count('id', filter=Q(exchange_type='customer_pays')),
+        shop_pays_count=Count('id', filter=Q(exchange_type='shop_pays')),
+        equal_count=Count('id', filter=Q(exchange_type='equal')),
+
+        total_price_diff=Sum('price_difference'),
+        total_debt=Sum('debt_amount'),
+        total_cash=Sum('cash_amount'),
+        total_card=Sum('card_amount'),
+        total_credit=Sum('credit_amount'),
+    )
+
+    # ========== PAGINATION ==========
+    paginator = Paginator(phone_exchanges, 20)  # 20 ta har sahifada
+    page_number = request.GET.get('page', 1)
+
+    try:
+        page_obj = paginator.get_page(page_number)
+    except:
+        page_obj = paginator.get_page(1)
+
+    # ========== SOTUVCHILAR RO'YXATI ==========
+    salesmen = User.objects.filter(
+        created_phone_exchanges__isnull=False
+    ).distinct().order_by('first_name', 'username')
+
+    # ========== CONTEXT ==========
+    context = {
+        # Pagination
+        'phone_exchanges': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+
+        # Statistika
+        'total_count': stats['total_count'] or 0,
+        'customer_pays_count': stats['customer_pays_count'] or 0,
+        'shop_pays_count': stats['shop_pays_count'] or 0,
+        'equal_count': stats['equal_count'] or 0,
+        'total_price_diff': stats['total_price_diff'] or Decimal('0'),
+        'total_debt': stats['total_debt'] or Decimal('0'),
+        'total_cash': stats['total_cash'] or Decimal('0'),
+        'total_card': stats['total_card'] or Decimal('0'),
+        'total_credit': stats['total_credit'] or Decimal('0'),
+
+        # Filterlar
+        'search_query': search_query,
+        'selected_salesman': selected_salesman,
+        'exchange_type_filter': exchange_type_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+
+        # Sotuvchilar
+        'salesmen': salesmen,
+    }
+
+    return render(request, 'sales/phone_exchange_list.html', context)
 
 
 @login_required
@@ -574,19 +700,26 @@ def phone_exchange_create(request):
 @login_required
 @boss_or_finance_required
 def phone_exchange_edit(request, pk):
-    """Telefon almashtirishni tahrirlash - SOTUVCHI O'ZGARTIRILISHI MUMKIN"""
+    """Telefon almashtirishni tahrirlash - SOTUVCHI SAQLANADI"""
     phone_exchange = get_object_or_404(PhoneExchange, pk=pk)
+    original_salesman = phone_exchange.salesman
 
     if request.method == 'POST':
         form = PhoneExchangeForm(request.POST, request.FILES, instance=phone_exchange, user=request.user)
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # ✅ FORM O'ZI SOTUVCHINI BOSHQARADI
-                    updated_exchange = form.save(commit=True)
+                    updated_exchange = form.save(commit=False)
+                    # ✅ ASL SOTUVCHINI QAYTA O'RNATISH
+                    updated_exchange.salesman = original_salesman
+                    updated_exchange.save()
 
-                    messages.success(request, 'Telefon almashtirish va qarz yangilandi!')
-                    return redirect('sales:phone_exchange_detail', pk=phone_exchange.pk)
+                    # Qarzni yangilash
+                    if updated_exchange.exchange_type == 'customer_pays':
+                        manage_sale_debts(updated_exchange, form.cleaned_data, original_salesman, is_new=False)
+
+                messages.success(request, 'Telefon almashtirish va qarz yangilandi!')
+                return redirect('sales:phone_exchange_detail', pk=phone_exchange.pk)
             except Exception as e:
                 logger.error(f"Phone exchange edit error: {str(e)}", exc_info=True)
                 messages.error(request, f'Xatolik: {str(e)}')
@@ -602,15 +735,14 @@ def phone_exchange_edit(request, pk):
             form.fields['customer_phone_input'].initial = phone_exchange.customer_phone_number
 
         if phone_exchange.debt_amount > 0 and phone_exchange.exchange_type == 'customer_pays':
-            if phone_exchange.new_phone:
-                debt = Debt.objects.filter(
-                    debt_type='customer_to_seller',
-                    customer=phone_exchange.customer,
-                    currency='USD',
-                    notes__icontains=phone_exchange.new_phone.imei
-                ).first()
-                if debt and debt.due_date:
-                    form.fields['debt_due_date'].initial = debt.due_date
+            debt = Debt.objects.filter(
+                debt_type='customer_to_seller',
+                customer=phone_exchange.customer,
+                currency='USD',
+                notes__icontains=phone_exchange.new_phone.imei if phone_exchange.new_phone else ''
+            ).first()
+            if debt and debt.due_date:
+                form.fields['debt_due_date'].initial = debt.due_date
 
     return render(request, 'sales/phone_exchange_form.html', {
         'form': form,
@@ -656,215 +788,305 @@ def phone_exchange_delete(request, pk):
 @login_required
 def debt_list(request):
     """
-    IDEAL QARZ TIZIMI
+    MUKAMMAL QARZ TIZIMI
+    - Search/Qidiruv tizimi
+    - Pagination (20 ta qarz/sahifa)
     - Sotuvchilar bo'yicha filter
     - Sana oralig'i filter
     - Qarz turi, holat, valyuta filterlari
     - To'liq statistika
     - Excel eksport
+    - Optimizatsiya va xatoliklar bilan ishlash
     """
+    try:
+        user_role = get_user_role(request.user)
 
-    user_role = get_user_role(request.user)
-    debts = get_debts_for_user(request.user).select_related(
-        'creditor', 'debtor', 'customer', 'master'
-    )
-
-    # ========== FILTERLAR ==========
-    # Sotuvchi filtri
-    selected_salesman = request.GET.get('salesman', '')
-    if selected_salesman:
-        debts = debts.filter(
-            Q(creditor_id=selected_salesman) | Q(debtor_id=selected_salesman)
+        # ========== BASE QUERYSET ==========
+        debts = get_debts_for_user(request.user).select_related(
+            'creditor', 'debtor', 'customer', 'master'
         )
 
-    # Qarz turi filtri
-    debt_type_filter = request.GET.get('debt_type', '')
-    if debt_type_filter:
-        debts = debts.filter(debt_type=debt_type_filter)
-
-    # Holat filtri
-    status_filter = request.GET.get('status', '')
-    if status_filter:
-        debts = debts.filter(status=status_filter)
-
-    # Valyuta filtri
-    currency_filter = request.GET.get('currency', '')
-    if currency_filter:
-        debts = debts.filter(currency=currency_filter)
-
-    # Sana oralig'i filtri
-    date_from = request.GET.get('date_from', '')
-    date_to = request.GET.get('date_to', '')
-    if date_from:
-        debts = debts.filter(created_at__gte=date_from)
-    if date_to:
-        debts = debts.filter(created_at__lte=date_to)
-
-    # Muddati o'tganlar filtri
-    overdue_filter = request.GET.get('overdue', '')
-    today = timezone.now().date()
-    if overdue_filter == 'yes':
-        debts = debts.filter(due_date__lt=today, status='active')
-
-    # ========== UMUMIY STATISTIKA ==========
-    all_debts = debts.order_by('-created_at')
-
-    # Jami qarzlar statistikasi
-    total_stats = all_debts.aggregate(
-        total_count=Count('id'),
-        active_count=Count('id', filter=Q(status='active')),
-        paid_count=Count('id', filter=Q(status='paid')),
-        cancelled_count=Count('id', filter=Q(status='cancelled')),
-
-        # USD qarzlar
-        total_debt_usd=Sum('debt_amount', filter=Q(currency='USD')),
-        paid_usd=Sum('paid_amount', filter=Q(currency='USD')),
-        remaining_usd=Sum(
-            F('debt_amount') - F('paid_amount'),
-            filter=Q(currency='USD', status='active'),
-            output_field=DecimalField()
-        ),
-
-        # UZS qarzlar
-        total_debt_uzs=Sum('debt_amount', filter=Q(currency='UZS')),
-        paid_uzs=Sum('paid_amount', filter=Q(currency='UZS')),
-        remaining_uzs=Sum(
-            F('debt_amount') - F('paid_amount'),
-            filter=Q(currency='UZS', status='active'),
-            output_field=DecimalField()
-        ),
-    )
-
-    # Kechiktirilgan qarzlar
-    overdue_debts = all_debts.filter(status='active', due_date__lt=today)
-    overdue_stats = overdue_debts.aggregate(
-        count=Count('id'),
-        total_usd=Sum(
-            F('debt_amount') - F('paid_amount'),
-            filter=Q(currency='USD'),
-            output_field=DecimalField()
-        ),
-        total_uzs=Sum(
-            F('debt_amount') - F('paid_amount'),
-            filter=Q(currency='UZS'),
-            output_field=DecimalField()
-        ),
-    )
-
-    # ========== SOTUVCHILAR BO'YICHA STATISTIKA ==========
-    salesmen = User.objects.filter(
-        Q(given_debts__isnull=False) | Q(received_debts__isnull=False)
-    ).distinct().order_by('first_name', 'username')
-
-    salesmen_stats = []
-    for salesman in salesmen:
-        salesman_debts = debts.filter(
-            Q(creditor=salesman) | Q(debtor=salesman)
-        )
-
-        if salesman_debts.exists():
-            stats = salesman_debts.aggregate(
-                total_count=Count('id'),
-                active_count=Count('id', filter=Q(status='active')),
-
-                # Bergan qarzlar (creditor)
-                given_usd=Sum(
-                    F('debt_amount') - F('paid_amount'),
-                    filter=Q(creditor=salesman, currency='USD', status='active'),
-                    output_field=DecimalField()
-                ),
-                given_uzs=Sum(
-                    F('debt_amount') - F('paid_amount'),
-                    filter=Q(creditor=salesman, currency='UZS', status='active'),
-                    output_field=DecimalField()
-                ),
-
-                # Olgan qarzlar (debtor)
-                received_usd=Sum(
-                    F('debt_amount') - F('paid_amount'),
-                    filter=Q(debtor=salesman, currency='USD', status='active'),
-                    output_field=DecimalField()
-                ),
-                received_uzs=Sum(
-                    F('debt_amount') - F('paid_amount'),
-                    filter=Q(debtor=salesman, currency='UZS', status='active'),
-                    output_field=DecimalField()
-                ),
+        # ========== SEARCH/QIDIRUV ==========
+        search_query = request.GET.get('search', '').strip()
+        if search_query:
+            debts = debts.filter(
+                Q(notes__icontains=search_query) |
+                Q(customer__name__icontains=search_query) |
+                Q(customer__phone_number__icontains=search_query) |
+                Q(debtor__username__icontains=search_query) |
+                Q(debtor__first_name__icontains=search_query) |
+                Q(debtor__last_name__icontains=search_query) |
+                Q(creditor__username__icontains=search_query) |
+                Q(creditor__first_name__icontains=search_query) |
+                Q(creditor__last_name__icontains=search_query) |
+                Q(master__name__icontains=search_query)
             )
+            logger.info(f"Search query: '{search_query}' - Found {debts.count()} results")
 
-            salesmen_stats.append({
-                'salesman': salesman,
-                'total_count': stats['total_count'] or 0,
-                'active_count': stats['active_count'] or 0,
-                'given_usd': stats['given_usd'] or Decimal('0'),
-                'given_uzs': stats['given_uzs'] or Decimal('0'),
-                'received_usd': stats['received_usd'] or Decimal('0'),
-                'received_uzs': stats['received_uzs'] or Decimal('0'),
-            })
+        # ========== FILTERLAR ==========
+        # Sotuvchi filtri
+        selected_salesman = request.GET.get('salesman', '')
+        if selected_salesman:
+            try:
+                debts = debts.filter(
+                    Q(creditor_id=selected_salesman) | Q(debtor_id=selected_salesman)
+                )
+            except (ValueError, TypeError):
+                messages.warning(request, "Noto'g'ri sotuvchi ID")
 
-    # Har bir qarz uchun qo'shimcha ma'lumotlar
-    for debt in all_debts:
-        if debt.due_date and debt.status == 'active':
-            days_diff = (debt.due_date - today).days
-            if days_diff < 0:
-                debt.due_date_class = 'overdue'
-            elif days_diff <= 3:
-                debt.due_date_class = 'soon'
-            elif days_diff <= 7:
-                debt.due_date_class = 'warning'
-            else:
-                debt.due_date_class = 'ok'
-        else:
-            debt.due_date_class = ''
+        # Qarz turi filtri
+        debt_type_filter = request.GET.get('debt_type', '')
+        if debt_type_filter:
+            debts = debts.filter(debt_type=debt_type_filter)
 
-        debt.is_overdue = debt.status == 'active' and debt.due_date and debt.due_date < today
+        # Holat filtri
+        status_filter = request.GET.get('status', '')
+        if status_filter:
+            debts = debts.filter(status=status_filter)
 
-    context = {
-        'debts': all_debts,
-        'user_role': user_role,
-        'can_view_all': user_role in ['boss', 'finance'],
+        # Valyuta filtri
+        currency_filter = request.GET.get('currency', '')
+        if currency_filter:
+            debts = debts.filter(currency=currency_filter)
 
-        # Umumiy statistika
-        'total_debts_count': total_stats['total_count'] or 0,
-        'active_debts_count': total_stats['active_count'] or 0,
-        'paid_debts_count': total_stats['paid_count'] or 0,
-        'cancelled_debts_count': total_stats['cancelled_count'] or 0,
+        # Sana oralig'i filtri
+        date_from = request.GET.get('date_from', '')
+        date_to = request.GET.get('date_to', '')
+        if date_from:
+            try:
+                debts = debts.filter(created_at__gte=date_from)
+            except ValidationError:
+                messages.warning(request, "Noto'g'ri boshlanish sanasi")
+        if date_to:
+            try:
+                debts = debts.filter(created_at__lte=date_to)
+            except ValidationError:
+                messages.warning(request, "Noto'g'ri tugash sanasi")
 
-        # USD statistika
-        'total_debt_usd': total_stats['total_debt_usd'] or Decimal('0'),
-        'total_paid_usd': total_stats['paid_usd'] or Decimal('0'),
-        'total_remaining_usd': total_stats['remaining_usd'] or Decimal('0'),
+        # Muddati o'tganlar filtri
+        overdue_filter = request.GET.get('overdue', '')
+        today = timezone.now().date()
+        if overdue_filter == 'yes':
+            debts = debts.filter(due_date__lt=today, status='active')
 
-        # UZS statistika
-        'total_debt_uzs': total_stats['total_debt_uzs'] or Decimal('0'),
-        'total_paid_uzs': total_stats['paid_uzs'] or Decimal('0'),
-        'total_remaining_uzs': total_stats['remaining_uzs'] or Decimal('0'),
+        # ========== ORDERING ==========
+        debts = debts.order_by('-created_at', '-id')
+
+        # ========== UMUMIY STATISTIKA (filtering dan oldin) ==========
+        # Barcha qarzlar uchun statistika
+        total_stats = debts.aggregate(
+            total_count=Count('id'),
+            active_count=Count('id', filter=Q(status='active')),
+            paid_count=Count('id', filter=Q(status='paid')),
+            cancelled_count=Count('id', filter=Q(status='cancelled')),
+
+            # USD qarzlar
+            total_debt_usd=Sum('debt_amount', filter=Q(currency='USD')),
+            paid_usd=Sum('paid_amount', filter=Q(currency='USD')),
+            remaining_usd=Sum(
+                F('debt_amount') - F('paid_amount'),
+                filter=Q(currency='USD', status='active'),
+                output_field=DecimalField()
+            ),
+
+            # UZS qarzlar
+            total_debt_uzs=Sum('debt_amount', filter=Q(currency='UZS')),
+            paid_uzs=Sum('paid_amount', filter=Q(currency='UZS')),
+            remaining_uzs=Sum(
+                F('debt_amount') - F('paid_amount'),
+                filter=Q(currency='UZS', status='active'),
+                output_field=DecimalField()
+            ),
+        )
 
         # Kechiktirilgan qarzlar
-        'overdue_count': overdue_stats['count'] or 0,
-        'overdue_total_usd': overdue_stats['total_usd'] or Decimal('0'),
-        'overdue_total_uzs': overdue_stats['total_uzs'] or Decimal('0'),
+        overdue_debts = debts.filter(status='active', due_date__lt=today)
+        overdue_stats = overdue_debts.aggregate(
+            count=Count('id'),
+            total_usd=Sum(
+                F('debt_amount') - F('paid_amount'),
+                filter=Q(currency='USD'),
+                output_field=DecimalField()
+            ),
+            total_uzs=Sum(
+                F('debt_amount') - F('paid_amount'),
+                filter=Q(currency='UZS'),
+                output_field=DecimalField()
+            ),
+        )
 
-        # Sotuvchilar statistikasi
-        'salesmen': salesmen,
-        'salesmen_stats': salesmen_stats,
+        # ========== SOTUVCHILAR BO'YICHA STATISTIKA ==========
+        salesmen = User.objects.filter(
+            Q(given_debts__isnull=False) | Q(received_debts__isnull=False)
+        ).distinct().order_by('first_name', 'username')
 
-        # Filterlar
-        'selected_salesman': selected_salesman,
-        'debt_type_filter': debt_type_filter,
-        'status_filter': status_filter,
-        'currency_filter': currency_filter,
-        'date_from': date_from,
-        'date_to': date_to,
-        'overdue_filter': overdue_filter,
+        salesmen_stats = []
+        for salesman in salesmen:
+            salesman_debts = debts.filter(
+                Q(creditor=salesman) | Q(debtor=salesman)
+            )
 
-        # Filter choices
-        'debt_type_choices': Debt.DEBT_TYPE_CHOICES,
-        'status_choices': Debt.DEBT_STATUS_CHOICES,
-        'currency_choices': Debt.CURRENCY_CHOICES,
-    }
+            if salesman_debts.exists():
+                stats = salesman_debts.aggregate(
+                    total_count=Count('id'),
+                    active_count=Count('id', filter=Q(status='active')),
 
-    return render(request, 'sales/debt_list.html', context)
+                    # Bergan qarzlar (creditor)
+                    given_usd=Sum(
+                        F('debt_amount') - F('paid_amount'),
+                        filter=Q(creditor=salesman, currency='USD', status='active'),
+                        output_field=DecimalField()
+                    ),
+                    given_uzs=Sum(
+                        F('debt_amount') - F('paid_amount'),
+                        filter=Q(creditor=salesman, currency='UZS', status='active'),
+                        output_field=DecimalField()
+                    ),
+
+                    # Olgan qarzlar (debtor)
+                    received_usd=Sum(
+                        F('debt_amount') - F('paid_amount'),
+                        filter=Q(debtor=salesman, currency='USD', status='active'),
+                        output_field=DecimalField()
+                    ),
+                    received_uzs=Sum(
+                        F('debt_amount') - F('paid_amount'),
+                        filter=Q(debtor=salesman, currency='UZS', status='active'),
+                        output_field=DecimalField()
+                    ),
+                )
+
+                salesmen_stats.append({
+                    'salesman': salesman,
+                    'total_count': stats['total_count'] or 0,
+                    'active_count': stats['active_count'] or 0,
+                    'given_usd': stats['given_usd'] or Decimal('0'),
+                    'given_uzs': stats['given_uzs'] or Decimal('0'),
+                    'received_usd': stats['received_usd'] or Decimal('0'),
+                    'received_uzs': stats['received_uzs'] or Decimal('0'),
+                })
+
+        # ========== PAGINATION ==========
+        from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+        paginator = Paginator(debts, 20)  # 20 ta qarz har sahifada
+        page_number = request.GET.get('page', 1)
+
+        try:
+            page_obj = paginator.get_page(page_number)
+        except PageNotAnInteger:
+            page_obj = paginator.get_page(1)
+        except EmptyPage:
+            page_obj = paginator.get_page(paginator.num_pages)
+
+        # ========== QO'SHIMCHA MA'LUMOTLAR HAR BIR QARZ UCHUN ==========
+        for debt in page_obj:
+            # Due date class
+            if debt.due_date and debt.status == 'active':
+                days_diff = (debt.due_date - today).days
+                if days_diff < 0:
+                    debt.due_date_class = 'overdue'
+                elif days_diff <= 3:
+                    debt.due_date_class = 'soon'
+                elif days_diff <= 7:
+                    debt.due_date_class = 'warning'
+                else:
+                    debt.due_date_class = 'ok'
+            else:
+                debt.due_date_class = ''
+
+            # Is overdue
+            debt.is_overdue = debt.status == 'active' and debt.due_date and debt.due_date < today
+
+        # ========== CONTEXT ==========
+        context = {
+            # Pagination
+            'debts': page_obj,
+            'page_obj': page_obj,
+            'is_paginated': page_obj.has_other_pages(),
+
+            # User info
+            'user_role': user_role,
+            'can_view_all': user_role in ['boss', 'finance'],
+
+            # Umumiy statistika
+            'total_debts_count': total_stats['total_count'] or 0,
+            'active_debts_count': total_stats['active_count'] or 0,
+            'paid_debts_count': total_stats['paid_count'] or 0,
+            'cancelled_debts_count': total_stats['cancelled_count'] or 0,
+
+            # USD statistika
+            'total_debt_usd': total_stats['total_debt_usd'] or Decimal('0'),
+            'total_paid_usd': total_stats['paid_usd'] or Decimal('0'),
+            'total_remaining_usd': total_stats['remaining_usd'] or Decimal('0'),
+
+            # UZS statistika
+            'total_debt_uzs': total_stats['total_debt_uzs'] or Decimal('0'),
+            'total_paid_uzs': total_stats['paid_uzs'] or Decimal('0'),
+            'total_remaining_uzs': total_stats['remaining_uzs'] or Decimal('0'),
+
+            # Kechiktirilgan qarzlar
+            'overdue_count': overdue_stats['count'] or 0,
+            'overdue_total_usd': overdue_stats['total_usd'] or Decimal('0'),
+            'overdue_total_uzs': overdue_stats['total_uzs'] or Decimal('0'),
+
+            # Sotuvchilar statistikasi
+            'salesmen': salesmen,
+            'salesmen_stats': salesmen_stats,
+
+            # Filterlar
+            'search_query': search_query,
+            'selected_salesman': selected_salesman,
+            'debt_type_filter': debt_type_filter,
+            'status_filter': status_filter,
+            'currency_filter': currency_filter,
+            'date_from': date_from,
+            'date_to': date_to,
+            'overdue_filter': overdue_filter,
+
+            # Filter choices
+            'debt_type_choices': Debt.DEBT_TYPE_CHOICES,
+            'status_choices': Debt.DEBT_STATUS_CHOICES,
+            'currency_choices': Debt.CURRENCY_CHOICES,
+        }
+
+        logger.info(
+            f"Debt list loaded - User: {request.user.username}, "
+            f"Total: {total_stats['total_count']}, "
+            f"Page: {page_obj.number}/{paginator.num_pages}"
+        )
+
+        return render(request, 'sales/debt_list.html', context)
+
+    except Exception as e:
+        logger.error(f"Debt list error: {str(e)}", exc_info=True)
+        messages.error(request, f"Xatolik yuz berdi: {str(e)}")
+
+        # Minimal context
+        return render(request, 'sales/debt_list.html', {
+            'debts': [],
+            'page_obj': None,
+            'user_role': get_user_role(request.user),
+            'can_view_all': False,
+            'total_debts_count': 0,
+            'active_debts_count': 0,
+            'paid_debts_count': 0,
+            'cancelled_debts_count': 0,
+            'total_debt_usd': Decimal('0'),
+            'total_paid_usd': Decimal('0'),
+            'total_remaining_usd': Decimal('0'),
+            'total_debt_uzs': Decimal('0'),
+            'total_paid_uzs': Decimal('0'),
+            'total_remaining_uzs': Decimal('0'),
+            'overdue_count': 0,
+            'overdue_total_usd': Decimal('0'),
+            'overdue_total_uzs': Decimal('0'),
+            'salesmen': [],
+            'salesmen_stats': [],
+            'debt_type_choices': Debt.DEBT_TYPE_CHOICES,
+            'status_choices': Debt.DEBT_STATUS_CHOICES,
+            'currency_choices': Debt.CURRENCY_CHOICES,
+        })
 
 
 # ========== QARZ EKSPORT (CSV/Excel) ==========
@@ -1042,7 +1264,7 @@ def debt_detail(request, pk):
 
 @login_required
 def debt_edit(request, pk):
-    """Qarzni tahrirlash"""
+    """Qarzni tahrirlash - BOSS VA SELLER UCHUN"""
     debt = get_object_or_404(Debt, pk=pk)
 
     if not can_edit_debt(request.user, debt):
@@ -1051,25 +1273,32 @@ def debt_edit(request, pk):
 
     if request.method == 'POST':
         form = DebtForm(request.POST, instance=debt, user=request.user)
+
         if form.is_valid():
             try:
                 with transaction.atomic():
+                    # ✅ Formani to'g'ridan-to'g'ri saqlash
+                    # Form.save() o'zi barcha fieldlarni to'g'ri boshqaradi
                     form.save()
-                messages.success(request, 'Qarz yangilandi!')
+
+                messages.success(request, 'Qarz muvaffaqiyatli yangilandi!')
                 return redirect('sales:debt_detail', pk=debt.pk)
+
             except Exception as e:
                 logger.error(f"Debt edit error: {str(e)}", exc_info=True)
                 messages.error(request, f'Xatolik: {str(e)}')
         else:
             show_form_errors(request, form)
     else:
+        # ✅ GET so'rov - forma yaratish
         form = DebtForm(instance=debt, user=request.user)
 
     return render(request, 'sales/debt_form.html', {
         'form': form,
         'title': 'Qarzni tahrirlash',
         'debt': debt,
-        'editing': True
+        'editing': True,
+        'user_role': get_user_role(request.user),  # ✅ QO'SHILDI
     })
 
 

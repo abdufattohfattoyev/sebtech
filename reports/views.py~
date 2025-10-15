@@ -73,9 +73,7 @@ class ReportMixin:
 @login_required
 @check_report_access
 def daily_report(request):
-    """KUNLIK HISOBOT - Kunlik olingan telefonlar bilan"""
-    from inventory.models import Phone  # ✅ IMPORT
-
+    """KUNLIK HISOBOT - Barcha sotuvchilar umumiy va alohida"""
     shops = ReportMixin.get_user_shops(request.user)
     if not shops.exists():
         return render(request, 'reports/no_shop.html')
@@ -88,8 +86,7 @@ def daily_report(request):
     profit_calc = ProfitCalculator()
 
     # ✅ USER ROLI TEKSHIRISH
-    user_role = getattr(request.user.userprofile, 'role', 'seller') if hasattr(request.user,
-                                                                               'userprofile') else 'seller'
+    user_role = getattr(request.user.userprofile, 'role', 'seller') if hasattr(request.user, 'userprofile') else 'seller'
     is_boss = user_role == 'boss'
 
     # Foyda hisoblash - faqat boss uchun
@@ -100,18 +97,6 @@ def daily_report(request):
             sale.calculated_profit = profit_calc.calculate_accessory_profit(sale)
         for exchange in daily_data['sales_data']['exchanges']:
             exchange.calculated_profit = profit_calc.calculate_exchange_profit(exchange)
-
-    # ✅ KUNLIK OLINGAN TELEFONLAR
-    daily_received_phones = Phone.objects.filter(
-        shop=selected_shop,
-        source_type='daily_seller',
-        created_at=selected_date
-    ).select_related(
-        'phone_model',
-        'memory_size',
-        'daily_seller',
-        'created_by'
-    ).order_by('-created_at')
 
     # SOTUVCHILAR RO'YXATI
     phone_sellers = list(PhoneSale.objects.filter(
@@ -153,7 +138,7 @@ def daily_report(request):
     # Telefon savdosi bo'yicha tartiblash
     seller_stats.sort(key=lambda x: x['sales']['phone_total_usd'], reverse=True)
 
-    # UMUMIY STATISTIKA
+    # UMUMIY STATISTIKA - faqat boss uchun foyda
     total_stats = {
         'total_phones_sold': daily_data['counts']['phone'],
         'total_accessories_sold': daily_data['counts']['accessory'],
@@ -176,19 +161,11 @@ def daily_report(request):
     if is_boss:
         total_stats.update({
             'phone_profit': daily_data['profits'].get('phone_profit_usd', daily_data['profits'].get('phone_profit', 0)),
-            'accessory_profit': daily_data['profits'].get('accessory_profit_uzs',
-                                                          daily_data['profits'].get('accessory_profit', 0)),
-            'exchange_profit': daily_data['profits'].get('exchange_profit_usd',
-                                                         daily_data['profits'].get('exchange_profit', 0)),
+            'accessory_profit': daily_data['profits'].get('accessory_profit_uzs', daily_data['profits'].get('accessory_profit', 0)),
+            'exchange_profit': daily_data['profits'].get('exchange_profit_usd', daily_data['profits'].get('exchange_profit', 0)),
             'total_phone_exchange_profit': daily_data['profits'].get('total_phone_exchange_profit', 0),
             'profit_margin': daily_data.get('profit_margin', 0),
         })
-
-    # ✅ COUNTS GA QO'SHISH
-    daily_data['counts']['daily_received'] = daily_received_phones.count()
-
-    # ✅ SALES_DATA GA QO'SHISH
-    daily_data['sales_data']['daily_received_phones'] = daily_received_phones
 
     return render(request, 'reports/daily_report.html', {
         'shops': shops,
@@ -198,7 +175,7 @@ def daily_report(request):
         'seller_stats': seller_stats,
         'total_stats': total_stats,
         'today': timezone.now().date(),
-        'is_boss': is_boss,
+        'is_boss': is_boss,  # ✅ Template uchun
     })
 
 

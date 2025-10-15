@@ -1,50 +1,91 @@
 <!-- sales/templates/sales/phone_exchange_list.html -->
 {% extends "base.html" %}
+{% load static %}
 
 {% block page_title %}Telefon almashtirishlar{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-exchange-alt me-2"></i>Telefon almashtirishlar</h2>
-        <a href="{% url 'sales:phone_exchange_create' %}" class="btn btn-primary">
-            <i class="fas fa-plus me-1"></i>Yangi almashtirish
-        </a>
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-1">
+                                <i class="fas fa-exchange-alt me-2"></i>Telefon Almashtirishlar
+                            </h4>
+                            <small class="opacity-75">Barcha telefon almashtirish operatsiyalari</small>
+                        </div>
+                        <div>
+                            <a href="{% url 'sales:phone_exchange_create' %}" class="btn btn-light btn-sm">
+                                <i class="fas fa-plus me-1"></i>Yangi Almashtirish
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Statistika kartlari -->
+    <!-- Statistika Kartalari -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card border-left-primary">
+            <div class="card border-0 shadow-sm stat-card">
                 <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="me-3">
-                            <i class="fas fa-exchange-alt fa-2x text-primary"></i>
-                        </div>
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Jami Almashtirishlar
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ phone_exchanges|length }}</div>
+                            <h6 class="text-muted mb-2 text-uppercase" style="font-size: 0.75rem;">Jami Almashtirishlar</h6>
+                            <h2 class="mb-0 text-primary fw-bold">{{ total_count|default:0 }}</h2>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-exchange-alt fa-2x text-primary"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-left-success">
+            <div class="card border-0 shadow-sm stat-card">
                 <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="me-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2 text-uppercase" style="font-size: 0.75rem;">Mijoz To'ladi</h6>
+                            <h2 class="mb-0 text-info fw-bold">{{ customer_pays_count|default:0 }}</h2>
+                        </div>
+                        <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-arrow-up fa-2x text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2 text-uppercase" style="font-size: 0.75rem;">Jami Narx Farqi</h6>
+                            <h2 class="mb-0 text-success fw-bold">${{ total_price_diff|default:0|floatformat:2 }}</h2>
+                        </div>
+                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
                             <i class="fas fa-dollar-sign fa-2x text-success"></i>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Bugungi Almashtirishlar
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {% with today_exchanges=phone_exchanges|length %}{{ today_exchanges }}{% endwith %}
-                            </div>
+                            <h6 class="text-muted mb-2 text-uppercase" style="font-size: 0.75rem;">Jami Qarz</h6>
+                            <h2 class="mb-0 text-danger fw-bold">${{ total_debt|default:0|floatformat:2 }}</h2>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 rounded-circle p-3">
+                            <i class="fas fa-exclamation-circle fa-2x text-danger"></i>
                         </div>
                     </div>
                 </div>
@@ -52,110 +93,509 @@
         </div>
     </div>
 
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Almashtirishlar ro'yxati</h6>
-        </div>
-        <div class="card-body">
-            {% if phone_exchanges %}
-                <div class="table-responsive">
-                    <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Mijoz</th>
-                                <th>Eski telefon</th>
-                                <th>Yangi telefon</th>
-                                <th>Almashtirish turi</th>
-                                <th>Narx farqi</th>
-                                <th>To'lov usuli</th>
-                                <th>Sana</th>
-                                <th>Sotuvchi</th>
-                                <th>Amallar</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for exchange in phone_exchanges %}
-                            <tr>
-                                <td>#{{ exchange.id }}</td>
-                                <td>
-                                    <div class="fw-bold">{{ exchange.customer_name }}</div>
-                                    <small class="text-muted">{{ exchange.customer_phone_number }}</small>
-                                </td>
-                                <td>
-                                    <div class="fw-bold">{{ exchange.old_phone_model.name }}</div>
-                                    <small class="text-muted">{{ exchange.old_phone_memory.size }}</small>
-                                    <br><small class="text-primary">IMEI: {{ exchange.old_phone_imei|default:"-" }}</small>
-                                    <br><small class="text-success">Holat: {{ exchange.old_phone_condition_percentage }}%</small>
-                                </td>
-                                <td>
-                                    <div class="fw-bold">{{ exchange.new_phone.phone_model.name }}</div>
-                                    <small class="text-muted">{{ exchange.new_phone.memory_size.size }}</small>
-                                    <br><small class="text-primary">IMEI: {{ exchange.new_phone.imei|default:"-" }}</small>
-                                </td>
-                                <td>
-                                    {% if exchange.exchange_type == 'customer_pays' %}
-                                        <span class="badge bg-info">Mijoz to'laydi</span>
-                                    {% elif exchange.exchange_type == 'shop_pays' %}
-                                        <span class="badge bg-warning">Do'kon to'laydi</span>
-                                    {% else %}
-                                        <span class="badge bg-success">Teng</span>
-                                    {% endif %}
-                                </td>
-                                <td class="fw-bold text-primary">${{ exchange.price_difference }}</td>
-                                <td>
-                                    {% if exchange.cash_amount %}<span class="badge bg-success">Naqd: ${{ exchange.cash_amount }}</span><br>{% endif %}
-                                    {% if exchange.card_amount %}<span class="badge bg-info">Karta: ${{ exchange.card_amount }}</span><br>{% endif %}
-                                    {% if exchange.credit_amount %}<span class="badge bg-warning">Nasiya: ${{ exchange.credit_amount }}</span><br>{% endif %}
-                                    {% if exchange.debt_amount %}<span class="badge bg-danger">Qarz: ${{ exchange.debt_amount }}</span>{% endif %}
-                                </td>
-                                <td>{{ exchange.exchange_date|date:"d.m.Y" }}</td>
+    <!-- Filterlar va Qidiruv -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fas fa-filter me-2 text-primary"></i>
+                        Filterlar va Qidiruv
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="get" id="filterForm">
+                        <div class="row g-3">
+                            <!-- Qidiruv -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-search me-1"></i>Qidiruv
+                                </label>
+                                <input type="text"
+                                       name="search"
+                                       value="{{ search_query }}"
+                                       class="form-control"
+                                       placeholder="Mijoz ismi, telefon, IMEI bo'yicha qidirish...">
+                            </div>
 
-                                <td>{{ exchange.salesman.get_full_name|default:exchange.salesman.username }}</td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{% url 'sales:phone_exchange_detail' exchange.pk %}"
-                                           class="btn btn-outline-primary" title="Ko'rish">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="{% url 'sales:phone_exchange_edit' exchange.pk %}"
-                                           class="btn btn-outline-secondary" title="Tahrirlash">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="{% url 'sales:phone_exchange_delete' exchange.pk %}"
-                                           class="btn btn-outline-danger" title="O'chirish"
-                                           onclick="return confirm('Rostdan ham bu almashtirishni o\'chirmoqchimisiz?')">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                            <!-- Sotuvchi -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-user-tie me-1"></i>Sotuvchi
+                                </label>
+                                <select name="salesman" class="form-select">
+                                    <option value="">Barcha sotuvchilar</option>
+                                    {% for salesman in salesmen %}
+                                        <option value="{{ salesman.id }}"
+                                                {% if selected_salesman|stringformat:"s" == salesman.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ salesman.get_full_name|default:salesman.username }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Almashtirish turi -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-exchange-alt me-1"></i>Almashtirish Turi
+                                </label>
+                                <select name="exchange_type" class="form-select">
+                                    <option value="">Barcha turlar</option>
+                                    <option value="customer_pays" {% if exchange_type_filter == 'customer_pays' %}selected{% endif %}>
+                                        Mijoz to'laydi
+                                    </option>
+                                    <option value="shop_pays" {% if exchange_type_filter == 'shop_pays' %}selected{% endif %}>
+                                        Do'kon to'laydi
+                                    </option>
+                                    <option value="equal" {% if exchange_type_filter == 'equal' %}selected{% endif %}>
+                                        Teng
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- Sana (dan) -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="far fa-calendar me-1"></i>Sanadan
+                                </label>
+                                <input type="date"
+                                       name="date_from"
+                                       value="{{ date_from }}"
+                                       class="form-control">
+                            </div>
+
+                            <!-- Sana (gacha) -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="far fa-calendar-check me-1"></i>Sanagacha
+                                </label>
+                                <input type="date"
+                                       name="date_to"
+                                       value="{{ date_to }}"
+                                       class="form-control">
+                            </div>
+
+                            <!-- Tugmalar -->
+                            <div class="col-12">
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-1"></i>Qidirish
+                                    </button>
+                                    <a href="{% url 'sales:phone_exchange_list' %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-undo me-1"></i>Tozalash
+                                    </a>
+                                    <button type="button" class="btn btn-outline-success ms-auto" onclick="exportToExcel()">
+                                        <i class="fas fa-file-excel me-1"></i>Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-            {% else %}
-                <div class="text-center py-5">
-                    <i class="fas fa-exchange-alt text-muted" style="font-size: 4rem;"></i>
-                    <h4 class="text-muted mt-3">Hali telefon almashtirishlar yo'q</h4>
-                    <p class="text-muted">Birinchi telefon almashtirishni qo'shing!</p>
-                    <a href="{% url 'sales:phone_exchange_create' %}" class="btn btn-primary btn-lg">
-                        <i class="fas fa-plus me-1"></i>Telefon almashtirish
-                    </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Almashtirishlar Jadvali -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-list me-2 text-primary"></i>
+                            Almashtirishlar Ro'yxati
+                        </h5>
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="badge bg-primary rounded-pill fs-6">{{ total_count }} ta</span>
+                            {% if search_query or selected_salesman or exchange_type_filter or date_from or date_to %}
+                            <span class="badge bg-info rounded-pill fs-6">
+                                <i class="fas fa-filter me-1"></i>Filtrlangan
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-            {% endif %}
+                <div class="card-body p-0">
+                    {% if page_obj %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="60" class="text-center">#</th>
+                                    <th width="200">Mijoz</th>
+                                    <th width="250">Eski Telefon</th>
+                                    <th width="250">Yangi Telefon</th>
+                                    <th width="150">Tur</th>
+                                    <th width="120">Narx Farqi</th>
+                                    <th width="180">To'lovlar</th>
+                                    <th width="120">Sana</th>
+                                    <th width="150">Sotuvchi</th>
+                                    <th width="150" class="text-center">Amallar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for exchange in page_obj %}
+                                <tr>
+                                    <td class="text-center">
+                                        <span class="badge bg-light text-dark fs-6">
+                                            {{ forloop.counter|add:page_obj.start_index|add:"-1" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark fs-6">{{ exchange.customer_name }}</div>
+                                        <a href="tel:{{ exchange.customer_phone_number }}" class="text-muted text-decoration-none">
+                                            <i class="fas fa-phone me-1"></i>
+                                            <small>{{ exchange.customer_phone_number }}</small>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-primary">{{ exchange.old_phone_model.name }}</div>
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-memory me-1"></i>{{ exchange.old_phone_memory.size }}
+                                        </small>
+                                        {% if exchange.old_phone_imei %}
+                                        <small class="text-info d-block">
+                                            <i class="fas fa-barcode me-1"></i>{{ exchange.old_phone_imei }}
+                                        </small>
+                                        {% endif %}
+                                        <small class="badge bg-success-subtle text-success mt-1">
+                                            Holat: {{ exchange.old_phone_condition_percentage }}%
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-success">{{ exchange.new_phone.phone_model.name }}</div>
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-memory me-1"></i>{{ exchange.new_phone.memory_size.size }}
+                                        </small>
+                                        <small class="text-info d-block">
+                                            <i class="fas fa-barcode me-1"></i>{{ exchange.new_phone.imei }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if exchange.exchange_type == 'customer_pays' %}
+                                            <span class="badge bg-info fs-6 px-3 py-2">
+                                                <i class="fas fa-arrow-up me-1"></i>Mijoz
+                                            </span>
+                                        {% elif exchange.exchange_type == 'shop_pays' %}
+                                            <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                                                <i class="fas fa-arrow-down me-1"></i>Do'kon
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success fs-6 px-3 py-2">
+                                                <i class="fas fa-equals me-1"></i>Teng
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold text-primary fs-5">
+                                            ${{ exchange.price_difference|floatformat:2 }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="payment-badges">
+                                            {% if exchange.cash_amount %}
+                                            <span class="badge bg-success mb-1 d-block">
+                                                <i class="fas fa-money-bill-wave me-1"></i>
+                                                Naqd: ${{ exchange.cash_amount|floatformat:2 }}
+                                            </span>
+                                            {% endif %}
+                                            {% if exchange.card_amount %}
+                                            <span class="badge bg-info mb-1 d-block">
+                                                <i class="fas fa-credit-card me-1"></i>
+                                                Karta: ${{ exchange.card_amount|floatformat:2 }}
+                                            </span>
+                                            {% endif %}
+                                            {% if exchange.credit_amount %}
+                                            <span class="badge bg-warning text-dark mb-1 d-block">
+                                                <i class="fas fa-hand-holding-usd me-1"></i>
+                                                Nasiya: ${{ exchange.credit_amount|floatformat:2 }}
+                                            </span>
+                                            {% endif %}
+                                            {% if exchange.debt_amount %}
+                                            <span class="badge bg-danger mb-1 d-block">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                                Qarz: ${{ exchange.debt_amount|floatformat:2 }}
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            <i class="far fa-calendar me-1"></i>
+                                            {{ exchange.exchange_date|date:"d.m.Y" }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="text-dark fw-semibold">
+                                            {{ exchange.salesman.get_full_name|default:exchange.salesman.username }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'sales:phone_exchange_detail' exchange.pk %}"
+                                               class="btn btn-outline-primary"
+                                               data-bs-toggle="tooltip"
+                                               title="Ko'rish">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'sales:phone_exchange_edit' exchange.pk %}"
+                                               class="btn btn-outline-secondary"
+                                               data-bs-toggle="tooltip"
+                                               title="Tahrirlash">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteModal{{ exchange.id }}"
+                                                    title="O'chirish">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- O'chirish Modal -->
+                                        <div class="modal fade" id="deleteModal{{ exchange.id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content">
+                                                    <div class="modal-header border-0">
+                                                        <h5 class="modal-title">
+                                                            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                                            O'chirishni Tasdiqlang
+                                                        </h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p class="mb-3">
+                                                            <strong>{{ exchange.customer_name }}</strong> ning almashtirishini o'chirmoqchimisiz?
+                                                        </p>
+                                                        <div class="alert alert-warning">
+                                                            <i class="fas fa-info-circle me-2"></i>
+                                                            Bu harakatni ortga qaytarib bo'lmaydi!
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer border-0">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                            <i class="fas fa-times me-1"></i>Bekor Qilish
+                                                        </button>
+                                                        <a href="{% url 'sales:phone_exchange_delete' exchange.pk %}"
+                                                           class="btn btn-danger">
+                                                            <i class="fas fa-trash me-1"></i>O'chirish
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <div class="card-footer bg-white border-top">
+                        <nav aria-label="Sahifa navigatsiyasi">
+                            <ul class="pagination pagination-sm justify-content-center mb-0">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if exchange_type_filter %}&exchange_type={{ exchange_type_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if exchange_type_filter %}&exchange_type={{ exchange_type_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                            <i class="fas fa-angle-left"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if exchange_type_filter %}&exchange_type={{ exchange_type_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if exchange_type_filter %}&exchange_type={{ exchange_type_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                            <i class="fas fa-angle-right"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if exchange_type_filter %}&exchange_type={{ exchange_type_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+
+                        <div class="text-center mt-2">
+                            <small class="text-muted">
+                                Sahifa {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                                (Jami: {{ total_count }} almashtirish)
+                            </small>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-exchange-alt fa-4x text-muted opacity-50"></i>
+                        </div>
+                        <h5 class="text-muted mb-2">Almashtirishlar Topilmadi</h5>
+                        <p class="text-muted mb-4">
+                            {% if search_query or selected_salesman or exchange_type_filter or date_from or date_to %}
+                                Filter bo'yicha hech narsa topilmadi
+                            {% else %}
+                                Hozircha almashtirishlar mavjud emas
+                            {% endif %}
+                        </p>
+                        {% if not search_query and not selected_salesman %}
+                        <a href="{% url 'sales:phone_exchange_create' %}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-plus me-1"></i>Birinchi Almashtirishni Qo'shing
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <style>
-.border-left-primary {
-    border-left: 4px solid #4e73df !important;
+/* Gradient Header */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
-.border-left-success {
-    border-left: 4px solid #1cc88a !important;
+
+/* Statistika kartlari animatsiya */
+.stat-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Kattaroq raqamlar */
+.stat-card h2 {
+    font-size: 2rem !important;
+}
+
+/* Table Styles */
+.table thead th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(102, 126, 234, 0.05);
+}
+
+.table tbody td {
+    font-size: 0.95rem;
+    vertical-align: middle;
+}
+
+/* Badge Styles */
+.badge {
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.payment-badges .badge {
+    font-size: 0.8rem;
+}
+
+/* Button Group */
+.btn-group-sm .btn {
+    padding: 0.375rem 0.75rem;
+}
+
+/* Pagination */
+.pagination .page-link {
+    border-radius: 0.25rem;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+/* Form Controls */
+.form-label {
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+.form-select:focus,
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Shadow */
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* Tooltips */
+[data-bs-toggle="tooltip"] {
+    cursor: help;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stat-card h2 {
+        font-size: 1.5rem !important;
+    }
+
+    .table {
+        font-size: 0.85rem;
+    }
+
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+    }
 }
 </style>
-{% endblock %}
 
-<!-- ================= FORM TEMPLATE ================= -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Bootstrap tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Excel export funksiyasi
+function exportToExcel() {
+    const form = document.getElementById('filterForm');
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData);
+    window.location.href = '{% url "sales:phone_exchange_export" %}?' + params.toString();
+}
+</script>
+{% endblock %}

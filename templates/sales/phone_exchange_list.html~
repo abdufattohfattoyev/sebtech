@@ -109,7 +109,8 @@
                                     {% if exchange.credit_amount %}<span class="badge bg-warning">Nasiya: ${{ exchange.credit_amount }}</span><br>{% endif %}
                                     {% if exchange.debt_amount %}<span class="badge bg-danger">Qarz: ${{ exchange.debt_amount }}</span>{% endif %}
                                 </td>
-                                <td>{{ exchange.exchange_date|date:"d.m.Y H:i" }}</td>
+                                <td>{{ exchange.exchange_date|date:"d.m.Y" }}</td>
+
                                 <td>{{ exchange.salesman.get_full_name|default:exchange.salesman.username }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
@@ -157,4 +158,4 @@
 </style>
 {% endblock %}
 
-<!-- ================= FORM TEMPLATE ================= -->
+

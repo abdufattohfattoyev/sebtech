@@ -1,311 +1,646 @@
 {% extends "base.html" %}
+{% load debt_filters %}
 {% block page_title %}Qarzlar{% endblock %}
 
 {% block extra_css %}
 <style>
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #06b6d4;
+    --purple: #a855f7;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-500: #6b7280;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.08);
+}
+
+body { background: var(--gray-50); }
+
 /* ===== HEADER ===== */
 .page-header {
-    background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border-radius: 20px;
+    padding: 2.5rem;
+    margin-bottom: 2rem;
     color: white;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
 }
-
-.header-title { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
-.header-subtitle { opacity: 0.9; font-size: 0.9rem; }
-
-.header-btn {
-    background: rgba(255,255,255,0.2);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: white;
-    padding: 0.6rem 1rem;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: all 0.2s;
+.page-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 400px;
+    height: 400px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
 }
-
-.header-btn.primary {
-    background: white;
-    color: #dc2626;
-}
-
-/* ===== ALERT BOXES ===== */
-.alert-overdue {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    color: white;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.9; }
-}
-
-.alert-overdue-title {
-    font-size: 1.3rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.alert-overdue-value {
+.header-title {
     font-size: 2rem;
     font-weight: 700;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
 }
-
-/* ===== STATS ===== */
-.stats-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+.header-subtitle {
+    opacity: 0.9;
+    position: relative;
+    z-index: 1;
 }
-
-.stat-box {
+.header-btn {
     background: white;
-    border-radius: 10px;
-    padding: 1.25rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    cursor: pointer;
+    color: var(--primary);
+    padding: 0.875rem 1.75rem;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1;
+    position: relative;
+}
+.header-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    color: var(--primary);
+}
+
+/* ===== SEARCH BOX ===== */
+.search-box {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-200);
+}
+.search-input {
+    position: relative;
+}
+.search-input i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-500);
+}
+.search-input input {
+    padding-left: 2.75rem;
+    border-radius: 12px;
+    border: 1.5px solid var(--gray-300);
+    height: 48px;
+    font-size: 0.95rem;
     transition: all 0.2s;
 }
-
-.stat-box:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+.search-input input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.stat-box.total { border-left: 4px solid #3b82f6; }
-.stat-box.active { border-left: 4px solid #f59e0b; }
-.stat-box.paid { border-left: 4px solid #10b981; }
-.stat-box.cancelled { border-left: 4px solid #6b7280; }
-.stat-box.usd { border-left: 4px solid #8b5cf6; }
-.stat-box.uzs { border-left: 4px solid #06b6d4; }
+/* ===== FILTER BOX ===== */
+.filter-box {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-200);
+}
+.filter-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 0.5rem;
+}
+.form-select, .form-control {
+    border-radius: 10px;
+    border: 1.5px solid var(--gray-300);
+    padding: 0.625rem 0.875rem;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    background: var(--gray-50);
+}
+.form-select:focus, .form-control:focus {
+    border-color: var(--primary);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+.btn-filter {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.625rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+}
+.btn-filter:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+.btn-reset {
+    background: var(--gray-500);
+    color: white;
+}
+.btn-reset:hover {
+    background: #4b5563;
+}
+.btn-export {
+    background: var(--success);
+    color: white;
+}
+.btn-export:hover {
+    background: #059669;
+}
+
+/* ===== ALERT OVERDUE ===== */
+.alert-overdue {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    color: white;
+    box-shadow: var(--shadow-lg);
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+.alert-overdue-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.alert-overdue-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+}
+
+/* ===== STATS CARDS ===== */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+.stat-box {
+    background: white;
+    border-radius: 16px;
+    padding: 1.75rem;
+    box-shadow: var(--shadow);
+    transition: all 0.3s;
+    border: 1px solid var(--gray-200);
+    position: relative;
+    overflow: hidden;
+}
+.stat-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 80px;
+    height: 80px;
+    background: currentColor;
+    opacity: 0.05;
+    border-radius: 50%;
+    transform: translate(30%, -30%);
+}
+.stat-box:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+.stat-box.total { color: var(--primary); }
+.stat-box.active { color: var(--warning); }
+.stat-box.paid { color: var(--success); }
+.stat-box.cancelled { color: var(--gray-500); }
+.stat-box.usd { color: var(--purple); }
+.stat-box.uzs { color: var(--info); }
 
 .stat-label {
-    font-size: 0.75rem;
-    color: #64748b;
+    font-size: 0.8rem;
+    color: var(--gray-500);
     text-transform: uppercase;
-    font-weight: 600;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+.stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+}
+.stat-detail {
+    font-size: 0.85rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gray-200);
+}
+.stat-detail-item {
+    display: flex;
+    justify-content: space-between;
     margin-bottom: 0.5rem;
 }
 
-.stat-value {
-    font-size: 1.75rem;
+/* ===== SALESMAN STATS ===== */
+.salesman-stats-table {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-200);
+}
+.salesman-stats-table h5 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.salesman-stats-table table {
+    width: 100%;
+    font-size: 0.9rem;
+}
+.salesman-stats-table th {
+    background: var(--gray-50);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: var(--gray-700);
+    padding: 1rem 0.75rem;
+    border: 1px solid var(--gray-200);
+    white-space: nowrap;
+}
+.salesman-stats-table td {
+    padding: 1rem 0.75rem;
+    border: 1px solid var(--gray-200);
+    vertical-align: middle;
+}
+.salesman-stats-table tbody tr:hover {
+    background: var(--gray-50);
+}
+.salesman-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.salesman-link:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+.amount-positive {
+    color: var(--success);
     font-weight: 700;
 }
-
-.stat-value.text-primary { color: #3b82f6; }
-.stat-value.text-warning { color: #f59e0b; }
-.stat-value.text-success { color: #10b981; }
-.stat-value.text-muted { color: #6b7280; }
-
-/* ===== FILTERS ===== */
-.filter-box {
-    background: white;
-    border-radius: 10px;
-    padding: 1.25rem;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-
-.filter-btns {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.filter-btn {
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    border: 1px solid #e2e8f0;
-    background: white;
-    color: #475569;
-    font-weight: 600;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.filter-btn:hover {
-    background: #f8fafc;
-}
-
-.filter-btn.active {
-    background: #3b82f6;
-    color: white;
-    border-color: #3b82f6;
+.amount-negative {
+    color: #f97316;
+    font-weight: 700;
 }
 
 /* ===== TABLE ===== */
 .table-box {
     background: white;
-    border-radius: 10px;
+    border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-200);
 }
-
+.table-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.table-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.table-count {
+    background: var(--primary);
+    color: white;
+    padding: 0.375rem 0.875rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+.table {
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}
 .table thead th {
-    background: #f8fafc;
+    background: var(--gray-50);
     font-weight: 700;
     text-transform: uppercase;
-    font-size: 0.7rem;
-    color: #475569;
-    padding: 1rem 0.75rem;
-    border: 1px solid #e2e8f0;
+    font-size: 0.75rem;
+    color: var(--gray-700);
+    padding: 1.25rem 1rem;
+    border: 1px solid var(--gray-200);
+    white-space: nowrap;
 }
-
 .table tbody td {
-    padding: 1rem 0.75rem;
+    padding: 1.25rem 1rem;
     vertical-align: middle;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--gray-200);
 }
-
 .table tbody tr {
     transition: all 0.2s;
 }
-
 .table tbody tr:hover {
-    background: #f8fafc;
+    background: var(--gray-50);
 }
-
 .table tbody tr.overdue {
     background: #fef2f2;
-    border-left: 4px solid #dc2626;
+    border-left: 4px solid #f97316;
+}
+
+/* ===== PROGRESS BAR ===== */
+.debt-progress {
+    width: 100%;
+    height: 6px;
+    background: var(--gray-200);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+.debt-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success) 0%, #059669 100%);
+    transition: width 0.5s ease;
 }
 
 /* ===== BADGES ===== */
 .debt-type {
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
     font-size: 0.8rem;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
 }
-
-.debt-type.customer { background: #dbeafe; color: #1e40af; }
-.debt-type.seller { background: #fef3c7; color: #d97706; }
-.debt-type.master { background: #e0e7ff; color: #4c1d95; }
+.debt-type.customer {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+.debt-type.seller {
+    background: #fef3c7;
+    color: #d97706;
+}
+.debt-type.master {
+    background: #dbeafe;
+    color: #2563eb;
+}
 
 .debt-status {
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
     font-size: 0.8rem;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
 }
-
-.debt-status.active { background: #fef3c7; color: #d97706; }
-.debt-status.paid { background: #dcfce7; color: #15803d; }
-.debt-status.cancelled { background: #f1f5f9; color: #64748b; }
+.debt-status.active {
+    background: #fef3c7;
+    color: #d97706;
+}
+.debt-status.paid {
+    background: #dcfce7;
+    color: #16a34a;
+}
+.debt-status.cancelled {
+    background: var(--gray-100);
+    color: var(--gray-500);
+}
 
 /* ===== AMOUNTS ===== */
 .amount-danger {
-    color: #dc2626;
+    color: #f97316;
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
 }
-
 .amount-success {
-    color: #16a34a;
+    color: var(--success);
     font-weight: 700;
 }
-
 .amount-warning {
-    color: #ea580c;
+    color: var(--warning);
     font-weight: 700;
 }
 
-/* ===== DATE STATUS ===== */
+/* ===== DATE ===== */
 .date-box {
-    font-size: 0.85rem;
+    font-size: 0.875rem;
 }
-
 .date-created {
-    color: #64748b;
-    font-size: 0.75rem;
+    color: var(--gray-500);
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
 }
-
 .date-due {
     font-weight: 600;
-    padding: 0.3rem 0.6rem;
-    border-radius: 6px;
+    padding: 0.375rem 0.75rem;
+    border-radius: 8px;
     display: inline-block;
-    margin-top: 0.3rem;
+    font-size: 0.8rem;
 }
-
 .date-due.overdue {
-    background: #dc2626;
+    background: #f97316;
     color: white;
 }
-
 .date-due.soon {
-    background: #f59e0b;
+    background: var(--warning);
     color: white;
 }
-
 .date-due.warning {
     background: #fef3c7;
     color: #d97706;
 }
-
 .date-due.ok {
-    background: #f1f5f9;
-    color: #64748b;
+    background: var(--gray-100);
+    color: var(--gray-500);
 }
 
 /* ===== ACTIONS ===== */
 .act-btns {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.5rem;
     justify-content: center;
 }
-
 .act-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 6px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s;
+    font-size: 0.9rem;
+}
+.act-view {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+.act-pay {
+    background: #dcfce7;
+    color: #16a34a;
+}
+.act-del {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.act-view:hover {
+    background: #7c3aed;
+    color: white;
+    transform: scale(1.08);
+}
+.act-pay:hover {
+    background: #16a34a;
+    color: white;
+    transform: scale(1.08);
+}
+.act-del:hover {
+    background: #dc2626;
+    color: white;
+    transform: scale(1.08);
 }
 
-.act-view { background: #dbeafe; color: #1e40af; }
-.act-pay { background: #dcfce7; color: #15803d; }
-.act-del { background: #fee2e2; color: #991b1b; }
-
-.act-view:hover { background: #1e40af; color: white; }
-.act-pay:hover { background: #15803d; color: white; }
-.act-del:hover { background: #991b1b; color: white; }
+/* ===== PAGINATION ===== */
+.pagination-box {
+    padding: 1.5rem;
+    border-top: 1px solid var(--gray-200);
+}
+.pagination {
+    margin: 0;
+    gap: 0.5rem;
+}
+.page-link {
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    color: var(--gray-700);
+    padding: 0.5rem 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.page-link:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+.page-item.active .page-link {
+    background: var(--primary);
+    border-color: var(--primary);
+}
 
 /* ===== EMPTY STATE ===== */
 .empty-box {
     text-align: center;
     padding: 4rem 2rem;
 }
-
 .empty-icon {
-    font-size: 3rem;
-    color: #cbd5e1;
-    margin-bottom: 1rem;
+    font-size: 4rem;
+    color: var(--gray-300);
+    margin-bottom: 1.5rem;
+}
+.empty-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-700);
+    margin-bottom: 0.75rem;
+}
+.empty-subtitle {
+    color: var(--gray-500);
+    margin-bottom: 2rem;
+}
+
+/* ===== LOADING ===== */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-    .page-header { padding: 1rem; }
+    .page-header { padding: 1.75rem; }
     .header-title { font-size: 1.5rem; }
-    .stats-row { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-    .stat-value { font-size: 1.5rem; }
-    .filter-box { padding: 1rem; }
-    .table { font-size: 0.8rem; }
-    .alert-overdue { padding: 1rem; }
-    .alert-overdue-title { font-size: 1.1rem; }
-    .alert-overdue-value { font-size: 1.5rem; }
+    .stats-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .stat-value { font-size: 1.75rem; }
+    .filter-box, .search-box { padding: 1.5rem; }
+    .table { font-size: 0.85rem; }
+    .salesman-stats-table { overflow-x: auto; }
+}
+
+@media (max-width: 576px) {
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
 {% endblock %}
@@ -314,113 +649,278 @@
 <div class="container-fluid" style="max-width: 1600px;">
     <!-- Header -->
     <div class="page-header">
-        <div class="d-flex justify-content-between align-items-start flex-wrap">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
             <div>
                 <h1 class="header-title">
-                    <i class="fas fa-hand-holding-usd me-2"></i>Qarzlar
-                    {% if not can_view_all %}
-                    <small style="font-size: 0.6em; opacity: 0.8;">(Sizning qarzlaringiz)</small>
-                    {% endif %}
+                    <i class="fas fa-hand-holding-usd"></i>
+                    Qarzlar Boshqaruvi
                 </h1>
-                <p class="header-subtitle mb-0">Barcha qarzlarni boshqarish va monitoring</p>
+                <p class="header-subtitle mb-0">To'liq statistika va monitoring tizimi</p>
             </div>
-            <div style="margin-top: 1rem;">
-                <a href="{% url 'sales:debt_create' %}" class="header-btn primary">
-                    <i class="fas fa-plus me-1"></i>Yangi Qarz
+            <div>
+                <a href="{% url 'sales:debt_create' %}" class="header-btn">
+                    <i class="fas fa-plus"></i>
+                    <span>Yangi Qarz</span>
                 </a>
             </div>
         </div>
     </div>
 
-    <!-- ===== KECHIKTIRILGAN QARZLAR ALERT ===== -->
+    <!-- Search Box -->
+    <div class="search-box">
+        <form method="get" id="searchForm">
+            <div class="search-input">
+                <i class="fas fa-search"></i>
+                <input type="text"
+                       name="search"
+                       class="form-control"
+                       placeholder="IMEI, mijoz ismi, telefon raqami yoki izoh bo'yicha qidirish..."
+                       value="{{ request.GET.search }}">
+            </div>
+        </form>
+    </div>
+
+    <!-- Filter Box -->
+    <div class="filter-box">
+        <div class="filter-title">
+            <i class="fas fa-filter"></i>
+            Filterlar
+        </div>
+        <form method="get" id="filterForm">
+            <input type="hidden" name="search" value="{{ request.GET.search }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Sotuvchi</label>
+                    <select name="salesman" class="form-select">
+                        <option value="">Barchasi</option>
+                        {% for salesman in salesmen %}
+                        <option value="{{ salesman.id }}" {% if selected_salesman == salesman.id|stringformat:"s" %}selected{% endif %}>
+                            {{ salesman.get_full_name|default:salesman.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Qarz turi</label>
+                    <select name="debt_type" class="form-select">
+                        <option value="">Barchasi</option>
+                        {% for value, label in debt_type_choices %}
+                        <option value="{{ value }}" {% if debt_type_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Holat</label>
+                    <select name="status" class="form-select">
+                        <option value="">Barchasi</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Valyuta</label>
+                    <select name="currency" class="form-select">
+                        <option value="">Barchasi</option>
+                        {% for value, label in currency_choices %}
+                        <option value="{{ value }}" {% if currency_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Muddat</label>
+                    <select name="overdue" class="form-select">
+                        <option value="">Barchasi</option>
+                        <option value="yes" {% if overdue_filter == 'yes' %}selected{% endif %}>Muddati o'tgan</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Sanadan</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Sanagacha</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                </div>
+                <div class="col-md-6 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-filter">
+                        <i class="fas fa-search me-1"></i>Qidirish
+                    </button>
+                    <a href="{% url 'sales:debt_list' %}" class="btn btn-filter btn-reset">
+                        <i class="fas fa-redo me-1"></i>Tozalash
+                    </a>
+                    <a href="{% url 'sales:debt_export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-filter btn-export">
+                        <i class="fas fa-file-excel me-1"></i>Excel
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Overdue Alert -->
     {% if overdue_count > 0 %}
     <div class="alert-overdue">
-        <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
                 <div class="alert-overdue-title">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Kechiktirilgan Qarzlar!
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Kechiktirilgan Qarzlar!</span>
                 </div>
-                <p class="mb-0" style="opacity: 0.9;">Muddati o'tgan qarzlarni to'lashingiz kerak</p>
+                <p class="mb-0" style="opacity: 0.95;">Muddati o'tgan qarzlarni zudlik bilan to'lash kerak</p>
             </div>
             <div class="text-end">
                 <div class="alert-overdue-value">{{ overdue_count }} ta</div>
-                <div style="font-size: 1.2rem; opacity: 0.9;">
-                    {% if overdue_total_usd > 0 %}${{ overdue_total_usd|floatformat:0 }}{% endif %}
-                    {% if overdue_total_uzs > 0 %} {{ overdue_total_uzs|floatformat:0 }} so'm{% endif %}
+                <div style="font-size: 1.3rem; opacity: 0.95; margin-top: 0.5rem;">
+                    {% if overdue_total_usd > 0 %}
+                        <strong>${{ overdue_total_usd|floatformat:0 }}</strong>
+                    {% endif %}
+                    {% if overdue_total_usd > 0 and overdue_total_uzs > 0 %} • {% endif %}
+                    {% if overdue_total_uzs > 0 %}
+                        <strong>{{ overdue_total_uzs|floatformat:0 }} so'm</strong>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- ===== UMUMIY QARZ STATISTIKASI ===== -->
+    <!-- Stats -->
     <div class="stats-row">
-        <div class="stat-box total" onclick="filterDebts('all')">
-            <div class="stat-label">Jami qarzlar</div>
-            <div class="stat-value text-primary">{{ total_debts_count|default:0 }}</div>
+        <div class="stat-box total">
+            <div class="stat-label"><i class="fas fa-list"></i> Jami qarzlar</div>
+            <div class="stat-value text-primary">{{ total_debts_count }}</div>
         </div>
-        <div class="stat-box active" onclick="filterDebts('active')">
-            <div class="stat-label">Faol qarzlar</div>
-            <div class="stat-value text-warning">{{ active_debts_count|default:0 }}</div>
+        <div class="stat-box active">
+            <div class="stat-label"><i class="fas fa-clock"></i> Faol qarzlar</div>
+            <div class="stat-value text-warning">{{ active_debts_count }}</div>
         </div>
-        <div class="stat-box paid" onclick="filterDebts('paid')">
-            <div class="stat-label">To'langan</div>
-            <div class="stat-value text-success">{{ paid_debts_count|default:0 }}</div>
+        <div class="stat-box paid">
+            <div class="stat-label"><i class="fas fa-check-circle"></i> To'langan</div>
+            <div class="stat-value text-success">{{ paid_debts_count }}</div>
         </div>
-        <div class="stat-box cancelled" onclick="filterDebts('cancelled')">
-            <div class="stat-label">Bekor qilingan</div>
-            <div class="stat-value text-muted">{{ cancelled_debts_count|default:0 }}</div>
+        <div class="stat-box cancelled">
+            <div class="stat-label"><i class="fas fa-ban"></i> Bekor qilingan</div>
+            <div class="stat-value text-muted">{{ cancelled_debts_count }}</div>
         </div>
     </div>
 
-    <!-- ===== VALYUTA BO'YICHA QARZLAR ===== -->
+    <!-- Currency Stats -->
     <div class="stats-row">
         <div class="stat-box usd">
-            <div class="stat-label"><i class="fas fa-dollar-sign me-1"></i>Dollar qarzlar</div>
-            <div class="stat-value text-primary">${{ total_debt_usd|floatformat:0|default:"0" }}</div>
-            <div class="stat-label mt-2" style="color: #16a34a;">
-                To'langan: ${{ total_paid_usd|floatformat:0|default:"0" }}
+            <div class="stat-label"><i class="fas fa-dollar-sign"></i> Dollar qarzlar</div>
+            <div class="stat-value" style="color: #a855f7;">${{ total_debt_usd|floatformat:0 }}</div>
+            <div class="stat-detail">
+                <div class="stat-detail-item">
+                    <span style="color: var(--gray-500);">To'langan:</span>
+                    <span class="amount-success">${{ total_paid_usd|floatformat:0 }}</span>
+                </div>
+                <div class="stat-detail-item">
+                    <span style="color: var(--gray-500);">Qoldiq:</span>
+                    <span class="amount-warning">${{ total_remaining_usd|floatformat:0 }}</span>
+                </div>
             </div>
         </div>
         <div class="stat-box uzs">
-            <div class="stat-label"><i class="fas fa-coins me-1"></i>So'm qarzlar</div>
-            <div class="stat-value text-primary">{{ total_debt_uzs|floatformat:0|default:"0" }} so'm</div>
-            <div class="stat-label mt-2" style="color: #16a34a;">
-                To'langan: {{ total_paid_uzs|floatformat:0|default:"0" }} so'm
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== FILTERS ===== -->
-    <div class="filter-box">
-        <div class="d-flex gap-3 flex-wrap">
-            <div>
-                <div class="stat-label mb-2">Holat</div>
-                <div class="filter-btns">
-                    <button class="filter-btn active" onclick="filterDebts('all')">Barchasi</button>
-                    <button class="filter-btn" onclick="filterDebts('active')">Faol</button>
-                    <button class="filter-btn" onclick="filterDebts('paid')">To'langan</button>
-                    <button class="filter-btn" onclick="filterDebts('cancelled')">Bekor</button>
+            <div class="stat-label"><i class="fas fa-coins"></i> So'm qarzlar</div>
+            <div class="stat-value" style="color: #06b6d4;">{{ total_debt_uzs|floatformat:0 }}</div>
+            <div class="stat-detail">
+                <div class="stat-detail-item">
+                    <span style="color: var(--gray-500);">To'langan:</span>
+                    <span class="amount-success">{{ total_paid_uzs|floatformat:0 }}</span>
                 </div>
-            </div>
-            <div>
-                <div class="stat-label mb-2">Turi</div>
-                <div class="filter-btns">
-                    <button class="filter-btn active" onclick="filterDebtType('all')">Barchasi</button>
-                    <button class="filter-btn" onclick="filterDebtType('customer_to_seller')">Mijoz</button>
-                    <button class="filter-btn" onclick="filterDebtType('seller_to_boss')">Sotuvchi</button>
-                    <button class="filter-btn" onclick="filterDebtType('boss_to_master')">Usta</button>
+                <div class="stat-detail-item">
+                    <span style="color: var(--gray-500);">Qoldiq:</span>
+                    <span class="amount-warning">{{ total_remaining_uzs|floatformat:0 }}</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ===== TABLE ===== -->
+    <!-- Salesman Stats -->
+    {% if salesmen_stats %}
+    <div class="salesman-stats-table">
+        <h5>
+            <i class="fas fa-users"></i>
+            Sotuvchilar bo'yicha qarzlar statistikasi
+        </h5>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Sotuvchi</th>
+                        <th class="text-center">Jami</th>
+                        <th class="text-center">Faol</th>
+                        <th class="text-end">Bergan USD</th>
+                        <th class="text-end">Bergan UZS</th>
+                        <th class="text-end">Olgan USD</th>
+                        <th class="text-end">Olgan UZS</th>
+                        <th class="text-end">Balans USD</th>
+                        <th class="text-end">Balans UZS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in salesmen_stats %}
+                    <tr>
+                        <td>
+                            <a href="?salesman={{ stat.salesman.id }}" class="salesman-link">
+                                <i class="fas fa-user-circle"></i>
+                                {{ stat.salesman.get_full_name|default:stat.salesman.username }}
+                            </a>
+                        </td>
+                        <td class="text-center"><strong>{{ stat.total_count }}</strong></td>
+                        <td class="text-center"><strong>{{ stat.active_count }}</strong></td>
+                        <td class="text-end amount-positive">
+                            {% if stat.given_usd > 0 %}${{ stat.given_usd|floatformat:0 }}{% else %}-{% endif %}
+                        </td>
+                        <td class="text-end amount-positive">
+                            {% if stat.given_uzs > 0 %}{{ stat.given_uzs|floatformat:0 }}{% else %}-{% endif %}
+                        </td>
+                        <td class="text-end amount-negative">
+                            {% if stat.received_usd > 0 %}${{ stat.received_usd|floatformat:0 }}{% else %}-{% endif %}
+                        </td>
+                        <td class="text-end amount-negative">
+                            {% if stat.received_uzs > 0 %}{{ stat.received_uzs|floatformat:0 }}{% else %}-{% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% calculate_balance stat.given_usd stat.received_usd as balance_usd %}
+                            {% if balance_usd > 0 %}
+                                <span class="amount-positive">+${{ balance_usd|abs_value|floatformat:0 }}</span>
+                            {% elif balance_usd < 0 %}
+                                <span class="amount-negative">-${{ balance_usd|abs_value|floatformat:0 }}</span>
+                            {% else %}
+                                <span class="text-muted">$0</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% calculate_balance stat.given_uzs stat.received_uzs as balance_uzs %}
+                            {% if balance_uzs > 0 %}
+                                <span class="amount-positive">+{{ balance_uzs|abs_value|floatformat:0 }}</span>
+                            {% elif balance_uzs < 0 %}
+                                <span class="amount-negative">-{{ balance_uzs|abs_value|floatformat:0 }}</span>
+                            {% else %}
+                                <span class="text-muted">0</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Debts Table -->
     {% if debts %}
     <div class="table-box">
+        <div class="table-header">
+            <div class="table-title">
+                <i class="fas fa-table"></i>
+                <span>Qarzlar ro'yxati</span>
+                <span class="table-count">{{ debts|length }} ta</span>
+            </div>
+        </div>
         <div class="table-responsive">
-            <table class="table mb-0">
+            <table class="table mb-0" id="debtsTable">
                 <thead>
                     <tr>
                         <th style="width: 40px;">#</th>
@@ -430,6 +930,7 @@
                         <th class="text-end">Qarz summasi</th>
                         <th class="text-end">To'langan</th>
                         <th class="text-end">Qoldiq</th>
+                        <th>Progress</th>
                         <th>Holat</th>
                         <th>Muddat</th>
                         <th class="text-center">Amallar</th>
@@ -437,106 +938,77 @@
                 </thead>
                 <tbody>
                     {% for debt in debts %}
-                    <tr class="debt-row {% if debt.is_overdue %}overdue{% endif %}"
-                        data-status="{{ debt.status }}"
-                        data-debt-type="{{ debt.debt_type }}"
-                        data-is-overdue="{{ debt.is_overdue }}">
+                    <tr class="debt-row {% if debt.is_overdue %}overdue{% endif %}">
                         <td class="text-muted fw-bold">{{ forloop.counter }}</td>
-
-                        <!-- Turi -->
                         <td>
-                            <span class="debt-type {% if debt.debt_type == 'customer_to_seller' %}customer
-                                {% elif debt.debt_type == 'seller_to_boss' %}seller
-                                {% else %}master{% endif %}">
-                                {% if debt.debt_type == 'boss_to_master' %}Usta
-                                {% elif debt.debt_type == 'customer_to_seller' %}Mijoz
-                                {% else %}Sotuvchi{% endif %}
+                            <span class="debt-type {% if debt.debt_type == 'customer_to_seller' %}customer{% elif debt.debt_type == 'seller_to_boss' %}seller{% else %}master{% endif %}">
+                                <i class="fas fa-{% if debt.debt_type == 'boss_to_master' %}hard-hat{% elif debt.debt_type == 'customer_to_seller' %}user{% else %}user-tie{% endif %}"></i>
+                                {% if debt.debt_type == 'boss_to_master' %}Usta{% elif debt.debt_type == 'customer_to_seller' %}Mijoz{% else %}Sotuvchi{% endif %}
                             </span>
                         </td>
-
-                        <!-- Qarz bergan -->
                         <td>
                             <div class="fw-bold">{{ debt.creditor.get_full_name|default:debt.creditor.username }}</div>
                         </td>
-
-                        <!-- Qarz olgan -->
                         <td>
                             <div class="fw-bold">{{ debt.debtor_display_name }}</div>
                         </td>
-
-                        <!-- Qarz summasi -->
                         <td class="text-end">
                             <span class="amount-danger">
-                                {% if debt.currency == 'USD' %}${% endif %}{{ debt.debt_amount|floatformat:0 }}{% if debt.currency == 'UZS' %}s{% endif %}
+                                {% if debt.currency == 'USD' %}${% endif %}{{ debt.debt_amount|floatformat:0 }}{% if debt.currency == 'UZS' %} so'm{% endif %}
                             </span>
                         </td>
-
-                        <!-- To'langan -->
                         <td class="text-end">
                             <span class="amount-success">
-                                {% if debt.currency == 'USD' %}${% endif %}{{ debt.paid_amount|floatformat:0 }}
+                                {% if debt.currency == 'USD' %}${% endif %}{{ debt.paid_amount|floatformat:0 }}{% if debt.currency == 'UZS' %} so'm{% endif %}
                             </span>
                         </td>
-
-                        <!-- Qoldiq -->
                         <td class="text-end">
                             <span class="{% if debt.remaining_amount > 0 %}amount-warning{% else %}amount-success{% endif %}">
-                                {% if debt.currency == 'USD' %}${% endif %}{{ debt.remaining_amount|floatformat:0 }}
+                                {% if debt.currency == 'USD' %}${% endif %}{{ debt.remaining_amount|floatformat:0 }}{% if debt.currency == 'UZS' %} so'm{% endif %}
                             </span>
                         </td>
-
-                        <!-- Holat -->
+                        <td style="min-width: 120px;">
+                            <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">
+                                {{ debt.payment_percentage|floatformat:0 }}%
+                            </div>
+                            <div class="debt-progress">
+                                <div class="debt-progress-bar" style="width: {{ debt.payment_percentage }}%"></div>
+                            </div>
+                        </td>
                         <td>
-                            <span class="debt-status {% if debt.status == 'active' %}active
-                                {% elif debt.status == 'paid' %}paid
-                                {% else %}cancelled{% endif %}">
+                            <span class="debt-status {% if debt.status == 'active' %}active{% elif debt.status == 'paid' %}paid{% else %}cancelled{% endif %}">
+                                <i class="fas fa-{% if debt.status == 'active' %}clock{% elif debt.status == 'paid' %}check-circle{% else %}ban{% endif %}"></i>
                                 {{ debt.get_status_display }}
                             </span>
                         </td>
-
-                        <!-- Muddat -->
                         <td>
                             <div class="date-box">
-                                <div class="date-created">{{ debt.created_at|date:"d.m.Y" }}</div>
+                                <div class="date-created">
+                                    <i class="fas fa-calendar-plus me-1"></i>
+                                    {{ debt.created_at|date:"d.m.Y" }}
+                                </div>
                                 {% if debt.due_date %}
-                                <div class="date-due {{ debt.due_date_class }}" data-due="{{ debt.due_date|date:'Y-m-d' }}">
+                                <div class="date-due {{ debt.due_date_class }}">
+                                    <i class="fas fa-calendar-check me-1"></i>
                                     {{ debt.due_date|date:"d.m.Y" }}
                                 </div>
                                 {% endif %}
                             </div>
                         </td>
-
-                        <!-- Amallar -->
                         <td>
                             <div class="act-btns">
                                 <a href="{% url 'sales:debt_detail' debt.pk %}" class="act-btn act-view" title="Ko'rish">
                                     <i class="fas fa-eye"></i>
                                 </a>
-
                                 {% if debt.status == 'active' and debt.remaining_amount > 0 %}
-                                    {% if user_role == 'boss' or user_role == 'finance' %}
-                                    <a href="{% url 'sales:debt_payment_create' debt.pk %}" class="act-btn act-pay" title="To'lov">
-                                        <i class="fas fa-plus"></i>
-                                    </a>
-                                    {% elif user_role == 'seller' and debt.debt_type == 'customer_to_seller' and debt.creditor.pk == request.user.pk %}
-                                    <a href="{% url 'sales:debt_payment_create' debt.pk %}" class="act-btn act-pay" title="To'lov">
-                                        <i class="fas fa-plus"></i>
-                                    </a>
-                                    {% endif %}
+                                <a href="{% url 'sales:debt_payment_create' debt.pk %}" class="act-btn act-pay" title="To'lov">
+                                    <i class="fas fa-plus"></i>
+                                </a>
                                 {% endif %}
-
-                                {% if debt.status == 'active' %}
-                                    {% if user_role == 'boss' or user_role == 'finance' %}
-                                    <button onclick="confirmDelete({{ debt.pk }}, '{{ debt.debtor_display_name|escapejs }}')"
-                                            class="act-btn act-del" title="O'chirish">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                    {% elif user_role == 'seller' and debt.debt_type == 'customer_to_seller' and debt.creditor.pk == request.user.pk %}
-                                    <button onclick="confirmDelete({{ debt.pk }}, '{{ debt.debtor_display_name|escapejs }}')"
-                                            class="act-btn act-del" title="O'chirish">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                    {% endif %}
+                                {% if can_view_all %}
+                                <button onclick="confirmDelete({{ debt.pk }}, '{{ debt.debtor_display_name|escapejs }}')" class="act-btn act-del" title="O'chirish">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                                 {% endif %}
                             </div>
                         </td>
@@ -545,38 +1017,105 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="pagination-box">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if debt_type_filter %}&debt_type={{ debt_type_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if currency_filter %}&currency={{ currency_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if overdue_filter %}&overdue={{ overdue_filter }}{% endif %}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if debt_type_filter %}&debt_type={{ debt_type_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if currency_filter %}&currency={{ currency_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if overdue_filter %}&overdue={{ overdue_filter }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if debt_type_filter %}&debt_type={{ debt_type_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if currency_filter %}&currency={{ currency_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if overdue_filter %}&overdue={{ overdue_filter }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if debt_type_filter %}&debt_type={{ debt_type_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if currency_filter %}&currency={{ currency_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if overdue_filter %}&overdue={{ overdue_filter }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if selected_salesman %}&salesman={{ selected_salesman }}{% endif %}{% if debt_type_filter %}&debt_type={{ debt_type_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if currency_filter %}&currency={{ currency_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if overdue_filter %}&overdue={{ overdue_filter }}{% endif %}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            <div class="text-center mt-3" style="color: var(--gray-500); font-size: 0.875rem;">
+                Sahifa <strong>{{ page_obj.number }}</strong> / <strong>{{ page_obj.paginator.num_pages }}</strong>
+                (Jami: <strong>{{ page_obj.paginator.count }}</strong> ta qarz)
+            </div>
+        </div>
+        {% endif %}
     </div>
     {% else %}
     <div class="table-box">
         <div class="empty-box">
             <div class="empty-icon"><i class="fas fa-hand-holding-usd"></i></div>
-            <h4 class="text-muted">Qarzlar yo'q</h4>
-            <p class="text-muted">Birinchi qarzni qo'shish uchun quyidagi tugmani bosing</p>
-            <a href="{% url 'sales:debt_create' %}" class="btn btn-primary btn-lg mt-3">
-                <i class="fas fa-plus me-2"></i>Qarz Qo'shish
+            <h4 class="empty-title">Qarzlar topilmadi</h4>
+            <p class="empty-subtitle">Filter shartlariga mos qarzlar mavjud emas yoki hali qarz yaratilmagan</p>
+            <a href="{% url 'sales:debt_list' %}" class="btn btn-primary mt-3" style="border-radius: 10px; padding: 0.625rem 1.5rem;">
+                <i class="fas fa-redo me-2"></i>Filtrni tozalash
             </a>
         </div>
     </div>
     {% endif %}
+
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
 </div>
 
 <!-- Delete Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Qarzni o'chirish</h5>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--gray-200);">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-trash-alt text-danger me-2"></i>
+                    Qarzni o'chirish
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Rostdan ham <strong id="debtorName"></strong> ning qarzini o'chirmoqchimisiz?</p>
-                <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Bu qaytarilmaydi!</p>
+                <p class="mb-3">Rostdan ham <strong id="debtorName" class="text-primary"></strong> ning qarzini o'chirmoqchimisiz?</p>
+                <div class="alert alert-danger d-flex align-items-center mb-0" style="border-radius: 10px; border: none;">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span>Bu amal qaytarilmaydi!</span>
+                </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor</button>
-                <form id="deleteForm" method="post">
+            <div class="modal-footer" style="border-top: 1px solid var(--gray-200);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 10px; padding: 0.625rem 1.25rem;">
+                    <i class="fas fa-times me-1"></i>Bekor qilish
+                </button>
+                <form id="deleteForm" method="post" style="margin: 0;">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">O'chirish</button>
+                    <button type="submit" class="btn btn-danger" style="border-radius: 10px; padding: 0.625rem 1.25rem;">
+                        <i class="fas fa-trash me-1"></i>O'chirish
+                    </button>
                 </form>
             </div>
         </div>
@@ -584,85 +1123,31 @@
 </div>
 
 <script>
-// Filter functions
-function filterDebts(status) {
-    const rows = document.querySelectorAll('.debt-row');
-    const buttons = document.querySelectorAll('.filter-btns button');
-
-    // Update active button in status group
-    buttons.forEach(btn => {
-        if (btn.textContent.toLowerCase().includes(status) ||
-            (status === 'all' && btn.textContent === 'Barchasi')) {
-            btn.classList.add('active');
-        } else if (!btn.onclick.toString().includes('filterDebtType')) {
-            btn.classList.remove('active');
-        }
-    });
-
-    rows.forEach(row => {
-        const match = status === 'all' || row.dataset.status === status;
-        row.style.display = match ? '' : 'none';
-    });
-}
-
-function filterDebtType(type) {
-    const rows = document.querySelectorAll('.debt-row');
-    const buttons = document.querySelectorAll('.filter-btns button');
-
-    // Update active button in type group
-    buttons.forEach(btn => {
-        if (btn.onclick && btn.onclick.toString().includes('filterDebtType')) {
-            if (btn.textContent.toLowerCase().includes(type.split('_')[0]) ||
-                (type === 'all' && btn.textContent === 'Barchasi')) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        }
-    });
-
-    rows.forEach(row => {
-        const match = type === 'all' || row.dataset.debtType === type;
-        row.style.display = match ? '' : 'none';
-    });
-}
-
+// Delete confirmation
 function confirmDelete(debtId, debtorName) {
     document.getElementById('debtorName').textContent = debtorName;
     document.getElementById('deleteForm').action = `/sales/debts/${debtId}/delete/`;
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
 
-// Muddat ranglarini dinamik yangilash
-function updateDueDateColors() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+// Search with debounce
+let searchTimeout;
+document.querySelector('input[name="search"]').addEventListener('input', function(e) {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        document.getElementById('searchForm').submit();
+    }, 500);
+});
 
-    document.querySelectorAll('.date-due').forEach(el => {
-        if (!el.dataset.due) return;
+// Filter form submission
+document.getElementById('filterForm').addEventListener('submit', function() {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+});
 
-        const dueDate = new Date(el.dataset.due);
-        dueDate.setHours(0, 0, 0, 0);
-
-        const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-
-        el.className = 'date-due';
-        if (diffDays < 0) {
-            el.classList.add('overdue');
-        } else if (diffDays <= 3) {
-            el.classList.add('soon');
-        } else if (diffDays <= 7) {
-            el.classList.add('warning');
-        } else {
-            el.classList.add('ok');
-        }
-    });
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    updateDueDateColors();
-    setInterval(updateDueDateColors, 60000);
+// Auto-hide loading on page load
+window.addEventListener('load', function() {
+    document.getElementById('loadingOverlay').style.display = 'none';
 });
 </script>
 {% endblock %}
