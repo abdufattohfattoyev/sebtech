@@ -76,7 +76,6 @@ class UserProfile(models.Model):
         ('boss', 'Rahbar'),
         ('finance', 'Moliyachi'),
         ('seller', 'Sotuvchi'),
-        ('operator', 'Operator'),
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name="Foydalanuvchi")

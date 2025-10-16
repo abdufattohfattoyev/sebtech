@@ -536,7 +536,7 @@
     <a href="{% url 'users:dashboard' %}"
        class="nav-link {% if request.resolver_match.app_name == 'users' %}active{% endif %}">
         <i class="fas fa-users"></i>
-        Foydalanuvchilar
+        Xodimlar
     </a>
 
     <!-- Ustalar -->

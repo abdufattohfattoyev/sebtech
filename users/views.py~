@@ -42,10 +42,6 @@ def dashboard(request):
     """Dashboard - foydalanuvchi turiga qarab ko'rsatish"""
     profile = UserProfile.objects.get_or_create(user=request.user)[0]
 
-    # ✅ OPERATOR uchun to'g'ridan-to'g'ri phone_list ga yo'naltirish
-    if profile.role == 'operator':
-        return redirect('inventory:phone_list')
-
     if is_boss(request.user):
         # Boss uchun - ro'yxat
         users = UserProfile.objects.select_related('user').all()

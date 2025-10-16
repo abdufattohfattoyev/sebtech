@@ -503,109 +503,147 @@
         </div>
 
         <nav class="nav-menu">
-    <!-- Dashboard -->
-    <a href="{% url 'inventory:dashboard' %}"
-       class="nav-link {% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'inventory' %}active{% endif %}">
-        <i class="fas fa-home"></i>
-        Bosh sahifa
-    </a>
+            {% if request.user.userprofile.role == 'operator' %}
+                <!-- ✅ OPERATOR UCHUN FAQAT 2 TA MENYU -->
 
-    <!-- Inventory Dashboard -->
-    <a href="{% url 'shop:dashboard' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'shop' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-        <i class="fas fa-tachometer-alt"></i>
-        Inventar Dashboard
-    </a>
+                <!-- Telefonlar -->
+                <a href="{% url 'inventory:phone_list' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'inventory' and 'phone' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-mobile-alt"></i>
+                    Telefonlar
+                </a>
 
+                <!-- Aksessuarlar -->
+                <a href="{% url 'inventory:accessory_list' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'inventory' and 'accessor' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-headphones"></i>
+                    Aksessuarlar
+                </a>
 
-    <!-- Telefonlar -->
-    <a href="{% url 'inventory:phone_list' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'inventory' and 'phone' in request.resolver_match.url_name %}active{% endif %}">
-        <i class="fas fa-mobile-alt"></i>
-        Telefonlar
-    </a>
+                <hr style="margin: 1rem; border-color: var(--gray-200);">
 
-    <!-- Aksessuarlar -->
-    <a href="{% url 'inventory:accessory_list' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'inventory' and 'accessor' in request.resolver_match.url_name %}active{% endif %}">
-        <i class="fas fa-headphones"></i>
-        Aksessuarlar
-    </a>
+                <!-- Profil -->
+                <a href="{% url 'users:my_profile' %}"
+                   class="nav-link {% if 'my_profile' in request.resolver_match.url_name or 'profile' in request.path %}active{% endif %}">
+                    <i class="fas fa-user"></i>
+                    Profil
+                </a>
 
-    <!-- Foydalanuvchilar -->
-    <a href="{% url 'users:dashboard' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'users' %}active{% endif %}">
-        <i class="fas fa-users"></i>
-        Xodimlar
-    </a>
+                <!-- Chiqish -->
+                <form method="POST" action="{% url 'logout' %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="nav-link logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Chiqish
+                    </button>
+                </form>
 
-    <!-- Ustalar -->
-    <a href="{% url 'services:dashboard' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'services' %}active{% endif %}">
-        <i class="fas fa-tools"></i>
-        Ustalar
-    </a>
+            {% else %}
+                <!-- ✅ BOSHQA ROLLAR UCHUN BARCHA MENYU -->
 
-    <!-- Sotuvlar - FAQAT dashboard va sale sahifalari -->
-    <a href="{% url 'sales:dashboard' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'sales' and request.resolver_match.url_name in 'dashboard,phone_sale_list,phone_sale_create,phone_sale_detail,phone_sale_edit,accessory_sale_list,accessory_sale_create,accessory_sale_detail,accessory_sale_edit,phone_return_list,phone_return_create,phone_return_detail,phone_exchange_list,phone_exchange_create,phone_exchange_detail,phone_exchange_edit' %}active{% endif %}">
-        <i class="fas fa-shopping-cart"></i>
-        Sotuvlar
-    </a>
+                <!-- Dashboard -->
+                <a href="{% url 'inventory:dashboard' %}"
+                   class="nav-link {% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'inventory' %}active{% endif %}">
+                    <i class="fas fa-home"></i>
+                    Bosh sahifa
+                </a>
 
-    <!-- Mijozlar -->
-    <a href="{% url 'shop:customer_list' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'shop' and 'customer' in request.resolver_match.url_name %}active{% endif %}">
-        <i class="fas fa-address-book"></i>
-        Mijozlar
-    </a>
+                <!-- Inventory Dashboard -->
+                <a href="{% url 'shop:dashboard' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'shop' and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Inventar Dashboard
+                </a>
 
-    <!-- Qarzlar - FAQAT debt sahifalari -->
-    <a href="{% url 'sales:debt_list' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'sales' and 'debt' in request.resolver_match.url_name %}active{% endif %}">
-        <i class="fas fa-hand-holding-usd"></i>
-        Qarzlar
-    </a>
+                <!-- Telefonlar -->
+                <a href="{% url 'inventory:phone_list' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'inventory' and 'phone' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-mobile-alt"></i>
+                    Telefonlar
+                </a>
 
-    <!-- Xarajatlar - FAQAT expense sahifalari -->
-    <a href="{% url 'sales:expense_list' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'sales' and 'expense' in request.resolver_match.url_name %}active{% endif %}">
-        <i class="fas fa-receipt"></i>
-        Xarajatlar
-    </a>
+                <!-- Aksessuarlar -->
+                <a href="{% url 'inventory:accessory_list' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'inventory' and 'accessor' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-headphones"></i>
+                    Aksessuarlar
+                </a>
 
-    <!-- Hisobotlar -->
-    <a href="{% url 'reports:daily' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}">
-        <i class="fas fa-chart-bar"></i>
-        Hisobotlar
-    </a>
+                <!-- Foydalanuvchilar -->
+                <a href="{% url 'users:dashboard' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'users' %}active{% endif %}">
+                    <i class="fas fa-users"></i>
+                    Xodimlar
+                </a>
 
-    <!-- Taminotchilar -->
-    <a href="{% url 'inventory:supplier_list' %}"
-       class="nav-link {% if request.resolver_match.app_name == 'inventory' and 'supplier' in request.resolver_match.url_name %}active{% endif %}">
-        <i class="fas fa-users-cog"></i>
-        Taminotchilar
-    </a>
+                <!-- Ustalar -->
+                <a href="{% url 'services:dashboard' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'services' %}active{% endif %}">
+                    <i class="fas fa-tools"></i>
+                    Ustalar
+                </a>
 
-    <hr style="margin: 1rem; border-color: var(--gray-200);">
+                <!-- Sotuvlar -->
+                <a href="{% url 'sales:dashboard' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'sales' and request.resolver_match.url_name in 'dashboard,phone_sale_list,phone_sale_create,phone_sale_detail,phone_sale_edit,accessory_sale_list,accessory_sale_create,accessory_sale_detail,accessory_sale_edit,phone_return_list,phone_return_create,phone_return_detail,phone_exchange_list,phone_exchange_create,phone_exchange_detail,phone_exchange_edit' %}active{% endif %}">
+                    <i class="fas fa-shopping-cart"></i>
+                    Sotuvlar
+                </a>
 
-    <!-- Profil -->
-    <a href="{% url 'users:my_profile' %}"
-       class="nav-link {% if 'my_profile' in request.resolver_match.url_name or 'profile' in request.path %}active{% endif %}">
-        <i class="fas fa-user"></i>
-        Profil
-    </a>
+                <!-- Mijozlar -->
+                <a href="{% url 'shop:customer_list' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'shop' and 'customer' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-address-book"></i>
+                    Mijozlar
+                </a>
 
-    <!-- Chiqish -->
-    <form method="POST" action="{% url 'logout' %}" style="margin: 0;">
-        {% csrf_token %}
-        <button type="submit" class="nav-link logout-btn">
-            <i class="fas fa-sign-out-alt"></i>
-            Chiqish
-        </button>
-    </form>
-</nav>
+                <!-- Qarzlar -->
+                <a href="{% url 'sales:debt_list' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'sales' and 'debt' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    Qarzlar
+                </a>
+
+                <!-- Xarajatlar -->
+                <a href="{% url 'sales:expense_list' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'sales' and 'expense' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-receipt"></i>
+                    Xarajatlar
+                </a>
+
+                <!-- Hisobotlar -->
+                <a href="{% url 'reports:daily' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'reports' %}active{% endif %}">
+                    <i class="fas fa-chart-bar"></i>
+                    Hisobotlar
+                </a>
+
+                <!-- Taminotchilar -->
+                <a href="{% url 'inventory:supplier_list' %}"
+                   class="nav-link {% if request.resolver_match.app_name == 'inventory' and 'supplier' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-users-cog"></i>
+                    Taminotchilar
+                </a>
+
+                <hr style="margin: 1rem; border-color: var(--gray-200);">
+
+                <!-- Profil -->
+                <a href="{% url 'users:my_profile' %}"
+                   class="nav-link {% if 'my_profile' in request.resolver_match.url_name or 'profile' in request.path %}active{% endif %}">
+                    <i class="fas fa-user"></i>
+                    Profil
+                </a>
+
+                <!-- Chiqish -->
+                <form method="POST" action="{% url 'logout' %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="nav-link logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Chiqish
+                    </button>
+                </form>
+            {% endif %}
+        </nav>
     </div>
 
     <!-- Main Content -->
