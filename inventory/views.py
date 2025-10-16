@@ -416,7 +416,6 @@ def accessory_list(request):
 
 
 @login_required
-@boss_or_finance_required
 def accessory_create(request):
     """Yangi aksessuar qo'shish"""
     if request.method == 'POST':
